@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from supabase import create_client, Client
 
 app = FastAPI()
@@ -23,20 +23,28 @@ class TroquelForm(BaseModel):
     tamano_troquel: Optional[str] = ""
     tamano_final: Optional[str] = ""
     observaciones: Optional[str] = ""
-    enlace_archivo: Optional[str] = ""  # Campo para el plano/PDF
+    enlace_archivo: Optional[str] = ""
+
+class NuevaCategoria(BaseModel):
+    nombre: str
+
+class BulkCategoria(BaseModel):
+    ids: List[int]
+    categoria_id: int
+
+class BulkBorrar(BaseModel):
+    ids: List[int]
 
 # ==========================================
 # RUTAS DE LECTURA (GET)
 # ==========================================
 @app.get("/api/categorias")
 async def listar_categorias():
-    """Obtiene la lista de familias para los desplegables y filtros"""
     response = supabase.table("categorias").select("*").order("nombre").execute()
     return response.data
 
 @app.get("/api/troqueles")
 async def listar_troqueles():
-    """Obtiene todo el inventario activo con el nombre de su familia"""
     response = supabase.table("troqueles")\
         .select("*, categorias(nombre)")\
         .neq("estado_activo", "En Papelera")\
@@ -46,7 +54,6 @@ async def listar_troqueles():
 
 @app.get("/api/historial")
 async def listar_historial():
-    """Obtiene el log de auditoría (movimientos, altas, bajas)"""
     response = supabase.table("historial")\
         .select("*, troqueles(id_troquel, nombre)")\
         .order("fecha_hora", desc=True)\
@@ -54,11 +61,15 @@ async def listar_historial():
     return response.data
 
 # ==========================================
-# RUTAS DE ESCRITURA (POST / PUT)
+# RUTAS DE ESCRITURA (POST / PUT) - Individuales
 # ==========================================
+@app.post("/api/categorias")
+async def crear_categoria(cat: NuevaCategoria):
+    response = supabase.table("categorias").insert({"nombre": cat.nombre.upper()}).execute()
+    return {"status": "success", "data": response.data}
+
 @app.post("/api/troqueles")
 async def crear_troquel(troquel: TroquelForm):
-    """Da de alta un nuevo troquel en el sistema"""
     nuevo_dato = troquel.dict()
     nuevo_dato["estado_activo"] = "Activo"
     response = supabase.table("troqueles").insert(nuevo_dato).execute()
@@ -66,15 +77,25 @@ async def crear_troquel(troquel: TroquelForm):
 
 @app.put("/api/troqueles/{id_db}")
 async def editar_troquel(id_db: int, troquel: TroquelForm):
-    """Actualiza la información de un troquel existente"""
-    datos_actualizados = troquel.dict()
-    response = supabase.table("troqueles").update(datos_actualizados).eq("id", id_db).execute()
+    response = supabase.table("troqueles").update(troquel.dict()).eq("id", id_db).execute()
     return {"status": "success", "data": response.data}
 
 @app.post("/api/borrar/{id_db}")
 async def mover_a_papelera(id_db: int):
-    """Soft Delete: Mueve el troquel a la papelera sin borrar su historial"""
     response = supabase.table("troqueles").update({"estado_activo": "En Papelera"}).eq("id", id_db).execute()
+    return {"status": "success"}
+
+# ==========================================
+# RUTAS BULK (Acciones Masivas)
+# ==========================================
+@app.put("/api/troqueles/bulk/categoria")
+async def bulk_update_categoria(data: BulkCategoria):
+    response = supabase.table("troqueles").update({"categoria_id": data.categoria_id}).in_("id", data.ids).execute()
+    return {"status": "success"}
+
+@app.post("/api/troqueles/bulk/borrar")
+async def bulk_borrar(data: BulkBorrar):
+    response = supabase.table("troqueles").update({"estado_activo": "En Papelera"}).in_("id", data.ids).execute()
     return {"status": "success"}
 
 @app.get("/api/health")
