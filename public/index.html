@@ -3,72 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gestión de Troqueles</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Dashboard Packaging | Gestión de Troqueles</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 </head>
 <body>
-    <div class="contenedor-principal">
-        <header class="cabecera">
-            <div class="logo-titulo">
-                <span class="icono">⚙️</span>
-                <h1>Gestión de Troqueles</h1>
-            </div>
-            
-            <div class="panel-herramientas">
-                <button onclick="abrirModalNuevo()" class="btn-primario" style="background:#10b981;">
-                    <span>➕ Nuevo Troquel</span>
-                </button>
-                <button id="btn-scan" onclick="iniciarEscaneo()" class="btn-primario">
-                    <span>📷 Escanear QR</span>
-                </button>
-                
-                <div class="caja-buscador">
-                    <span class="icono-lupa">🔍</span>
-                    <input type="text" id="buscador" placeholder="Buscar por Nombre, ID, Familia, Medidas o Notas...">
-                    <button id="btn-limpiar" class="oculto">✕</button>
+    <div class="app-layout">
+        <main class="contenido-principal">
+            <header class="cabecera-pro">
+                <div class="cabecera-top">
+                    <div class="logo-titulo">
+                        <div class="logo-box">⚙️</div>
+                        <div>
+                            <h1>Inventario de Troqueles</h1>
+                            <p class="subtitulo">Sistema de Gestión de Packaging</p>
+                        </div>
+                    </div>
+                    <div class="acciones-top">
+                        <button onclick="abrirModalFormulario()" class="btn-accion btn-nuevo">
+                            ➕ Nuevo Troquel
+                        </button>
+                        <button id="btn-scan" onclick="iniciarEscaneo()" class="btn-accion btn-scan">
+                            📷 Escanear QR
+                        </button>
+                    </div>
                 </div>
-            </div>
-            
-            <div id="contenedor-camara" class="oculto tarjeta-camara">
-                <div id="reader"></div>
-                <button id="btn-cerrar-camara" onclick="detenerEscaneo()" class="btn-secundario">Cerrar Cámara</button>
-            </div>
-        </header>
 
-        <main id="grid-troqueles" class="grid-tarjetas">
-            <div class="estado-carga">
-                <div class="spinner"></div>
-                <p>Conectando con la base de datos...</p>
-            </div>
+                <div class="cabecera-bottom">
+                    <div class="caja-buscador">
+                        <span class="icono-lupa">🔍</span>
+                        <input type="text" id="buscador" placeholder="Buscar por código, descripción, notas...">
+                        <button id="btn-limpiar" class="oculto">✕</button>
+                    </div>
+
+                    <div class="filtros-chips" id="contenedor-chips">
+                        <button class="chip activo" onclick="filtrarPorChip('TODOS', this)">Todos</button>
+                        </div>
+                </div>
+
+                <div id="contenedor-camara" class="oculto tarjeta-camara">
+                    <div id="reader"></div>
+                    <button onclick="detenerEscaneo()" class="btn-secundario mt-2">Cerrar Cámara</button>
+                </div>
+            </header>
+
+            <section id="grid-troqueles" class="grid-tarjetas">
+                <div class="estado-carga">
+                    <div class="spinner"></div>
+                    <p>Sincronizando con base de datos...</p>
+                </div>
+            </section>
         </main>
     </div>
 
-    <div id="modal-nuevo" class="modal oculto">
+    <div id="modal-formulario" class="modal oculto">
         <div class="modal-contenido">
-            <h2>Dar de alta Troquel</h2>
-            <form id="form-nuevo">
-                <input type="text" id="input-id" placeholder="Código (Ej. TR-005)" required>
-                <input type="text" id="input-nombre" placeholder="Nombre o Descripción" required>
-                
-                <select id="input-categoria" required>
-                    <option value="">Selecciona Familia...</option>
-                    </select>
-
-                <input type="text" id="input-ubicacion" placeholder="Ubicación (Ej. Estantería A)" required>
-                
-                <div style="display:flex; gap:10px;">
-                    <input type="text" id="input-tamano-troquel" placeholder="Tam. Troquel">
-                    <input type="text" id="input-tamano-final" placeholder="Tam. Final">
+            <h2 id="modal-titulo">Dar de alta Troquel</h2>
+            <form id="form-troquel">
+                <input type="hidden" id="input-id-db"> <div class="form-grid">
+                    <div class="form-group">
+                        <label>Código ID *</label>
+                        <input type="text" id="input-id" placeholder="Ej. TR-005" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Familia / Categoría *</label>
+                        <select id="input-categoria" required>
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Descripción del Troquel *</label>
+                        <input type="text" id="input-nombre" placeholder="Nombre descriptivo" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Ubicación Física *</label>
+                        <input type="text" id="input-ubicacion" placeholder="Ej. Estantería A, Pasillo 2" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tamaño Troquel</label>
+                        <input type="text" id="input-tamano-troquel" placeholder="Ej. 500x700mm">
+                    </div>
+                    <div class="form-group">
+                        <label>Tamaño Final Trabajo</label>
+                        <input type="text" id="input-tamano-final" placeholder="Ej. 200x300mm">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Observaciones</label>
+                        <textarea id="input-observaciones" placeholder="Notas de producción, desgastes..." rows="2"></textarea>
+                    </div>
                 </div>
-                
-                <textarea id="input-observaciones" placeholder="Observaciones..." rows="3"></textarea>
 
                 <div class="modal-botones">
-                    <button type="button" class="btn-secundario" onclick="cerrarModalNuevo()">Cancelar</button>
-                    <button type="submit" class="btn-primario">💾 Guardar</button>
+                    <button type="button" class="btn-secundario" onclick="cerrarModalFormulario()">Cancelar</button>
+                    <button type="submit" class="btn-accion btn-nuevo">💾 Guardar Cambios</button>
                 </div>
             </form>
         </div>
@@ -76,12 +105,12 @@
 
     <div id="modal-qr" class="modal oculto">
         <div class="modal-contenido text-center" id="zona-impresion">
-            <h2 class="no-print">Etiqueta QR</h2>
+            <h2 class="no-print">Etiqueta de Producción</h2>
             <canvas id="qr-canvas"></canvas>
-            <h3 id="qr-texto-id"></h3>
+            <h3 id="qr-texto-id" style="font-size: 24px; letter-spacing: 2px;"></h3>
             <div class="modal-botones no-print" style="justify-content: center;">
                 <button type="button" class="btn-secundario" onclick="cerrarModalQR()">Cerrar</button>
-                <button type="button" class="btn-primario" onclick="window.print()">🖨️ Imprimir</button>
+                <button type="button" class="btn-accion btn-scan" onclick="window.print()">🖨️ Imprimir</button>
             </div>
         </div>
     </div>
