@@ -1,0 +1,129 @@
+:root {
+    --color-primario: #0056b3;
+    --color-fondo: #f4f7f6;
+    --color-texto: #333;
+    --color-peligro: #dc3545;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+    margin: 0;
+    padding: 20px;
+}
+
+.contenedor-principal {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+header {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+.panel-herramientas {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+/* Buscador */
+.caja-buscador {
+    position: relative;
+    flex-grow: 1;
+    min-width: 250px;
+}
+
+#buscador {
+    width: 100%;
+    padding: 12px 40px 12px 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+#buscador:focus {
+    border-color: var(--color-primario);
+    outline: none;
+}
+
+#btn-limpiar {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #bbb;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#btn-limpiar:hover { background: #888; }
+
+/* Botones */
+button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.btn-primario { background: var(--color-primario); color: white; }
+.btn-secundario { background: #6c757d; color: white; margin-top: 10px; }
+.btn-peligro { background: var(--color-peligro); color: white; }
+
+/* Tarjetas (Grid) */
+.grid-tarjetas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.tarjeta {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    border-left: 5px solid var(--color-primario);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.badge {
+    background: #e9ecef;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.tarjeta-acciones {
+    margin-top: 15px;
+    text-align: right;
+}
+
+.oculto {
+    display: none !important;
+}
+
+#contenedor-camara {
+    margin-top: 20px;
+    text-align: center;
+    border: 2px dashed #ccc;
+    padding: 10px;
+    border-radius: 10px;
+}

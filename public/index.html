@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Troqueles</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+    <div class="contenedor-principal">
+        <header>
+            <h1>Gestión de Troqueles</h1>
+            
+            <div class="panel-herramientas">
+                <button id="btn-scan" onclick="iniciarEscaneo()" class="btn-primario">📷 Escanear QR</button>
+                
+                <div class="caja-buscador">
+                    <input type="text" id="buscador" placeholder="Buscar por Nombre o ID...">
+                    <button id="btn-limpiar" class="oculto">X</button>
+                </div>
+            </div>
+            
+            <div id="contenedor-camara" class="oculto">
+                <div id="reader"></div>
+                <button id="btn-cerrar-camara" onclick="detenerEscaneo()" class="btn-secundario">Cerrar Cámara</button>
+            </div>
+        </header>
+
+        <main id="grid-troqueles" class="grid-tarjetas">
+            <p class="mensaje-carga">Conectando con la base de datos Supabase...</p>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
