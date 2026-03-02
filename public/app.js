@@ -13,12 +13,8 @@ let idsSeleccionados = new Set();
 // 1. NAVEGACIÓN ENTRE VISTAS
 // ==========================================
 window.cambiarVista = function(idVista, btnElement) { 
-    // Ocultar todas las vistas
     document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); 
-    // Mostrar la elegida
     document.getElementById(idVista).classList.remove('oculto'); 
-    
-    // Cambiar el botón activo del menú
     document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo')); 
     if(btnElement) btnElement.classList.add('activo'); 
 }
@@ -35,7 +31,6 @@ window.abrirVistaCrear = function(btnElement) {
 // ==========================================
 async function cargarDatos() {
     try {
-        // Cargar Categorías
         const resCat = await fetch('/api/categorias'); 
         const categorias = await resCat.json();
         
@@ -53,7 +48,6 @@ async function cargarDatos() {
             chips.innerHTML += `<button class="chip" onclick="filtrarPorChip('${cat.nombre}', this)">${cat.nombre}</button>`; 
         });
 
-        // Cargar Troqueles
         const resTroq = await fetch('/api/troqueles'); 
         listaTroquelesCache = await resTroq.json(); 
         
@@ -67,7 +61,7 @@ async function cargarDatos() {
 // 3. CREACIÓN DE CATEGORÍAS EN CALIENTE
 // ==========================================
 window.crearCategoriaAlVuelo = async function() {
-    const nueva = prompt("Introduce el nombre de la nueva familia:"); 
+    const nueva = prompt("Introduce el nombre de la nueva familia/tipo:"); 
     if (!nueva || nueva.trim() === "") return;
     
     try { 
@@ -123,7 +117,6 @@ window.filtrarPorChip = function(familia, btnElement) {
 function aplicarFiltrosYOrden() {
     const texto = buscador.value.toLowerCase();
     
-    // 1. Filtrar
     let procesados = listaTroquelesCache.filter(t => {
         const catNom = t.categorias?.nombre || '';
         const pasaFam = (familiaActiva === 'TODOS') || (catNom === familiaActiva);
@@ -132,13 +125,11 @@ function aplicarFiltrosYOrden() {
             (t.id_troquel && t.id_troquel.toLowerCase().includes(texto)) ||
             (t.codigos_articulo && t.codigos_articulo.toLowerCase().includes(texto)) ||
             (t.referencias_ot && t.referencias_ot.toLowerCase().includes(texto)) ||
-            (t.componente && t.componente.toLowerCase().includes(texto)) ||
             (t.observaciones && t.observaciones.toLowerCase().includes(texto))
         );
         return pasaFam && pasaTxt;
     });
 
-    // 2. Ordenar
     procesados.sort((a, b) => {
         let valA = (columnaOrden === 'familia' ? a.categorias?.nombre : a[columnaOrden]) || "";
         let valB = (columnaOrden === 'familia' ? b.categorias?.nombre : b[columnaOrden]) || "";
@@ -148,10 +139,7 @@ function aplicarFiltrosYOrden() {
         return 0;
     });
 
-    // Guardar estado actual para la exportación a Excel
     datosExportables = procesados; 
-    
-    // Pintar tabla
     renderizarTabla(procesados);
 }
 
@@ -163,7 +151,7 @@ function renderizarTabla(datos) {
     document.getElementById('check-all').checked = false;
     
     if (datos.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center" style="padding:40px;">No se encontraron resultados.</td></tr>'; 
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding:40px;">No se encontraron resultados.</td></tr>'; 
         return; 
     }
 
@@ -179,7 +167,6 @@ function renderizarTabla(datos) {
             </td>
             <td class="text-primary" style="font-size: 13px; font-weight: bold;">${t.id_troquel}</td>
             <td style="max-width: 200px;">${arts}</td>
-            <td>${t.componente || '-'}</td>
             <td class="fw-bold">${t.nombre}</td>
             <td><span class="etiqueta-familia">${t.categorias?.nombre || '-'}</span></td>
             <td>${t.ubicacion || '-'}</td>
@@ -263,13 +250,12 @@ window.exportarCSV = function() {
     if (datosExportables.length === 0) return alert("No hay datos para exportar");
     
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-    csvContent += "QR_Fisico,Codigos_Articulo,Componente,Referencias_OT,Descripcion,Familia,Ubicacion,Tam_Troquel,Tam_Final,Observaciones\r\n";
+    csvContent += "QR_Fisico,Codigos_Articulo,Referencias_OT,Descripcion,Familia,Ubicacion,Tam_Troquel,Tam_Final,Observaciones\r\n";
     
     datosExportables.forEach(t => {
         const row = [ 
             `"${t.id_troquel}"`, 
             `"${t.codigos_articulo || ''}"`, 
-            `"${t.componente || ''}"`, 
             `"${t.referencias_ot || ''}"`, 
             `"${t.nombre}"`, 
             `"${t.categorias?.nombre || ''}"`, 
@@ -300,7 +286,6 @@ window.abrirVistaEditar = function(id_db) {
     document.getElementById('input-id').value = t.id_troquel;
     document.getElementById('input-articulos').value = t.codigos_articulo || "";
     document.getElementById('input-ot').value = t.referencias_ot || "";
-    document.getElementById('input-componente').value = t.componente || "";
     document.getElementById('input-categoria').value = t.categoria_id || "";
     document.getElementById('input-nombre').value = t.nombre; 
     document.getElementById('input-ubicacion').value = t.ubicacion;
@@ -323,7 +308,6 @@ document.getElementById('form-troquel').addEventListener('submit', async (e) => 
         id_troquel: document.getElementById('input-id').value,
         codigos_articulo: document.getElementById('input-articulos').value,
         referencias_ot: document.getElementById('input-ot').value,
-        componente: document.getElementById('input-componente').value,
         nombre: document.getElementById('input-nombre').value, 
         ubicacion: document.getElementById('input-ubicacion').value,
         categoria_id: parseInt(document.getElementById('input-categoria').value) || null,
@@ -413,4 +397,4 @@ window.detenerEscaneo = function() {
 }
 
 // INICIALIZACIÓN
-cargarDatos();  
+cargarDatos();

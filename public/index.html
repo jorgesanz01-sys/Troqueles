@@ -62,9 +62,8 @@
                                 </th>
                                 <th onclick="ordenarPor('id_troquel')" class="sortable">QR Físico ↕️</th>
                                 <th onclick="ordenarPor('codigos_articulo')" class="sortable">Artículos Asignados ↕️</th>
-                                <th onclick="ordenarPor('componente')" class="sortable">Componente ↕️</th>
                                 <th onclick="ordenarPor('nombre')" class="sortable">Descripción ↕️</th>
-                                <th onclick="ordenarPor('familia')" class="sortable">Familia ↕️</th>
+                                <th onclick="ordenarPor('familia')" class="sortable">Familia / Tipo ↕️</th>
                                 <th onclick="ordenarPor('ubicacion')" class="sortable">Ubicación ↕️</th>
                                 <th onclick="ordenarPor('tamano_troquel')" class="sortable">Dim. Trq ↕️</th>
                                 <th onclick="ordenarPor('tamano_final')" class="sortable">Dim. Fin ↕️</th>
@@ -73,7 +72,7 @@
                         </thead>
                         <tbody id="lista-troqueles">
                             <tr>
-                                <td colspan="10" class="text-center" style="padding:40px;">Cargando base de datos...</td>
+                                <td colspan="9" class="text-center" style="padding:40px;">Cargando base de datos...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -103,29 +102,30 @@
                             </div>
 
                             <div class="form-group">
-                                <label>Componente (Parte física)</label>
-                                <input type="text" id="input-componente" placeholder="Ej. Carpeta, Láminas...">
-                            </div>
-                            <div class="form-group">
-                                <label>Referencias OT (Opcional histórico)</label>
-                                <input type="text" id="input-ot" placeholder="Ej. OT-2345, OT-2024...">
-                            </div>
-
-                            <div class="form-group">
-                                <label>Familia / Categoría *</label>
+                                <label>Familia / Tipo de Troquel *</label>
                                 <div style="display: flex; gap: 10px;">
                                     <select id="input-categoria" required style="flex-grow: 1;"></select>
                                     <button type="button" class="btn-secundario btn-sm" onclick="crearCategoriaAlVuelo()">+ Nueva</button>
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>Ubicación Física *</label>
-                                <input type="text" id="input-ubicacion" placeholder="Estantería, Pasillo..." required>
+                                <label>Referencias OT (Opcional histórico)</label>
+                                <input type="text" id="input-ot" placeholder="Ej. OT-2345, OT-2024...">
                             </div>
 
                             <div class="form-group full-width">
                                 <label>Descripción del Troquel *</label>
                                 <input type="text" id="input-nombre" placeholder="Nombre descriptivo" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Ubicación Física *</label>
+                                <input type="text" id="input-ubicacion" placeholder="Estantería, Pasillo..." required>
+                            </div>
+                            
+                            <div class="form-group full-width">
+                                <label>Enlace al Plano (Google Drive / PDF)</label>
+                                <input type="url" id="input-archivo" placeholder="https://...">
                             </div>
                             
                             <div class="form-group">
@@ -137,10 +137,6 @@
                                 <input type="text" id="input-tamano-final" placeholder="Ej. 210x297mm">
                             </div>
                             
-                            <div class="form-group full-width">
-                                <label>Enlace al Plano (Google Drive / PDF)</label>
-                                <input type="url" id="input-archivo" placeholder="https://...">
-                            </div>
                             <div class="form-group full-width">
                                 <label>Observaciones / Mantenimiento</label>
                                 <textarea id="input-observaciones" rows="3" placeholder="Afilado pendiente..."></textarea>

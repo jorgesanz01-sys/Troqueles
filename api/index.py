@@ -17,9 +17,8 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ==========================================
 class TroquelForm(BaseModel):
     id_troquel: str
-    codigos_articulo: Optional[str] = ""  # Admite múltiples artículos
-    referencias_ot: Optional[str] = ""    # Opcional histórico
-    componente: Optional[str] = ""        # Carpeta, lámina, etc.
+    codigos_articulo: Optional[str] = ""  
+    referencias_ot: Optional[str] = ""    
     nombre: str
     ubicacion: str
     categoria_id: Optional[int] = None
