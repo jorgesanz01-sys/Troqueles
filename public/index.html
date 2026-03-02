@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 </head>
 <body>
     <div class="contenedor-principal">
@@ -17,6 +18,9 @@
             </div>
             
             <div class="panel-herramientas">
+                <button onclick="abrirModalNuevo()" class="btn-primario" style="background:#10b981;">
+                    <span>➕ Nuevo Troquel</span>
+                </button>
                 <button id="btn-scan" onclick="iniciarEscaneo()" class="btn-primario">
                     <span>📷 Escanear QR</span>
                 </button>
@@ -40,6 +44,33 @@
                 <p>Conectando con la base de datos...</p>
             </div>
         </main>
+    </div>
+
+    <div id="modal-nuevo" class="modal oculto">
+        <div class="modal-contenido">
+            <h2>Dar de alta Troquel</h2>
+            <form id="form-nuevo">
+                <input type="text" id="input-id" placeholder="Código (Ej. TR-005)" required>
+                <input type="text" id="input-nombre" placeholder="Nombre descriptivo" required>
+                <input type="text" id="input-ubicacion" placeholder="Ubicación (Ej. Estantería A)" required>
+                <div class="modal-botones">
+                    <button type="button" class="btn-secundario" onclick="cerrarModalNuevo()">Cancelar</button>
+                    <button type="submit" class="btn-primario">💾 Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-qr" class="modal oculto">
+        <div class="modal-contenido text-center" id="zona-impresion">
+            <h2 class="no-print">Etiqueta QR</h2>
+            <canvas id="qr-canvas"></canvas>
+            <h3 id="qr-texto-id"></h3>
+            <div class="modal-botones no-print" style="justify-content: center;">
+                <button type="button" class="btn-secundario" onclick="cerrarModalQR()">Cerrar</button>
+                <button type="button" class="btn-primario" onclick="window.print()">🖨️ Imprimir</button>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>

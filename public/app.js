@@ -7,11 +7,7 @@ let listaTroquelesCache = [];
 
 // --- 1. BUSCADOR (REGLA DE ORO) ---
 buscador.addEventListener('input', () => {
-    if (buscador.value.length > 0) {
-        btnLimpiar.classList.remove('oculto');
-    } else {
-        btnLimpiar.classList.add('oculto');
-    }
+    btnLimpiar.classList.toggle('oculto', buscador.value === '');
     filtrarResultados(buscador.value);
 });
 
@@ -29,18 +25,16 @@ async function cargarDatos() {
         listaTroquelesCache = datos; 
         renderizarTarjetas(datos);
     } catch (error) {
-        contenedorGrid.innerHTML = '<p style="color:red; padding: 20px;">Error al conectar con el servidor.</p>';
-        console.error(error);
+        contenedorGrid.innerHTML = '<p style="color:red; padding: 20px;">Error al conectar.</p>';
     }
 }
 
 function renderizarTarjetas(datos) {
     if (datos.length === 0) {
-        contenedorGrid.innerHTML = '<p style="padding: 20px;">No hay troqueles activos para mostrar.</p>';
+        contenedorGrid.innerHTML = '<p style="padding: 20px;">No hay troqueles activos.</p>';
         return;
     }
 
-    // Aquí usamos las clases exactas de tu CSS (tarjeta, badge, btn-peligro)
     contenedorGrid.innerHTML = datos.map(troquel => `
         <div class="tarjeta">
             <div>
@@ -48,66 +42,93 @@ function renderizarTarjetas(datos) {
                 <p><strong>Ubicación:</strong> ${troquel.ubicacion || 'Sin asignar'}</p>
                 <p><strong>ID:</strong> <span class="badge">${troquel.id_troquel}</span></p>
             </div>
-            <div class="tarjeta-acciones">
-                <button class="btn-peligro" onclick="moverAPapelera(${troquel.id})">🗑️ Papelera</button>
+            <div class="tarjeta-acciones" style="display:flex; justify-content:space-between;">
+                <button class="btn-secundario" onclick="abrirModalQR('${troquel.id_troquel}')">🖨️ Imprimir QR</button>
+                <button class="btn-peligro" onclick="moverAPapelera(${troquel.id})">🗑️</button>
             </div>
         </div>
     `).join('');
 }
 
-// --- 3. SOFT DELETE ---
+// --- 3. NUEVO TROQUEL (FORMULARIO) ---
+function abrirModalNuevo() { document.getElementById('modal-nuevo').classList.remove('oculto'); }
+function cerrarModalNuevo() { document.getElementById('modal-nuevo').classList.add('oculto'); }
+
+document.getElementById('form-nuevo').addEventListener('submit', async (e) => {
+    e.preventDefault(); // Evita que la página recargue
+    
+    // Recogemos los datos
+    const nuevoTroquel = {
+        id_troquel: document.getElementById('input-id').value,
+        nombre: document.getElementById('input-nombre').value,
+        ubicacion: document.getElementById('input-ubicacion').value
+    };
+
+    try {
+        await fetch('/api/troqueles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(nuevoTroquel)
+        });
+        
+        // Limpiamos form, cerramos modal y recargamos lista
+        document.getElementById('form-nuevo').reset();
+        cerrarModalNuevo();
+        cargarDatos();
+    } catch (error) {
+        alert("Error al guardar el troquel.");
+    }
+});
+
+// --- 4. GENERACIÓN DE QR ---
+function abrirModalQR(idTroquel) {
+    document.getElementById('modal-qr').classList.remove('oculto');
+    document.getElementById('qr-texto-id').innerText = idTroquel;
+    
+    // Genera el dibujo del QR en el Canvas
+    new QRious({
+        element: document.getElementById('qr-canvas'),
+        value: idTroquel,
+        size: 200, // Tamaño en píxeles
+        background: 'white',
+        foreground: 'black'
+    });
+}
+function cerrarModalQR() { document.getElementById('modal-qr').classList.add('oculto'); }
+
+// --- 5. SOFT DELETE Y ESCÁNER (Igual que antes) ---
 async function moverAPapelera(id_db) {
-    if (confirm("¿Estás seguro de mover este troquel a la papelera?")) {
-        try {
-            await fetch(`/api/borrar/${id_db}`, { method: 'POST' });
-            cargarDatos(); 
-        } catch (error) {
-            alert("Hubo un error al mover a la papelera.");
-        }
+    if (confirm("¿Mover este troquel a la papelera?")) {
+        await fetch(`/api/borrar/${id_db}`, { method: 'POST' });
+        cargarDatos(); 
     }
 }
 
-// --- 4. LECTOR QR ---
 function iniciarEscaneo() {
     contenedorCamara.classList.remove('oculto');
     html5QrCode = new Html5Qrcode("reader");
-    
     html5QrCode.start(
-        { facingMode: "environment" }, 
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (textoDecodificado) => {
-            detenerEscaneo();
-            buscador.value = textoDecodificado;
-            btnLimpiar.classList.remove('oculto');
-            filtrarResultados(textoDecodificado);
+        { facingMode: "environment" }, { fps: 10, qrbox: 250 },
+        (texto) => {
+            detenerEscaneo(); buscador.value = texto;
+            btnLimpiar.classList.remove('oculto'); filtrarResultados(texto);
         },
-        (errorMensaje) => { /* Ignorar errores de enfoque */ }
-    ).catch(err => {
-        alert("No se pudo acceder a la cámara.");
-        detenerEscaneo();
-    });
+        () => {}
+    ).catch(() => { detenerEscaneo(); });
 }
 
 function detenerEscaneo() {
     if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-            html5QrCode.clear();
-            contenedorCamara.classList.add('oculto');
-        });
-    } else {
-        contenedorCamara.classList.add('oculto');
-    }
+        html5QrCode.stop().then(() => { html5QrCode.clear(); contenedorCamara.classList.add('oculto'); });
+    } else { contenedorCamara.classList.add('oculto'); }
 }
 
-// --- 5. FILTRADO RÁPIDO ---
 function filtrarResultados(texto) {
     const textoLimpio = texto.toLowerCase();
     const filtrados = listaTroquelesCache.filter(t => 
-        t.nombre.toLowerCase().includes(textoLimpio) || 
-        t.id_troquel.toLowerCase().includes(textoLimpio)
+        t.nombre.toLowerCase().includes(textoLimpio) || t.id_troquel.toLowerCase().includes(textoLimpio)
     );
     renderizarTarjetas(filtrados);
 }
 
-// Iniciar aplicación
 cargarDatos();
