@@ -27,7 +27,7 @@
                 
                 <div class="caja-buscador">
                     <span class="icono-lupa">🔍</span>
-                    <input type="text" id="buscador" placeholder="Buscar por Nombre o ID...">
+                    <input type="text" id="buscador" placeholder="Buscar por Nombre, ID, Familia, Medidas o Notas...">
                     <button id="btn-limpiar" class="oculto">✕</button>
                 </div>
             </div>
@@ -51,8 +51,21 @@
             <h2>Dar de alta Troquel</h2>
             <form id="form-nuevo">
                 <input type="text" id="input-id" placeholder="Código (Ej. TR-005)" required>
-                <input type="text" id="input-nombre" placeholder="Nombre descriptivo" required>
+                <input type="text" id="input-nombre" placeholder="Nombre o Descripción" required>
+                
+                <select id="input-categoria" required>
+                    <option value="">Selecciona Familia...</option>
+                    </select>
+
                 <input type="text" id="input-ubicacion" placeholder="Ubicación (Ej. Estantería A)" required>
+                
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="input-tamano-troquel" placeholder="Tam. Troquel">
+                    <input type="text" id="input-tamano-final" placeholder="Tam. Final">
+                </div>
+                
+                <textarea id="input-observaciones" placeholder="Observaciones..." rows="3"></textarea>
+
                 <div class="modal-botones">
                     <button type="button" class="btn-secundario" onclick="cerrarModalNuevo()">Cancelar</button>
                     <button type="submit" class="btn-primario">💾 Guardar</button>

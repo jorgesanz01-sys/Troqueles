@@ -240,7 +240,7 @@ button:active { transform: translateY(1px); }
 .modal-contenido h2 { margin-top: 0; color: var(--text-main); }
 .text-center { text-align: center; }
 
-.modal-contenido input {
+.modal-contenido input, .modal-contenido select, .modal-contenido textarea {
     width: 100%; padding: 12px; margin-bottom: 15px;
     border: 1px solid var(--border-color); border-radius: var(--radius-sm);
     box-sizing: border-box; font-family: 'Inter', sans-serif;
