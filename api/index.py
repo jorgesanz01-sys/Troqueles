@@ -9,7 +9,6 @@ SUPABASE_URL = "https://pkaqgtelkdhxlyjodzbq.supabase.co"
 SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Modelo de datos unificado para Crear y Editar
 class TroquelForm(BaseModel):
     id_troquel: str
     nombre: str
@@ -26,10 +25,11 @@ async def listar_categorias():
 
 @app.get("/api/troqueles")
 async def listar_troqueles():
+    # CAMBIO: Ahora el backend los entrega ordenados por Código (id_troquel) por defecto
     response = supabase.table("troqueles")\
         .select("*, categorias(nombre)")\
         .neq("estado_activo", "En Papelera")\
-        .order("nombre")\
+        .order("id_troquel")\
         .execute()
     return response.data
 
@@ -40,7 +40,6 @@ async def crear_troquel(troquel: TroquelForm):
     response = supabase.table("troqueles").insert(nuevo_dato).execute()
     return {"status": "success", "data": response.data}
 
-# ¡NUEVA RUTA! Para editar troqueles existentes
 @app.put("/api/troqueles/{id_db}")
 async def editar_troquel(id_db: int, troquel: TroquelForm):
     datos_actualizados = troquel.dict()

@@ -165,154 +165,114 @@ body {
 .chip.activo { background: var(--text-main); color: white; border-color: var(--text-main); }
 
 /* =======================================================
-   TARJETAS DE TROQUELES (GRID)
+   NUEVO: TABLA DE DATOS (MODO LISTA PRO)
    ======================================================= */
-.grid-tarjetas {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
-}
-
-.tarjeta-pro {
+.contenedor-tabla {
     background: var(--bg-surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-light);
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-    display: flex; flex-direction: column;
+    overflow-x: auto; /* Permite scroll horizontal en móviles */
+    margin-bottom: 30px;
 }
 
-.tarjeta-pro:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
-    border-color: #cbd5e1;
+.tabla-pro {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    min-width: 1000px; /* Evita que se aplaste demasiado */
 }
 
-/* Cabecera de la Tarjeta */
-.tarjeta-header {
+/* Cabeceras de la Tabla */
+.tabla-pro th {
     background: #f8fafc;
-    padding: 15px 20px;
+    padding: 16px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border-light);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.tabla-pro th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s, color 0.2s;
+}
+
+.tabla-pro th.sortable:hover {
+    background: #e2e8f0;
+    color: var(--text-main);
+}
+
+.icono-orden {
+    font-size: 11px;
+    margin-left: 6px;
+    opacity: 0.4;
+    vertical-align: middle;
+}
+
+.tabla-pro th.sortable:hover .icono-orden { opacity: 1; }
+
+/* Filas y Celdas */
+.tabla-pro td {
+    padding: 16px 20px;
     border-bottom: 1px solid var(--border-light);
-    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px;
+    color: var(--text-main);
+    vertical-align: middle;
+    transition: background 0.1s;
+}
+
+.tabla-pro tr:hover td {
+    background: #f1f5f9; /* Efecto hover en la fila entera */
+}
+
+/* Estilos Específicos de Celdas */
+.fw-bold { font-weight: 600; }
+.text-muted { color: var(--text-muted); }
+
+.codigo-id { 
+    font-family: monospace; 
+    font-weight: 700; 
+    font-size: 15px; 
+    color: var(--primary); 
 }
 
 .etiqueta-familia {
     background: #e0e7ff; color: #4338ca;
     padding: 4px 10px; border-radius: 6px;
     font-size: 12px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
-.codigo-id { font-family: monospace; font-weight: bold; font-size: 15px; color: var(--text-muted); }
+.ubicacion-celda { font-weight: 500; color: #475569; white-space: nowrap; }
+.medidas-celda { line-height: 1.4; white-space: nowrap; }
 
-/* Cuerpo de la Tarjeta */
-.tarjeta-body { padding: 20px; flex-grow: 1; }
-.tarjeta-body h3 { margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: var(--text-main); }
-.ubicacion { margin: 0 0 15px 0; font-size: 14px; color: var(--text-muted); font-weight: 500; }
-
-.medidas-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    background: var(--bg-app); padding: 12px; border-radius: var(--radius-sm);
-    margin-bottom: 15px;
+.obs-celda {
+    max-width: 200px;
 }
 
-.medida-box small { display: block; font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
-.medida-box span { font-size: 14px; font-weight: 600; color: var(--text-main); }
-
-.observaciones {
+.obs-pildora {
+    display: inline-block;
     background: #fffbeb; color: #b45309;
-    padding: 10px; border-radius: var(--radius-sm);
-    font-size: 13px; margin: 0; border-left: 3px solid #f59e0b;
+    padding: 4px 10px; border-radius: 4px;
+    font-size: 12px; border: 1px solid #fde68a;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 180px;
+    cursor: help;
 }
 
-/* Pie de la Tarjeta (Botones) */
-.tarjeta-footer {
-    padding: 15px 20px;
-    border-top: 1px solid var(--border-light);
-    display: flex; justify-content: space-between; align-items: center;
-    background: #fafafa;
+/* Acciones en la Tabla */
+.acciones-tabla {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
 }
 
-.acciones-izq { display: flex; gap: 10px; }
-
-.btn-icono {
-    background: white; border: 1px solid var(--border-light);
-    width: 36px; height: 36px; border-radius: var(--radius-sm);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 16px; transition: 0.2s; box-shadow: var(--shadow-sm);
-}
-.btn-icono:hover { background: #f1f5f9; border-color: #cbd5e1; }
-.btn-icono.peligro:hover { background: #fef2f2; border-color: var(--danger); color: var(--danger); }
-
-/* =======================================================
-   MODAL (FORMULARIO CREACIÓN / EDICIÓN)
-   ======================================================= */
-.modal {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(5px);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 1000;
-}
-
-.modal-contenido {
-    background: var(--bg-surface); padding: 30px;
-    border-radius: var(--radius-lg); width: 95%; max-width: 600px;
-    box-shadow: var(--shadow-lg);
-}
-
-.modal-contenido h2 { margin-top: 0; border-bottom: 2px solid var(--border-light); padding-bottom: 15px; margin-bottom: 25px;}
-
-/* CSS GRID para el formulario (Diseño de 2 columnas) */
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 25px;
-}
-
-.form-group.full-width { grid-column: span 2; }
-
-.form-group label {
-    display: block; font-size: 13px; font-weight: 600;
-    color: var(--text-muted); margin-bottom: 8px;
-}
-
-.form-group input, .form-group select, .form-group textarea {
-    width: 100%; padding: 12px;
-    border: 1px solid var(--border-light); border-radius: var(--radius-sm);
-    background: #f8fafc; font-family: 'Inter', sans-serif; font-size: 14px;
-    box-sizing: border-box; transition: 0.2s;
-}
-
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-    border-color: var(--primary); outline: none; background: white;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.modal-botones { display: flex; justify-content: flex-end; gap: 15px; border-top: 1px solid var(--border-light); padding-top: 20px;}
-
-.btn-secundario {
-    padding: 12px 24px; border: 1px solid var(--border-light);
-    background: white; color: var(--text-main); font-weight: 600;
-    border-radius: var(--radius-sm); cursor: pointer; transition: 0.2s;
-}
-.btn-secundario:hover { background: #f1f5f9; }
-
-/* Utilidades generales */
-.oculto { display: none !important; }
-.mt-2 { margin-top: 15px; }
-
-/* =======================================================
-   IMPRESIÓN (ETIQUETA QR)
-   ======================================================= */
-@media print {
-    body * { visibility: hidden; }
-    #zona-impresion, #zona-impresion * { visibility: visible; }
-    #zona-impresion {
-        position: absolute; left: 0; top: 0; width: 100%;
-        display: flex; flex-direction: column; align-items: center;
-        background: white; padding: 20px;
-    }
-    .no-print { display: none !important; }
-}
+.text-center { text-align: center; }
+.inline { display: inline-block; margin-right: 10px; vertical-align: middle; }

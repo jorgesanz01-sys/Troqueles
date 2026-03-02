@@ -1,6 +1,6 @@
 const buscador = document.getElementById('buscador');
 const btnLimpiar = document.getElementById('btn-limpiar');
-const contenedorGrid = document.getElementById('grid-troqueles');
+const tbodyLista = document.getElementById('lista-troqueles'); // Cambiado a tbody
 const contenedorCamara = document.getElementById('contenedor-camara');
 const selectCategorias = document.getElementById('input-categoria');
 const contenedorChips = document.getElementById('contenedor-chips');
@@ -9,7 +9,10 @@ let html5QrCode;
 let listaTroquelesCache = []; 
 let familiaActiva = 'TODOS';
 
-// --- 1. INICIALIZACIÓN PRO ---
+// --- NUEVAS VARIABLES DE ORDENACIÓN ---
+let columnaOrden = 'id_troquel'; 
+let ordenAscendente = true;
+
 async function cargarDatos() {
     try {
         const resCat = await fetch('/api/categorias');
@@ -19,113 +22,122 @@ async function cargarDatos() {
         const resTroq = await fetch('/api/troqueles');
         const datos = await resTroq.json();
         listaTroquelesCache = datos; 
-        aplicarFiltrosCruzados(); // Renderiza usando buscador + chip
+        aplicarFiltrosYOrden(); 
     } catch (error) {
-        contenedorGrid.innerHTML = '<p class="error-msg">Error conectando al servidor MES.</p>';
+        tbodyLista.innerHTML = '<tr><td colspan="7" class="error-msg">Error conectando al servidor.</td></tr>';
     }
 }
 
 function llenarDesplegablesYChips(categorias) {
-    // 1. Llenar el <select> del formulario
     selectCategorias.innerHTML = '<option value="">Seleccionar...</option>';
-    
-    // 2. Limpiar chips visuales dejando solo el "Todos"
     contenedorChips.innerHTML = '<button class="chip activo" onclick="filtrarPorChip(\'TODOS\', this)">Todos</button>';
-
     categorias.forEach(cat => {
         selectCategorias.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`;
         contenedorChips.innerHTML += `<button class="chip" onclick="filtrarPorChip('${cat.nombre}', this)">${cat.nombre}</button>`;
     });
 }
 
-// --- 2. RENDERIZADO VISUAL IMPACTANTE ---
-function renderizarTarjetas(datos) {
-    if (datos.length === 0) {
-        contenedorGrid.innerHTML = '<div class="empty-state">No se encontraron troqueles.</div>';
-        return;
+// --- NUEVO SISTEMA DE ORDENACIÓN ---
+window.ordenarPor = function(columna) {
+    if (columnaOrden === columna) {
+        ordenAscendente = !ordenAscendente; // Invertir orden si se hace clic en la misma
+    } else {
+        columnaOrden = columna;
+        ordenAscendente = true; // Por defecto A-Z al cambiar de columna
     }
-
-    contenedorGrid.innerHTML = datos.map(troquel => {
-        const catNombre = troquel.categorias?.nombre || 'General';
-        return `
-        <div class="tarjeta-pro">
-            <div class="tarjeta-header">
-                <span class="etiqueta-familia">${catNombre}</span>
-                <span class="codigo-id">${troquel.id_troquel}</span>
-            </div>
-            <div class="tarjeta-body">
-                <h3>${troquel.nombre}</h3>
-                <p class="ubicacion">📍 ${troquel.ubicacion || 'Sin asignar'}</p>
-                <div class="medidas-grid">
-                    <div class="medida-box">
-                        <small>Troquel</small>
-                        <span>${troquel.tamano_troquel || '-'}</span>
-                    </div>
-                    <div class="medida-box">
-                        <small>Trabajo</small>
-                        <span>${troquel.tamano_final || '-'}</span>
-                    </div>
-                </div>
-                ${troquel.observaciones ? `<p class="observaciones">⚠️ ${troquel.observaciones}</p>` : ''}
-            </div>
-            <div class="tarjeta-footer">
-                <div class="acciones-izq">
-                    <button class="btn-icono" onclick="abrirModalQR('${troquel.id_troquel}')" title="Imprimir QR">🖨️</button>
-                    <button class="btn-icono" onclick="abrirModalEditar(${troquel.id})" title="Editar">✏️</button>
-                </div>
-                <button class="btn-icono peligro" onclick="moverAPapelera(${troquel.id})" title="Papelera">🗑️</button>
-            </div>
-        </div>
-        `;
-    }).join('');
+    aplicarFiltrosYOrden();
 }
 
-// --- 3. FILTROS CRUZADOS (Buscador + Chips) ---
-buscador.addEventListener('input', () => {
-    btnLimpiar.classList.toggle('oculto', buscador.value === '');
-    aplicarFiltrosCruzados();
-});
-
-btnLimpiar.addEventListener('click', () => {
-    buscador.value = '';
-    btnLimpiar.classList.add('oculto');
-    aplicarFiltrosCruzados();
-});
-
-window.filtrarPorChip = function(familia, botonElement) {
-    familiaActiva = familia;
-    // Actualizar estilos visuales de los chips
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('activo'));
-    botonElement.classList.add('activo');
-    aplicarFiltrosCruzados();
-}
-
-function aplicarFiltrosCruzados() {
+function aplicarFiltrosYOrden() {
     const texto = buscador.value.toLowerCase();
     
-    const filtrados = listaTroquelesCache.filter(t => {
+    // 1. Filtrar
+    let procesados = listaTroquelesCache.filter(t => {
         const catNom = t.categorias?.nombre || 'General';
-        
-        // 1. Cumple la familia?
         const pasaFamilia = (familiaActiva === 'TODOS') || (catNom === familiaActiva);
-        
-        // 2. Cumple el texto?
         const pasaTexto = (
             (t.nombre && t.nombre.toLowerCase().includes(texto)) || 
             (t.id_troquel && t.id_troquel.toLowerCase().includes(texto)) ||
             (t.observaciones && t.observaciones.toLowerCase().includes(texto))
         );
-
         return pasaFamilia && pasaTexto;
     });
 
-    renderizarTarjetas(filtrados);
+    // 2. Ordenar
+    procesados.sort((a, b) => {
+        let valorA, valorB;
+        
+        // Manejar el caso especial de la familia (está dentro del objeto 'categorias')
+        if (columnaOrden === 'familia') {
+            valorA = (a.categorias?.nombre || "").toLowerCase();
+            valorB = (b.categorias?.nombre || "").toLowerCase();
+        } else {
+            valorA = (a[columnaOrden] || "").toString().toLowerCase();
+            valorB = (b[columnaOrden] || "").toString().toLowerCase();
+        }
+
+        if (valorA < valorB) return ordenAscendente ? -1 : 1;
+        if (valorA > valorB) return ordenAscendente ? 1 : -1;
+        return 0;
+    });
+
+    renderizarLista(procesados);
 }
 
-// --- 4. SISTEMA DE EDICIÓN Y CREACIÓN UNIFICADO ---
+// --- RENDERIZADO DE TABLA (MODO LISTA) ---
+function renderizarLista(datos) {
+    if (datos.length === 0) {
+        tbodyLista.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#64748b;">No se encontraron troqueles.</td></tr>';
+        return;
+    }
+
+    tbodyLista.innerHTML = datos.map(troquel => {
+        const catNombre = troquel.categorias?.nombre || 'General';
+        const obs = troquel.observaciones ? `<span class="obs-pildora" title="${troquel.observaciones}">${troquel.observaciones}</span>` : '-';
+        
+        return `
+        <tr>
+            <td class="codigo-id">${troquel.id_troquel}</td>
+            <td class="fw-bold">${troquel.nombre}</td>
+            <td><span class="etiqueta-familia">${catNombre}</span></td>
+            <td class="ubicacion-celda">📍 ${troquel.ubicacion || '-'}</td>
+            <td class="medidas-celda">${troquel.tamano_troquel || '-'} <br> <small class="text-muted">F: ${troquel.tamano_final || '-'}</small></td>
+            <td class="obs-celda">${obs}</td>
+            <td>
+                <div class="acciones-tabla">
+                    <button class="btn-icono" onclick="abrirModalQR('${troquel.id_troquel}')" title="Imprimir QR">🖨️</button>
+                    <button class="btn-icono" onclick="abrirModalEditar(${troquel.id})" title="Editar">✏️</button>
+                    <button class="btn-icono peligro" onclick="moverAPapelera(${troquel.id})" title="Papelera">🗑️</button>
+                </div>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+// --- EVENTOS DE BÚSQUEDA ---
+buscador.addEventListener('input', () => {
+    btnLimpiar.classList.toggle('oculto', buscador.value === '');
+    aplicarFiltrosYOrden();
+});
+
+btnLimpiar.addEventListener('click', () => {
+    buscador.value = '';
+    btnLimpiar.classList.add('oculto');
+    aplicarFiltrosYOrden();
+});
+
+window.filtrarPorChip = function(familia, botonElement) {
+    familiaActiva = familia;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('activo'));
+    botonElement.classList.add('activo');
+    aplicarFiltrosYOrden();
+}
+
+// --- MODALES Y ACCIONES CRUD ---
 function abrirModalFormulario() {
     document.getElementById('form-troquel').reset();
-    document.getElementById('input-id-db').value = ""; // ID vacío = Nuevo
+    document.getElementById('input-id-db').value = ""; 
     document.getElementById('modal-titulo').innerText = "Nuevo Troquel";
     document.getElementById('modal-formulario').classList.remove('oculto');
 }
@@ -133,8 +145,6 @@ function abrirModalFormulario() {
 window.abrirModalEditar = function(id_db) {
     const troquel = listaTroquelesCache.find(t => t.id === id_db);
     if (!troquel) return;
-
-    // Rellenamos el formulario con los datos existentes
     document.getElementById('input-id-db').value = troquel.id;
     document.getElementById('input-id').value = troquel.id_troquel;
     document.getElementById('input-categoria').value = troquel.categoria_id || "";
@@ -148,15 +158,12 @@ window.abrirModalEditar = function(id_db) {
     document.getElementById('modal-formulario').classList.remove('oculto');
 }
 
-function cerrarModalFormulario() { 
-    document.getElementById('modal-formulario').classList.add('oculto'); 
-}
+function cerrarModalFormulario() { document.getElementById('modal-formulario').classList.add('oculto'); }
 
 document.getElementById('form-troquel').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
     const id_db = document.getElementById('input-id-db').value;
-    const datosFormulario = {
+    const datos = {
         id_troquel: document.getElementById('input-id').value,
         nombre: document.getElementById('input-nombre').value,
         ubicacion: document.getElementById('input-ubicacion').value,
@@ -167,29 +174,12 @@ document.getElementById('form-troquel').addEventListener('submit', async (e) => 
     };
 
     try {
-        if (id_db) {
-            // MODO EDICIÓN (PUT)
-            await fetch(`/api/troqueles/${id_db}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(datosFormulario)
-            });
-        } else {
-            // MODO CREACIÓN (POST)
-            await fetch('/api/troqueles', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(datosFormulario)
-            });
-        }
-        
-        cerrarModalFormulario();
-        cargarDatos();
-    } catch (error) { alert("Error al procesar la operación."); }
+        if (id_db) await fetch(`/api/troqueles/${id_db}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
+        else await fetch('/api/troqueles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
+        cerrarModalFormulario(); cargarDatos();
+    } catch (error) { alert("Error al guardar."); }
 });
 
-// --- 5. FUNCIONES RESTANTES (QR, Escáner, Papelera) ---
-// (Misma lógica exacta que la versión anterior para estas funciones)
 function abrirModalQR(id) {
     document.getElementById('modal-qr').classList.remove('oculto');
     document.getElementById('qr-texto-id').innerText = id;
@@ -210,8 +200,7 @@ function iniciarEscaneo() {
     html5QrCode.start(
         { facingMode: "environment" }, { fps: 10, qrbox: 250 },
         (texto) => {
-            detenerEscaneo(); buscador.value = texto;
-            btnLimpiar.classList.remove('oculto'); aplicarFiltrosCruzados();
+            detenerEscaneo(); buscador.value = texto; btnLimpiar.classList.remove('oculto'); aplicarFiltrosYOrden();
         }, () => {}
     ).catch(() => detenerEscaneo());
 }

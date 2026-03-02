@@ -22,12 +22,8 @@
                         </div>
                     </div>
                     <div class="acciones-top">
-                        <button onclick="abrirModalFormulario()" class="btn-accion btn-nuevo">
-                            ➕ Nuevo Troquel
-                        </button>
-                        <button id="btn-scan" onclick="iniciarEscaneo()" class="btn-accion btn-scan">
-                            📷 Escanear QR
-                        </button>
+                        <button onclick="abrirModalFormulario()" class="btn-accion btn-nuevo">➕ Nuevo Troquel</button>
+                        <button id="btn-scan" onclick="iniciarEscaneo()" class="btn-accion btn-scan">📷 Escanear QR</button>
                     </div>
                 </div>
 
@@ -37,10 +33,9 @@
                         <input type="text" id="buscador" placeholder="Buscar por código, descripción, notas...">
                         <button id="btn-limpiar" class="oculto">✕</button>
                     </div>
-
                     <div class="filtros-chips" id="contenedor-chips">
                         <button class="chip activo" onclick="filtrarPorChip('TODOS', this)">Todos</button>
-                        </div>
+                    </div>
                 </div>
 
                 <div id="contenedor-camara" class="oculto tarjeta-camara">
@@ -49,11 +44,23 @@
                 </div>
             </header>
 
-            <section id="grid-troqueles" class="grid-tarjetas">
-                <div class="estado-carga">
-                    <div class="spinner"></div>
-                    <p>Sincronizando con base de datos...</p>
-                </div>
+            <section class="contenedor-tabla">
+                <table class="tabla-pro">
+                    <thead>
+                        <tr>
+                            <th onclick="ordenarPor('id_troquel')" class="sortable">Código <span class="icono-orden">↕️</span></th>
+                            <th onclick="ordenarPor('nombre')" class="sortable">Descripción <span class="icono-orden">↕️</span></th>
+                            <th onclick="ordenarPor('familia')" class="sortable">Familia <span class="icono-orden">↕️</span></th>
+                            <th onclick="ordenarPor('ubicacion')" class="sortable">Ubicación <span class="icono-orden">↕️</span></th>
+                            <th>Medidas (Trq / Fin)</th>
+                            <th onclick="ordenarPor('observaciones')" class="sortable">Observaciones <span class="icono-orden">↕️</span></th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-troqueles">
+                        <tr><td colspan="7" class="text-center"><div class="spinner inline"></div> Cargando...</td></tr>
+                    </tbody>
+                </table>
             </section>
         </main>
     </div>
@@ -62,39 +69,16 @@
         <div class="modal-contenido">
             <h2 id="modal-titulo">Dar de alta Troquel</h2>
             <form id="form-troquel">
-                <input type="hidden" id="input-id-db"> <div class="form-grid">
-                    <div class="form-group">
-                        <label>Código ID *</label>
-                        <input type="text" id="input-id" placeholder="Ej. TR-005" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Familia / Categoría *</label>
-                        <select id="input-categoria" required>
-                            <option value="">Seleccionar...</option>
-                        </select>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Descripción del Troquel *</label>
-                        <input type="text" id="input-nombre" placeholder="Nombre descriptivo" required>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Ubicación Física *</label>
-                        <input type="text" id="input-ubicacion" placeholder="Ej. Estantería A, Pasillo 2" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Tamaño Troquel</label>
-                        <input type="text" id="input-tamano-troquel" placeholder="Ej. 500x700mm">
-                    </div>
-                    <div class="form-group">
-                        <label>Tamaño Final Trabajo</label>
-                        <input type="text" id="input-tamano-final" placeholder="Ej. 200x300mm">
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Observaciones</label>
-                        <textarea id="input-observaciones" placeholder="Notas de producción, desgastes..." rows="2"></textarea>
-                    </div>
+                <input type="hidden" id="input-id-db">
+                <div class="form-grid">
+                    <div class="form-group"><label>Código ID *</label><input type="text" id="input-id" required></div>
+                    <div class="form-group"><label>Familia / Categoría *</label><select id="input-categoria" required><option value="">Seleccionar...</option></select></div>
+                    <div class="form-group full-width"><label>Descripción del Troquel *</label><input type="text" id="input-nombre" required></div>
+                    <div class="form-group full-width"><label>Ubicación Física *</label><input type="text" id="input-ubicacion" required></div>
+                    <div class="form-group"><label>Tamaño Troquel</label><input type="text" id="input-tamano-troquel"></div>
+                    <div class="form-group"><label>Tamaño Final Trabajo</label><input type="text" id="input-tamano-final"></div>
+                    <div class="form-group full-width"><label>Observaciones</label><textarea id="input-observaciones" rows="2"></textarea></div>
                 </div>
-
                 <div class="modal-botones">
                     <button type="button" class="btn-secundario" onclick="cerrarModalFormulario()">Cancelar</button>
                     <button type="submit" class="btn-accion btn-nuevo">💾 Guardar Cambios</button>
