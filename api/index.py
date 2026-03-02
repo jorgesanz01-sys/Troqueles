@@ -13,10 +13,13 @@ SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ==========================================
-# MODELOS DE DATOS
+# MODELOS DE DATOS (ESTRUCTURA)
 # ==========================================
 class TroquelForm(BaseModel):
     id_troquel: str
+    codigos_articulo: Optional[str] = ""  # Admite múltiples artículos
+    referencias_ot: Optional[str] = ""    # Opcional histórico
+    componente: Optional[str] = ""        # Carpeta, lámina, etc.
     nombre: str
     ubicacion: str
     categoria_id: Optional[int] = None
@@ -61,7 +64,7 @@ async def listar_historial():
     return response.data
 
 # ==========================================
-# RUTAS DE ESCRITURA (POST / PUT) - Individuales
+# RUTAS DE ESCRITURA INDIVIDUAL (POST/PUT)
 # ==========================================
 @app.post("/api/categorias")
 async def crear_categoria(cat: NuevaCategoria):
@@ -77,7 +80,8 @@ async def crear_troquel(troquel: TroquelForm):
 
 @app.put("/api/troqueles/{id_db}")
 async def editar_troquel(id_db: int, troquel: TroquelForm):
-    response = supabase.table("troqueles").update(troquel.dict()).eq("id", id_db).execute()
+    datos_actualizados = troquel.dict()
+    response = supabase.table("troqueles").update(datos_actualizados).eq("id", id_db).execute()
     return {"status": "success", "data": response.data}
 
 @app.post("/api/borrar/{id_db}")
@@ -86,7 +90,7 @@ async def mover_a_papelera(id_db: int):
     return {"status": "success"}
 
 # ==========================================
-# RUTAS BULK (Acciones Masivas)
+# RUTAS DE ACCIONES MASIVAS (BULK)
 # ==========================================
 @app.put("/api/troqueles/bulk/categoria")
 async def bulk_update_categoria(data: BulkCategoria):
@@ -98,6 +102,9 @@ async def bulk_borrar(data: BulkBorrar):
     response = supabase.table("troqueles").update({"estado_activo": "En Papelera"}).in_("id", data.ids).execute()
     return {"status": "success"}
 
+# ==========================================
+# HEALTH CHECK
+# ==========================================
 @app.get("/api/health")
 def health():
     return {"status": "ok", "sistema": "ERP Packaging"}
