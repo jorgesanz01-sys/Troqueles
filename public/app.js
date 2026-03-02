@@ -1,213 +1,315 @@
-const buscador = document.getElementById('buscador');
-const btnLimpiar = document.getElementById('btn-limpiar');
-const tbodyLista = document.getElementById('lista-troqueles'); // Cambiado a tbody
-const contenedorCamara = document.getElementById('contenedor-camara');
-const selectCategorias = document.getElementById('input-categoria');
-const contenedorChips = document.getElementById('contenedor-chips');
-
-let html5QrCode;
+// ==========================================
+// VARIABLES GLOBALES DE ESTADO
+// ==========================================
 let listaTroquelesCache = []; 
 let familiaActiva = 'TODOS';
-
-// --- NUEVAS VARIABLES DE ORDENACIÓN ---
 let columnaOrden = 'id_troquel'; 
 let ordenAscendente = true;
+let html5QrCode;
 
+// ==========================================
+// 1. NAVEGACIÓN Y CONTROL DE VISTAS (ERP MODULES)
+// ==========================================
+window.cambiarVista = function(idVista, btnElement) {
+    // Ocultar todas las vistas
+    document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
+    // Mostrar la solicitada
+    document.getElementById(idVista).classList.remove('oculto');
+    
+    // Cambiar estado visual del menú
+    document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
+    if(btnElement) btnElement.classList.add('activo');
+}
+
+window.abrirVistaCrear = function(btnElement) {
+    // Limpiamos el formulario completamente para un alta nueva
+    document.getElementById('form-troquel').reset();
+    document.getElementById('input-id-db').value = "";
+    document.getElementById('titulo-formulario').innerText = "Alta de Nuevo Troquel";
+    
+    cambiarVista('vista-formulario', btnElement);
+}
+
+// ==========================================
+// 2. CARGA INICIAL DE BASE DE DATOS
+// ==========================================
 async function cargarDatos() {
     try {
+        // Cargar Categorías (Familias)
         const resCat = await fetch('/api/categorias');
         const categorias = await resCat.json();
-        llenarDesplegablesYChips(categorias);
+        
+        const select = document.getElementById('input-categoria');
+        const chips = document.getElementById('contenedor-chips');
+        
+        select.innerHTML = '<option value="">Seleccionar...</option>';
+        chips.innerHTML = '<button class="chip activo" onclick="filtrarPorChip(\'TODOS\', this)">Todas las Familias</button>';
+        
+        categorias.forEach(cat => {
+            select.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`;
+            chips.innerHTML += `<button class="chip" onclick="filtrarPorChip('${cat.nombre}', this)">${cat.nombre}</button>`;
+        });
 
+        // Cargar Troqueles Activos
         const resTroq = await fetch('/api/troqueles');
-        const datos = await resTroq.json();
-        listaTroquelesCache = datos; 
-        aplicarFiltrosYOrden(); 
+        listaTroquelesCache = await resTroq.json();
+        
+        // Procesar y dibujar en pantalla
+        aplicarFiltrosYOrden();
+
     } catch (error) {
-        tbodyLista.innerHTML = '<tr><td colspan="7" class="error-msg">Error conectando al servidor.</td></tr>';
+        console.error("Error de conexión:", error);
+        document.getElementById('lista-troqueles').innerHTML = 
+            '<tr><td colspan="8" class="text-center" style="color:red; padding:40px;">Error conectando al servidor.</td></tr>';
     }
 }
 
-function llenarDesplegablesYChips(categorias) {
-    selectCategorias.innerHTML = '<option value="">Seleccionar...</option>';
-    contenedorChips.innerHTML = '<button class="chip activo" onclick="filtrarPorChip(\'TODOS\', this)">Todos</button>';
-    categorias.forEach(cat => {
-        selectCategorias.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`;
-        contenedorChips.innerHTML += `<button class="chip" onclick="filtrarPorChip('${cat.nombre}', this)">${cat.nombre}</button>`;
-    });
-}
-
-// --- NUEVO SISTEMA DE ORDENACIÓN ---
+// ==========================================
+// 3. MOTOR DE FILTRADO Y ORDENACIÓN
+// ==========================================
 window.ordenarPor = function(columna) {
+    // Si hace clic en la misma columna, invierte el orden. Si es nueva, ordena de A-Z.
     if (columnaOrden === columna) {
-        ordenAscendente = !ordenAscendente; // Invertir orden si se hace clic en la misma
+        ordenAscendente = !ordenAscendente;
     } else {
         columnaOrden = columna;
-        ordenAscendente = true; // Por defecto A-Z al cambiar de columna
+        ordenAscendente = true;
     }
     aplicarFiltrosYOrden();
 }
 
+window.filtrarPorChip = function(familia, btnElement) {
+    familiaActiva = familia;
+    // Efecto visual en los chips
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('activo'));
+    btnElement.classList.add('activo');
+    aplicarFiltrosYOrden();
+}
+
+// Listener para el buscador de texto
+document.getElementById('buscador').addEventListener('input', aplicarFiltrosYOrden);
+
 function aplicarFiltrosYOrden() {
-    const texto = buscador.value.toLowerCase();
+    const texto = document.getElementById('buscador').value.toLowerCase();
     
-    // 1. Filtrar
+    // 1. Filtrado Cruzado
     let procesados = listaTroquelesCache.filter(t => {
-        const catNom = t.categorias?.nombre || 'General';
-        const pasaFamilia = (familiaActiva === 'TODOS') || (catNom === familiaActiva);
-        const pasaTexto = (
+        const catNom = t.categorias?.nombre || '';
+        const pasaFam = (familiaActiva === 'TODOS') || (catNom === familiaActiva);
+        const pasaTxt = (
             (t.nombre && t.nombre.toLowerCase().includes(texto)) || 
             (t.id_troquel && t.id_troquel.toLowerCase().includes(texto)) ||
             (t.observaciones && t.observaciones.toLowerCase().includes(texto))
         );
-        return pasaFamilia && pasaTexto;
+        return pasaFam && pasaTxt;
     });
 
-    // 2. Ordenar
+    // 2. Ordenación Dinámica
     procesados.sort((a, b) => {
-        let valorA, valorB;
-        
-        // Manejar el caso especial de la familia (está dentro del objeto 'categorias')
+        let valA, valB;
         if (columnaOrden === 'familia') {
-            valorA = (a.categorias?.nombre || "").toLowerCase();
-            valorB = (b.categorias?.nombre || "").toLowerCase();
+            valA = (a.categorias?.nombre || "").toLowerCase();
+            valB = (b.categorias?.nombre || "").toLowerCase();
         } else {
-            valorA = (a[columnaOrden] || "").toString().toLowerCase();
-            valorB = (b[columnaOrden] || "").toString().toLowerCase();
+            valA = (a[columnaOrden] || "").toString().toLowerCase();
+            valB = (b[columnaOrden] || "").toString().toLowerCase();
         }
 
-        if (valorA < valorB) return ordenAscendente ? -1 : 1;
-        if (valorA > valorB) return ordenAscendente ? 1 : -1;
+        if (valA < valB) return ordenAscendente ? -1 : 1;
+        if (valA > valB) return ordenAscendente ? 1 : -1;
         return 0;
     });
 
-    renderizarLista(procesados);
+    renderizarTabla(procesados);
 }
 
-// --- RENDERIZADO DE TABLA (MODO LISTA) ---
-function renderizarLista(datos) {
+// ==========================================
+// 4. RENDERIZADO VISUAL
+// ==========================================
+function renderizarTabla(datos) {
+    const tbody = document.getElementById('lista-troqueles');
+    
     if (datos.length === 0) {
-        tbodyLista.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#64748b;">No se encontraron troqueles.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding:40px;">No se encontraron resultados.</td></tr>';
         return;
     }
 
-    tbodyLista.innerHTML = datos.map(troquel => {
-        const catNombre = troquel.categorias?.nombre || 'General';
-        const obs = troquel.observaciones ? `<span class="obs-pildora" title="${troquel.observaciones}">${troquel.observaciones}</span>` : '-';
-        
+    tbody.innerHTML = datos.map(t => {
+        // Construimos el botón del PDF de forma segura
+        let pdfLink = '-';
+        if (t.enlace_archivo && t.enlace_archivo.trim() !== '') {
+            pdfLink = `<a href="${t.enlace_archivo}" target="_blank" class="btn-pdf">📄 Ver PDF</a>`;
+        }
+
         return `
         <tr>
-            <td class="codigo-id">${troquel.id_troquel}</td>
-            <td class="fw-bold">${troquel.nombre}</td>
-            <td><span class="etiqueta-familia">${catNombre}</span></td>
-            <td class="ubicacion-celda">📍 ${troquel.ubicacion || '-'}</td>
-            <td class="medidas-celda">${troquel.tamano_troquel || '-'} <br> <small class="text-muted">F: ${troquel.tamano_final || '-'}</small></td>
-            <td class="obs-celda">${obs}</td>
+            <td class="fw-bold text-primary">${t.id_troquel}</td>
+            <td class="fw-bold">${t.nombre}</td>
+            <td><span class="etiqueta-familia">${t.categorias?.nombre || '-'}</span></td>
+            <td>📍 ${t.ubicacion || '-'}</td>
+            <td>${t.tamano_troquel || '-'}</td>
+            <td>${t.tamano_final || '-'}</td>
+            <td class="text-center">${pdfLink}</td>
             <td>
-                <div class="acciones-tabla">
-                    <button class="btn-icono" onclick="abrirModalQR('${troquel.id_troquel}')" title="Imprimir QR">🖨️</button>
-                    <button class="btn-icono" onclick="abrirModalEditar(${troquel.id})" title="Editar">✏️</button>
-                    <button class="btn-icono peligro" onclick="moverAPapelera(${troquel.id})" title="Papelera">🗑️</button>
+                <div style="display:flex; justify-content:center;">
+                    <button class="btn-icono" onclick="abrirVistaEditar(${t.id})" title="Editar Troquel">✏️</button>
+                    <button class="btn-icono" onclick="generarQR('${t.id_troquel}')" title="Imprimir Etiqueta QR">🖨️</button>
+                    <button class="btn-icono peligro" onclick="borrar(${t.id})" title="Dar de Baja (Papelera)">🗑️</button>
                 </div>
             </td>
-        </tr>
-        `;
+        </tr>`;
     }).join('');
 }
 
-// --- EVENTOS DE BÚSQUEDA ---
-buscador.addEventListener('input', () => {
-    btnLimpiar.classList.toggle('oculto', buscador.value === '');
-    aplicarFiltrosYOrden();
-});
+// ==========================================
+// 5. AUDITORÍA / HISTORIAL
+// ==========================================
+window.cargarHistorial = async function() {
+    try {
+        const res = await fetch('/api/historial');
+        const datos = await res.json();
+        const tbody = document.getElementById('lista-historial');
+        
+        if (datos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center" style="padding:40px;">No hay movimientos registrados.</td></tr>';
+            return;
+        }
 
-btnLimpiar.addEventListener('click', () => {
-    buscador.value = '';
-    btnLimpiar.classList.add('oculto');
-    aplicarFiltrosYOrden();
-});
-
-window.filtrarPorChip = function(familia, botonElement) {
-    familiaActiva = familia;
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('activo'));
-    botonElement.classList.add('activo');
-    aplicarFiltrosYOrden();
+        tbody.innerHTML = datos.map(h => `
+            <tr>
+                <td class="fw-bold" style="color: var(--text-muted);">${new Date(h.fecha_hora).toLocaleString()}</td>
+                <td class="fw-bold">${h.troqueles ? `[${h.troqueles.id_troquel}] ${h.troqueles.nombre}` : 'Troquel Eliminado'}</td>
+                <td>${h.accion}</td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error("Error cargando historial", e);
+    }
 }
 
-// --- MODALES Y ACCIONES CRUD ---
-function abrirModalFormulario() {
-    document.getElementById('form-troquel').reset();
-    document.getElementById('input-id-db').value = ""; 
-    document.getElementById('modal-titulo').innerText = "Nuevo Troquel";
-    document.getElementById('modal-formulario').classList.remove('oculto');
+// ==========================================
+// 6. LÓGICA DE FORMULARIO CRUD
+// ==========================================
+window.abrirVistaEditar = function(id_db) {
+    const t = listaTroquelesCache.find(x => x.id === id_db);
+    if (!t) return;
+
+    // Rellenamos datos en el formulario
+    document.getElementById('input-id-db').value = t.id;
+    document.getElementById('input-id').value = t.id_troquel;
+    document.getElementById('input-categoria').value = t.categoria_id || "";
+    document.getElementById('input-nombre').value = t.nombre;
+    document.getElementById('input-ubicacion').value = t.ubicacion;
+    document.getElementById('input-tamano-troquel').value = t.tamano_troquel || "";
+    document.getElementById('input-tamano-final').value = t.tamano_final || "";
+    document.getElementById('input-archivo').value = t.enlace_archivo || "";
+    document.getElementById('input-observaciones').value = t.observaciones || "";
+    
+    document.getElementById('titulo-formulario').innerText = "Editar Ficha de Troquel";
+    cambiarVista('vista-formulario');
+    
+    // Desmarcar menú izquierdo
+    document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
 }
-
-window.abrirModalEditar = function(id_db) {
-    const troquel = listaTroquelesCache.find(t => t.id === id_db);
-    if (!troquel) return;
-    document.getElementById('input-id-db').value = troquel.id;
-    document.getElementById('input-id').value = troquel.id_troquel;
-    document.getElementById('input-categoria').value = troquel.categoria_id || "";
-    document.getElementById('input-nombre').value = troquel.nombre;
-    document.getElementById('input-ubicacion').value = troquel.ubicacion;
-    document.getElementById('input-tamano-troquel').value = troquel.tamano_troquel || "";
-    document.getElementById('input-tamano-final').value = troquel.tamano_final || "";
-    document.getElementById('input-observaciones').value = troquel.observaciones || "";
-
-    document.getElementById('modal-titulo').innerText = "Editar Troquel";
-    document.getElementById('modal-formulario').classList.remove('oculto');
-}
-
-function cerrarModalFormulario() { document.getElementById('modal-formulario').classList.add('oculto'); }
 
 document.getElementById('form-troquel').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
     const id_db = document.getElementById('input-id-db').value;
-    const datos = {
+    const datosFormulario = {
         id_troquel: document.getElementById('input-id').value,
         nombre: document.getElementById('input-nombre').value,
         ubicacion: document.getElementById('input-ubicacion').value,
         categoria_id: parseInt(document.getElementById('input-categoria').value) || null,
         tamano_troquel: document.getElementById('input-tamano-troquel').value,
         tamano_final: document.getElementById('input-tamano-final').value,
+        enlace_archivo: document.getElementById('input-archivo').value,
         observaciones: document.getElementById('input-observaciones').value
     };
 
     try {
-        if (id_db) await fetch(`/api/troqueles/${id_db}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
-        else await fetch('/api/troqueles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
-        cerrarModalFormulario(); cargarDatos();
-    } catch (error) { alert("Error al guardar."); }
+        if (id_db) {
+            // Editar existente (PUT)
+            await fetch(`/api/troqueles/${id_db}`, { 
+                method: 'PUT', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(datosFormulario) 
+            });
+        } else {
+            // Crear nuevo (POST)
+            await fetch('/api/troqueles', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(datosFormulario) 
+            });
+        }
+        
+        await cargarDatos();
+        
+        // Volvemos automáticamente a la lista pulsando el botón del menú
+        document.querySelector('.menu-item').click(); 
+        
+    } catch (error) {
+        alert("Ocurrió un error al intentar guardar en la base de datos.");
+    }
 });
 
-function abrirModalQR(id) {
-    document.getElementById('modal-qr').classList.remove('oculto');
-    document.getElementById('qr-texto-id').innerText = id;
-    new QRious({ element: document.getElementById('qr-canvas'), value: id, size: 250 });
-}
-function cerrarModalQR() { document.getElementById('modal-qr').classList.add('oculto'); }
-
-async function moverAPapelera(id_db) {
-    if (confirm("¿Confirmar baja física del troquel?")) {
+window.borrar = async function(id_db) {
+    if(confirm("¿Estás seguro de que quieres dar de baja este troquel?")) {
         await fetch(`/api/borrar/${id_db}`, { method: 'POST' });
-        cargarDatos(); 
+        cargarDatos();
     }
 }
 
-function iniciarEscaneo() {
-    contenedorCamara.classList.remove('oculto');
+// ==========================================
+// 7. GESTIÓN DE CÓDIGOS QR Y CÁMARA
+// ==========================================
+window.generarQR = function(id) {
+    document.getElementById('modal-qr').classList.remove('oculto');
+    document.getElementById('qr-texto-id').innerText = id;
+    new QRious({ 
+        element: document.getElementById('qr-canvas'), 
+        value: id, 
+        size: 250 
+    });
+}
+
+window.iniciarEscaneo = function() {
+    document.getElementById('contenedor-camara').classList.remove('oculto');
     html5QrCode = new Html5Qrcode("reader");
+    
     html5QrCode.start(
-        { facingMode: "environment" }, { fps: 10, qrbox: 250 },
-        (texto) => {
-            detenerEscaneo(); buscador.value = texto; btnLimpiar.classList.remove('oculto'); aplicarFiltrosYOrden();
-        }, () => {}
-    ).catch(() => detenerEscaneo());
+        { facingMode: "environment" }, 
+        { fps: 10, qrbox: 250 }, 
+        (textoScaneado) => {
+            window.detenerEscaneo();
+            
+            // Forzamos ir a la vista de lista
+            document.querySelector('.menu-item').click(); 
+            
+            // Insertamos el texto en el buscador y filtramos
+            document.getElementById('buscador').value = textoScaneado;
+            aplicarFiltrosYOrden();
+        }, 
+        (errorMessage) => { /* Ignorar errores de enfoque de cámara */ }
+    ).catch((err) => {
+        alert("Error al iniciar cámara. Verifica los permisos del navegador.");
+        window.detenerEscaneo();
+    });
 }
 
-function detenerEscaneo() {
-    if (html5QrCode) html5QrCode.stop().then(() => { html5QrCode.clear(); contenedorCamara.classList.add('oculto'); });
-    else contenedorCamara.classList.add('oculto');
+window.detenerEscaneo = function() {
+    if(html5QrCode) {
+        html5QrCode.stop().then(() => { 
+            html5QrCode.clear(); 
+            document.getElementById('contenedor-camara').classList.add('oculto'); 
+        });
+    } else {
+        document.getElementById('contenedor-camara').classList.add('oculto');
+    }
 }
 
+// ==========================================
+// INICIO DE LA APLICACIÓN
+// ==========================================
 cargarDatos();

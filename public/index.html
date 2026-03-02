@@ -3,87 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Packaging | Gestión de Troqueles</title>
+    <title>ERP Packaging | Gestión de Troqueles</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 </head>
 <body>
-    <div class="app-layout">
-        <main class="contenido-principal">
-            <header class="cabecera-pro">
-                <div class="cabecera-top">
-                    <div class="logo-titulo">
-                        <div class="logo-box">⚙️</div>
-                        <div>
-                            <h1>Inventario de Troqueles</h1>
-                            <p class="subtitulo">Sistema de Gestión de Packaging</p>
-                        </div>
-                    </div>
-                    <div class="acciones-top">
-                        <button onclick="abrirModalFormulario()" class="btn-accion btn-nuevo">➕ Nuevo Troquel</button>
-                        <button id="btn-scan" onclick="iniciarEscaneo()" class="btn-accion btn-scan">📷 Escanear QR</button>
-                    </div>
-                </div>
+    <div class="erp-layout">
+        
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <span class="logo-icon" style="font-size: 24px;">⚙️</span>
+                <h2>SysPack ERP</h2>
+            </div>
+            <nav class="sidebar-menu">
+                <button class="menu-item activo" onclick="cambiarVista('vista-lista', this)">
+                    <span>📊</span> Inventario
+                </button>
+                <button class="menu-item" onclick="abrirVistaCrear(this)">
+                    <span>➕</span> Nuevo Troquel
+                </button>
+                <button class="menu-item" onclick="cambiarVista('vista-historial', this); cargarHistorial();">
+                    <span>🕒</span> Historial / Logs
+                </button>
+                <div class="menu-divisor"></div>
+                <button class="menu-item" onclick="iniciarEscaneo()">
+                    <span>📷</span> Escanear QR
+                </button>
+            </nav>
+        </aside>
 
-                <div class="cabecera-bottom">
+        <main class="main-content">
+            
+            <section id="vista-lista" class="vista activa">
+                <div class="header-modulo">
+                    <h1>Directorio de Troqueles</h1>
                     <div class="caja-buscador">
                         <span class="icono-lupa">🔍</span>
-                        <input type="text" id="buscador" placeholder="Buscar por código, descripción, notas...">
-                        <button id="btn-limpiar" class="oculto">✕</button>
-                    </div>
-                    <div class="filtros-chips" id="contenedor-chips">
-                        <button class="chip activo" onclick="filtrarPorChip('TODOS', this)">Todos</button>
+                        <input type="text" id="buscador" placeholder="Buscar código, descripción, notas...">
                     </div>
                 </div>
 
-                <div id="contenedor-camara" class="oculto tarjeta-camara">
-                    <div id="reader"></div>
-                    <button onclick="detenerEscaneo()" class="btn-secundario mt-2">Cerrar Cámara</button>
-                </div>
-            </header>
+                <div class="filtros-chips" id="contenedor-chips">
+                    <button class="chip activo" onclick="filtrarPorChip('TODOS', this)">Todas las Familias</button>
+                    </div>
 
-            <section class="contenedor-tabla">
-                <table class="tabla-pro">
-                    <thead>
-                        <tr>
-                            <th onclick="ordenarPor('id_troquel')" class="sortable">Código <span class="icono-orden">↕️</span></th>
-                            <th onclick="ordenarPor('nombre')" class="sortable">Descripción <span class="icono-orden">↕️</span></th>
-                            <th onclick="ordenarPor('familia')" class="sortable">Familia <span class="icono-orden">↕️</span></th>
-                            <th onclick="ordenarPor('ubicacion')" class="sortable">Ubicación <span class="icono-orden">↕️</span></th>
-                            <th>Medidas (Trq / Fin)</th>
-                            <th onclick="ordenarPor('observaciones')" class="sortable">Observaciones <span class="icono-orden">↕️</span></th>
-                            <th class="text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="lista-troqueles">
-                        <tr><td colspan="7" class="text-center"><div class="spinner inline"></div> Cargando...</td></tr>
-                    </tbody>
-                </table>
+                <div class="contenedor-tabla">
+                    <table class="tabla-pro">
+                        <thead>
+                            <tr>
+                                <th onclick="ordenarPor('id_troquel')" class="sortable">Código ↕️</th>
+                                <th onclick="ordenarPor('nombre')" class="sortable">Descripción ↕️</th>
+                                <th onclick="ordenarPor('familia')" class="sortable">Familia ↕️</th>
+                                <th onclick="ordenarPor('ubicacion')" class="sortable">Ubicación ↕️</th>
+                                <th onclick="ordenarPor('tamano_troquel')" class="sortable">Dim. Troquel ↕️</th>
+                                <th onclick="ordenarPor('tamano_final')" class="sortable">Dim. Trabajo ↕️</th>
+                                <th>Plano / PDF</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-troqueles">
+                            <tr><td colspan="8" class="text-center" style="padding:40px;">Cargando base de datos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
+
+            <section id="vista-formulario" class="vista oculto">
+                <div class="header-modulo">
+                    <h1 id="titulo-formulario">Alta de Nuevo Troquel</h1>
+                    <button class="btn-secundario" onclick="document.querySelector('.menu-item').click()">Volver a la lista</button>
+                </div>
+                
+                <div class="panel-formulario">
+                    <form id="form-troquel">
+                        <input type="hidden" id="input-id-db">
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Código ID *</label>
+                                <input type="text" id="input-id" placeholder="Ej. TR-005" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Familia / Categoría *</label>
+                                <select id="input-categoria" required></select>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Descripción del Troquel *</label>
+                                <input type="text" id="input-nombre" placeholder="Nombre descriptivo" required>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Ubicación Física *</label>
+                                <input type="text" id="input-ubicacion" placeholder="Estantería, Pasillo..." required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Tamaño del Troquel (Maderas/Hierros)</label>
+                                <input type="text" id="input-tamano-troquel" placeholder="Ej. 700x1000mm">
+                            </div>
+                            <div class="form-group">
+                                <label>Tamaño Final (Trabajo Cortado)</label>
+                                <input type="text" id="input-tamano-final" placeholder="Ej. 210x297mm">
+                            </div>
+                            
+                            <div class="form-group full-width">
+                                <label>Enlace al Plano (Google Drive / PDF)</label>
+                                <input type="url" id="input-archivo" placeholder="https://...">
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>Observaciones / Estado Mantenimiento</label>
+                                <textarea id="input-observaciones" rows="3" placeholder="Faltan gomas, afilado pendiente..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-botones">
+                            <button type="button" class="btn-secundario" onclick="document.querySelector('.menu-item').click()">Cancelar</button>
+                            <button type="submit" class="btn-accion">💾 Guardar en Base de Datos</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <section id="vista-historial" class="vista oculto">
+                <div class="header-modulo">
+                    <h1>Auditoría de Movimientos</h1>
+                </div>
+                <div class="contenedor-tabla">
+                    <table class="tabla-pro">
+                        <thead>
+                            <tr>
+                                <th>Fecha y Hora</th>
+                                <th>Troquel Afectado</th>
+                                <th>Acción Registrada</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-historial">
+                            <tr><td colspan="3" class="text-center" style="padding:40px;">Cargando historial...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
         </main>
     </div>
 
-    <div id="modal-formulario" class="modal oculto">
-        <div class="modal-contenido">
-            <h2 id="modal-titulo">Dar de alta Troquel</h2>
-            <form id="form-troquel">
-                <input type="hidden" id="input-id-db">
-                <div class="form-grid">
-                    <div class="form-group"><label>Código ID *</label><input type="text" id="input-id" required></div>
-                    <div class="form-group"><label>Familia / Categoría *</label><select id="input-categoria" required><option value="">Seleccionar...</option></select></div>
-                    <div class="form-group full-width"><label>Descripción del Troquel *</label><input type="text" id="input-nombre" required></div>
-                    <div class="form-group full-width"><label>Ubicación Física *</label><input type="text" id="input-ubicacion" required></div>
-                    <div class="form-group"><label>Tamaño Troquel</label><input type="text" id="input-tamano-troquel"></div>
-                    <div class="form-group"><label>Tamaño Final Trabajo</label><input type="text" id="input-tamano-final"></div>
-                    <div class="form-group full-width"><label>Observaciones</label><textarea id="input-observaciones" rows="2"></textarea></div>
-                </div>
-                <div class="modal-botones">
-                    <button type="button" class="btn-secundario" onclick="cerrarModalFormulario()">Cancelar</button>
-                    <button type="submit" class="btn-accion btn-nuevo">💾 Guardar Cambios</button>
-                </div>
-            </form>
+    <div id="contenedor-camara" class="modal oculto">
+        <div class="modal-contenido text-center">
+            <h2>Escanear Etiqueta QR</h2>
+            <div id="reader" style="width:100%; margin-bottom:20px;"></div>
+            <button onclick="detenerEscaneo()" class="btn-secundario">Cancelar Escaneo</button>
         </div>
     </div>
 
@@ -91,10 +161,10 @@
         <div class="modal-contenido text-center" id="zona-impresion">
             <h2 class="no-print">Etiqueta de Producción</h2>
             <canvas id="qr-canvas"></canvas>
-            <h3 id="qr-texto-id" style="font-size: 24px; letter-spacing: 2px;"></h3>
+            <h3 id="qr-texto-id" style="font-size: 24px; letter-spacing: 2px; font-family: monospace;"></h3>
             <div class="modal-botones no-print" style="justify-content: center;">
-                <button type="button" class="btn-secundario" onclick="cerrarModalQR()">Cerrar</button>
-                <button type="button" class="btn-accion btn-scan" onclick="window.print()">🖨️ Imprimir</button>
+                <button type="button" class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cerrar</button>
+                <button type="button" class="btn-accion" onclick="window.print()">🖨️ Imprimir Etiqueta</button>
             </div>
         </div>
     </div>

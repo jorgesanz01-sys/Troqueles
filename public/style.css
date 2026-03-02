@@ -2,20 +2,21 @@
    VARIABLES DE TEMA (DISEÑO INDUSTRIAL MODERNO)
    ======================================================= */
 :root {
-    --bg-app: #f4f7f6; /* Fondo gris muy suave, descansa la vista */
+    --bg-app: #f1f5f9; /* Fondo gris muy suave para la zona de trabajo */
+    --bg-sidebar: #0f172a; /* Azul oscuro casi negro para el menú lateral */
     --bg-surface: #ffffff;
     --text-main: #1e293b;
     --text-muted: #64748b;
-    --primary: #2563eb; /* Azul corporativo fuerte */
+    --text-light: #f8fafc;
+    --primary: #2563eb; /* Azul corporativo */
     --primary-hover: #1d4ed8;
-    --success: #059669; /* Verde para acciones de crear/guardar */
-    --success-hover: #047857;
+    --success: #059669;
     --danger: #ef4444;
     --danger-hover: #dc2626;
-    --border-light: #e2e8f0;
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+    --border: #e2e8f0;
+    --border-dark: #1e293b;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
     --radius-lg: 16px;
     --radius-md: 12px;
     --radius-sm: 8px;
@@ -23,177 +24,213 @@
 
 body {
     font-family: 'Inter', system-ui, sans-serif;
+    margin: 0;
+    padding: 0;
     background-color: var(--bg-app);
     color: var(--text-main);
-    margin: 0;
-    padding: 20px;
     -webkit-font-smoothing: antialiased;
 }
 
-.app-layout {
-    max-width: 1400px; /* Ancho extendido para aprovechar pantallas grandes */
-    margin: 0 auto;
+/* =======================================================
+   ESTRUCTURA PRINCIPAL (LAYOUT ERP)
+   ======================================================= */
+.erp-layout {
+    display: flex;
+    height: 100vh; /* Ocupa el 100% de la pantalla */
+    overflow: hidden; /* Evita el scroll en toda la página */
 }
 
 /* =======================================================
-   CABECERA PRO (DASHBOARD)
+   BARRA LATERAL (SIDEBAR)
    ======================================================= */
-.cabecera-pro {
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
-    padding: 24px 30px;
-    margin-bottom: 30px;
-    border: 1px solid var(--border-light);
+.sidebar {
+    width: 260px;
+    background-color: var(--bg-sidebar);
+    color: var(--text-light);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0; /* Evita que el menú se aplaste */
 }
 
-.cabecera-top {
+.sidebar-logo {
+    padding: 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-bottom: 1px solid var(--border-dark);
+}
+
+.sidebar-logo h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-menu {
+    padding: 20px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.menu-item {
+    background: transparent;
+    color: #94a3b8;
+    border: none;
+    padding: 15px 20px;
+    text-align: left;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.menu-item:hover {
+    background-color: var(--border-dark);
+    color: white;
+}
+
+.menu-item.activo {
+    background-color: var(--primary);
+    color: white;
+}
+
+.menu-divisor {
+    height: 1px;
+    background-color: var(--border-dark);
+    margin: 15px 10px;
+}
+
+/* =======================================================
+   ZONA DE TRABAJO (MAIN CONTENT)
+   ======================================================= */
+.main-content {
+    flex-grow: 1;
+    padding: 30px 40px;
+    overflow-y: auto; /* Aquí es donde ocurre el scroll */
+}
+
+.header-modulo {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid var(--border-light);
-    padding-bottom: 20px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 15px;
+    margin-bottom: 25px;
 }
 
-.logo-titulo {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.logo-box {
-    background: var(--primary);
-    color: white;
+.header-modulo h1 {
+    margin: 0;
     font-size: 28px;
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+    font-weight: 800;
+    letter-spacing: -0.5px;
 }
 
-.logo-titulo h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
-.subtitulo { margin: 2px 0 0 0; color: var(--text-muted); font-size: 14px; font-weight: 500; }
-
-.acciones-top { display: flex; gap: 12px; }
-
-/* Botones Superiores */
-.btn-accion {
-    padding: 12px 24px;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex; align-items: center; gap: 8px;
+/* Transiciones entre pantallas */
+.vista {
+    animation: fadeIn 0.3s ease;
 }
-.btn-nuevo { background: var(--success); color: white; box-shadow: 0 4px 10px rgba(5, 150, 105, 0.2); }
-.btn-nuevo:hover { background: var(--success-hover); transform: translateY(-2px); }
 
-.btn-scan { background: var(--primary); color: white; }
-.btn-scan:hover { background: var(--primary-hover); transform: translateY(-2px); }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.oculto {
+    display: none !important;
+}
 
 /* =======================================================
-   FILTROS Y BUSCADOR (ZONA INFERIOR CABECERA)
+   BUSCADOR Y FILTROS CHIPS
    ======================================================= */
-.cabecera-bottom {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
 .caja-buscador {
     position: relative;
-    max-width: 600px;
+    width: 400px;
 }
 
-.icono-lupa { position: absolute; left: 16px; top: 14px; color: var(--text-muted); }
+.icono-lupa {
+    position: absolute;
+    left: 15px;
+    top: 14px;
+    color: var(--text-muted);
+}
 
 #buscador {
     width: 100%;
-    padding: 14px 40px 14px 45px;
-    border: 2px solid var(--border-light);
-    border-radius: var(--radius-md);
-    font-size: 16px;
-    background: #f8fafc;
-    transition: all 0.2s;
+    padding: 12px 15px 12px 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    outline: none;
     box-sizing: border-box;
+    transition: all 0.2s;
 }
 
 #buscador:focus {
     border-color: var(--primary);
-    background: white;
-    outline: none;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
 }
 
-#btn-limpiar {
-    position: absolute; right: 14px; top: 14px;
-    background: var(--text-muted); color: white;
-    border: none; border-radius: 50%;
-    width: 22px; height: 22px; cursor: pointer;
-    font-size: 10px; font-weight: bold;
-}
-
-/* CHIPS (Píldoras de Familias) */
 .filtros-chips {
     display: flex;
     gap: 10px;
+    margin-bottom: 25px;
     flex-wrap: wrap;
 }
 
 .chip {
     padding: 8px 18px;
     background: white;
-    border: 1px solid var(--border-light);
-    border-radius: 99px; /* Forma redonda perfecta */
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 99px;
     cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-muted);
     transition: all 0.2s;
     box-shadow: var(--shadow-sm);
 }
 
-.chip:hover { border-color: var(--primary); color: var(--primary); }
-.chip.activo { background: var(--text-main); color: white; border-color: var(--text-main); }
+.chip:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.chip.activo {
+    background: var(--text-main);
+    color: white;
+    border-color: var(--text-main);
+}
 
 /* =======================================================
-   NUEVO: TABLA DE DATOS (MODO LISTA PRO)
+   TABLAS DE DATOS (INVENTARIO E HISTORIAL)
    ======================================================= */
 .contenedor-tabla {
     background: var(--bg-surface);
     border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow-x: auto;
     box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-light);
-    overflow-x: auto; /* Permite scroll horizontal en móviles */
-    margin-bottom: 30px;
 }
 
 .tabla-pro {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
-    min-width: 1000px; /* Evita que se aplaste demasiado */
+    min-width: 1000px;
 }
 
-/* Cabeceras de la Tabla */
 .tabla-pro th {
+    padding: 16px;
     background: #f8fafc;
-    padding: 16px 20px;
+    border-bottom: 2px solid var(--border);
     font-size: 13px;
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 2px solid var(--border-light);
-    white-space: nowrap;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -201,8 +238,7 @@ body {
 
 .tabla-pro th.sortable {
     cursor: pointer;
-    user-select: none;
-    transition: background 0.2s, color 0.2s;
+    transition: 0.2s;
 }
 
 .tabla-pro th.sortable:hover {
@@ -210,69 +246,207 @@ body {
     color: var(--text-main);
 }
 
-.icono-orden {
-    font-size: 11px;
-    margin-left: 6px;
-    opacity: 0.4;
-    vertical-align: middle;
-}
-
-.tabla-pro th.sortable:hover .icono-orden { opacity: 1; }
-
-/* Filas y Celdas */
 .tabla-pro td {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border-light);
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
     font-size: 14px;
-    color: var(--text-main);
     vertical-align: middle;
-    transition: background 0.1s;
 }
 
 .tabla-pro tr:hover td {
-    background: #f1f5f9; /* Efecto hover en la fila entera */
+    background-color: #f8fafc;
 }
 
-/* Estilos Específicos de Celdas */
+/* Elementos dentro de la tabla */
 .fw-bold { font-weight: 600; }
-.text-muted { color: var(--text-muted); }
-
-.codigo-id { 
-    font-family: monospace; 
-    font-weight: 700; 
-    font-size: 15px; 
-    color: var(--primary); 
-}
+.text-primary { color: var(--primary); font-family: monospace; font-size: 15px; }
+.text-center { text-align: center; }
 
 .etiqueta-familia {
-    background: #e0e7ff; color: #4338ca;
-    padding: 4px 10px; border-radius: 6px;
-    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    background: #e0e7ff;
+    color: #4338ca;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
 }
 
-.ubicacion-celda { font-weight: 500; color: #475569; white-space: nowrap; }
-.medidas-celda { line-height: 1.4; white-space: nowrap; }
-
-.obs-celda {
-    max-width: 200px;
-}
-
-.obs-pildora {
+.btn-pdf {
     display: inline-block;
-    background: #fffbeb; color: #b45309;
-    padding: 4px 10px; border-radius: 4px;
-    font-size: 12px; border: 1px solid #fde68a;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 180px;
-    cursor: help;
+    background: #fee2e2;
+    color: #b91c1c;
+    padding: 6px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    transition: 0.2s;
 }
 
-/* Acciones en la Tabla */
-.acciones-tabla {
+.btn-pdf:hover {
+    background: #fecaca;
+}
+
+/* =======================================================
+   FORMULARIOS (NUEVO / EDITAR TROQUEL)
+   ======================================================= */
+.panel-formulario {
+    background: var(--bg-surface);
+    padding: 35px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    max-width: 900px;
+    box-shadow: var(--shadow-sm);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.form-group.full-width {
+    grid-column: span 2;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: var(--text-muted);
+}
+
+.form-group input, 
+.form-group select, 
+.form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    transition: all 0.2s;
+    background: #f8fafc;
+}
+
+.form-group input:focus, 
+.form-group select:focus, 
+.form-group textarea:focus {
+    border-color: var(--primary);
+    background: white;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+/* =======================================================
+   BOTONES Y ACCIONES GLOBALES
+   ======================================================= */
+.btn-accion {
+    padding: 12px 24px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    background: var(--primary);
+    color: white;
+    transition: all 0.2s;
+}
+
+.btn-accion:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-secundario {
+    padding: 12px 20px;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--text-main);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-secundario:hover {
+    background: #f1f5f9;
+}
+
+/* Botoncitos pequeños de la tabla */
+.btn-icono {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    cursor: pointer;
+    margin: 0 4px;
+    transition: all 0.2s;
+}
+
+.btn-icono:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.btn-icono.peligro:hover {
+    background: #fef2f2;
+    border-color: var(--danger);
+}
+
+/* =======================================================
+   MODALES FLOTANTES (CÁMARA Y QR)
+   ======================================================= */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(4px);
     display: flex;
-    gap: 8px;
+    align-items: center;
     justify-content: center;
+    z-index: 1000;
 }
 
-.text-center { text-align: center; }
-.inline { display: inline-block; margin-right: 10px; vertical-align: middle; }
+.modal-contenido {
+    background: var(--bg-surface);
+    padding: 30px;
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 400px;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-botones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+/* =======================================================
+   REGLAS PARA IMPRESORA FÍSICA (QR)
+   ======================================================= */
+@media print {
+    body * { visibility: hidden; }
+    #zona-impresion, #zona-impresion * { visibility: visible; }
+    
+    #zona-impresion {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 40px;
+    }
+    
+    .no-print { display: none !important; }
+}
