@@ -4,31 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestión de Troqueles</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
     <div class="contenedor-principal">
-        <header>
-            <h1>Gestión de Troqueles</h1>
+        <header class="cabecera">
+            <div class="logo-titulo">
+                <span class="icono">⚙️</span>
+                <h1>Gestión de Troqueles</h1>
+            </div>
             
             <div class="panel-herramientas">
-                <button id="btn-scan" onclick="iniciarEscaneo()" class="btn-primario">📷 Escanear QR</button>
+                <button id="btn-scan" onclick="iniciarEscaneo()" class="btn-primario">
+                    <span>📷 Escanear QR</span>
+                </button>
                 
                 <div class="caja-buscador">
+                    <span class="icono-lupa">🔍</span>
                     <input type="text" id="buscador" placeholder="Buscar por Nombre o ID...">
-                    <button id="btn-limpiar" class="oculto">X</button>
+                    <button id="btn-limpiar" class="oculto">✕</button>
                 </div>
             </div>
             
-            <div id="contenedor-camara" class="oculto">
+            <div id="contenedor-camara" class="oculto tarjeta-camara">
                 <div id="reader"></div>
                 <button id="btn-cerrar-camara" onclick="detenerEscaneo()" class="btn-secundario">Cerrar Cámara</button>
             </div>
         </header>
 
         <main id="grid-troqueles" class="grid-tarjetas">
-            <p class="mensaje-carga">Conectando con la base de datos Supabase...</p>
+            <div class="estado-carga">
+                <div class="spinner"></div>
+                <p>Conectando con la base de datos...</p>
+            </div>
         </main>
     </div>
 

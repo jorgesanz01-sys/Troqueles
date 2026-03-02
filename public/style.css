@@ -1,129 +1,223 @@
+/* Variables de colores profesionales */
 :root {
-    --color-primario: #0056b3;
-    --color-fondo: #f4f7f6;
-    --color-texto: #333;
-    --color-peligro: #dc3545;
+    --bg-app: #f1f5f9;
+    --bg-card: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --danger: #ef4444;
+    --danger-hover: #dc2626;
+    --border-color: #e2e8f0;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    --radius-md: 12px;
+    --radius-sm: 8px;
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--color-fondo);
-    color: var(--color-texto);
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-app);
+    color: var(--text-main);
     margin: 0;
     padding: 20px;
+    -webkit-font-smoothing: antialiased;
 }
 
 .contenedor-principal {
-    max-width: 1000px;
+    max-width: 1100px;
     margin: 0 auto;
 }
 
-header {
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+/* Cabecera tipo Dashboard */
+.cabecera {
+    background: var(--bg-card);
+    padding: 24px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.logo-titulo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     margin-bottom: 20px;
 }
 
-.panel-herramientas {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-top: 15px;
+.logo-titulo h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-main);
 }
 
-/* Buscador */
+.icono { font-size: 28px; }
+
+/* Panel de herramientas superior */
+.panel-herramientas {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Buscador Moderno */
 .caja-buscador {
     position: relative;
     flex-grow: 1;
-    min-width: 250px;
+    min-width: 280px;
+    display: flex;
+    align-items: center;
+}
+
+.icono-lupa {
+    position: absolute;
+    left: 14px;
+    color: var(--text-muted);
+    font-size: 16px;
 }
 
 #buscador {
     width: 100%;
-    padding: 12px 40px 12px 15px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    font-size: 16px;
-    box-sizing: border-box;
+    padding: 12px 40px 12px 40px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+    background-color: #f8fafc;
+    transition: all 0.2s;
 }
 
 #buscador:focus {
-    border-color: var(--color-primario);
+    border-color: var(--primary);
+    background-color: #fff;
     outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 #btn-limpiar {
     position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #bbb;
+    right: 12px;
+    background: var(--text-muted);
     color: white;
     border: none;
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     cursor: pointer;
-    font-weight: bold;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
 }
 
-#btn-limpiar:hover { background: #888; }
+#btn-limpiar:hover { background: var(--text-main); }
 
-/* Botones */
+/* Botones Premium */
 button {
-    padding: 10px 15px;
+    padding: 12px 20px;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    font-weight: bold;
-    font-size: 15px;
+    font-weight: 600;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    transition: background 0.2s, transform 0.1s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-.btn-primario { background: var(--color-primario); color: white; }
-.btn-secundario { background: #6c757d; color: white; margin-top: 10px; }
-.btn-peligro { background: var(--color-peligro); color: white; }
+button:active { transform: translateY(1px); }
 
-/* Tarjetas (Grid) */
+.btn-primario { background: var(--primary); color: white; }
+.btn-primario:hover { background: var(--primary-hover); }
+
+.btn-secundario { background: var(--bg-app); color: var(--text-main); border: 1px solid var(--border-color); }
+.btn-secundario:hover { background: #e2e8f0; }
+
+.btn-peligro { background: white; color: var(--danger); border: 1px solid var(--danger); padding: 8px 16px;}
+.btn-peligro:hover { background: var(--danger); color: white; }
+
+/* Tarjetas de Troqueles */
 .grid-tarjetas {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
 }
 
 .tarjeta {
-    background: white;
-    border-radius: 10px;
-    padding: 15px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    border-left: 5px solid var(--color-primario);
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    border-top: 4px solid var(--primary);
+    transition: transform 0.2s, box-shadow 0.2s;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
 }
 
+.tarjeta:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.tarjeta h3 { margin: 0 0 12px 0; font-size: 18px; color: var(--text-main); }
+.tarjeta p { margin: 6px 0; font-size: 14px; color: var(--text-muted); }
+.tarjeta strong { color: var(--text-main); }
+
 .badge {
-    background: #e9ecef;
-    padding: 3px 8px;
-    border-radius: 4px;
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 4px 8px;
+    border-radius: 6px;
     font-family: monospace;
+    font-weight: 600;
+    font-size: 13px;
 }
 
 .tarjeta-acciones {
-    margin-top: 15px;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
     text-align: right;
 }
 
-.oculto {
-    display: none !important;
+/* Utilidades */
+.oculto { display: none !important; }
+
+/* Cámara QR */
+.tarjeta-camara {
+    margin-top: 20px;
+    padding: 20px;
+    background: #fff;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    text-align: center;
 }
 
-#contenedor-camara {
-    margin-top: 20px;
+/* Animación de carga */
+.estado-carga {
     text-align: center;
-    border: 2px dashed #ccc;
-    padding: 10px;
-    border-radius: 10px;
+    color: var(--text-muted);
+    grid-column: 1 / -1;
+    padding: 40px;
 }
+
+.spinner {
+    border: 4px solid rgba(0,0,0,0.1);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border-left-color: var(--primary);
+    animation: girar 1s linear infinite;
+    margin: 0 auto 15px auto;
+}
+
+@keyframes girar { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
