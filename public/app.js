@@ -357,15 +357,18 @@ window.cargarHistorial = async function() {
 }
 
 // ==========================================
-// 10. GENERACIÓN QR Y ESCÁNER DE CÁMARA
+// 10. GENERACIÓN QR (OPTIMIZADO GODEX) Y ESCÁNER
 // ==========================================
 window.generarQR = function(id) { 
     document.getElementById('modal-qr').classList.remove('oculto'); 
     document.getElementById('qr-texto-id').innerText = id; 
+    
     new QRious({ 
         element: document.getElementById('qr-canvas'), 
         value: id, 
-        size: 250 
+        size: 200,    // Calidad alta para evitar pixelado en la térmica
+        padding: 0,   // Sin borde blanco para maximizar tamaño en 50x23
+        level: 'M'    // Nivel de corrección Medio (ideal)
     }); 
 }
 

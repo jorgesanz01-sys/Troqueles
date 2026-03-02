@@ -2,17 +2,16 @@
    VARIABLES DE TEMA (DISEÑO INDUSTRIAL MODERNO)
    ======================================================= */
 :root {
-    --bg-app: #f1f5f9; /* Fondo gris muy suave para la zona de trabajo */
-    --bg-sidebar: #0f172a; /* Azul oscuro casi negro para el menú lateral */
+    --bg-app: #f1f5f9; 
+    --bg-sidebar: #0f172a; 
     --bg-surface: #ffffff;
     --text-main: #1e293b;
     --text-muted: #64748b;
     --text-light: #f8fafc;
-    --primary: #2563eb; /* Azul corporativo */
+    --primary: #2563eb; 
     --primary-hover: #1d4ed8;
     --success: #059669;
     --danger: #ef4444;
-    --danger-hover: #dc2626;
     --border: #e2e8f0;
     --border-dark: #1e293b;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
@@ -37,8 +36,8 @@ body {
    ======================================================= */
 .erp-layout {
     display: flex;
-    height: 100vh; /* Ocupa el 100% de la pantalla */
-    overflow: hidden; /* Evita el scroll en toda la página */
+    height: 100vh; 
+    overflow: hidden; 
 }
 
 /* =======================================================
@@ -50,7 +49,7 @@ body {
     color: var(--text-light);
     display: flex;
     flex-direction: column;
-    flex-shrink: 0; /* Evita que el menú se aplaste */
+    flex-shrink: 0; 
 }
 
 .sidebar-logo {
@@ -113,7 +112,7 @@ body {
 .main-content {
     flex-grow: 1;
     padding: 30px 40px;
-    overflow-y: auto; /* Aquí es donde ocurre el scroll */
+    overflow-y: auto; 
 }
 
 .header-modulo {
@@ -130,7 +129,6 @@ body {
     letter-spacing: -0.5px;
 }
 
-/* Transiciones entre pantallas */
 .vista {
     animation: fadeIn 0.3s ease;
 }
@@ -162,7 +160,7 @@ body {
 
 #buscador {
     width: 100%;
-    padding: 12px 35px 12px 40px; /* Margen derecho extra para la X */
+    padding: 12px 35px 12px 40px; 
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: 15px;
@@ -176,7 +174,6 @@ body {
     box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
 }
 
-/* Botón X del buscador */
 .btn-limpiar {
     position: absolute;
     right: 10px;
@@ -282,7 +279,6 @@ body {
     background-color: #f8fafc;
 }
 
-/* Elementos dentro de la tabla */
 .fw-bold { font-weight: 600; }
 .text-primary { color: var(--primary); font-family: monospace; font-size: 15px; }
 .text-center { text-align: center; }
@@ -311,6 +307,20 @@ body {
 
 .btn-pdf:hover {
     background: #fecaca;
+}
+
+/* Píldoras especiales para los códigos de artículo */
+.obs-pildora {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+    cursor: help;
 }
 
 /* SELECCIÓN MÚLTIPLE EN TABLA (CHECKBOXES) */
@@ -413,13 +423,11 @@ input[type="checkbox"] {
     background: #f1f5f9;
 }
 
-/* Botones pequeños para acciones en línea */
 .btn-sm {
     padding: 8px 16px;
     font-size: 13px;
 }
 
-/* Botoncitos pequeños de la tabla */
 .btn-icono {
     background: transparent;
     border: 1px solid var(--border);
@@ -508,21 +516,51 @@ input[type="checkbox"] {
 }
 
 /* =======================================================
-   REGLAS PARA IMPRESORA FÍSICA (QR)
+   REGLAS PARA IMPRESORA TÉRMICA GODEX (ETIQUETA 50x23mm)
    ======================================================= */
 @media print {
     body * { visibility: hidden; }
     #zona-impresion, #zona-impresion * { visibility: visible; }
     
+    /* 1. Le decimos al navegador el tamaño exacto del papel */
+    @page {
+        size: 50mm 23mm;
+        margin: 0mm; 
+    }
+    
+    /* 2. Maquetamos la etiqueta apaisada */
     #zona-impresion {
         position: absolute;
         left: 0;
         top: 0;
-        width: 100%;
+        width: 50mm;
+        height: 23mm;
         display: flex;
-        flex-direction: column;
+        flex-direction: row; 
         align-items: center;
-        padding: 40px;
+        justify-content: flex-start;
+        padding: 1mm 2mm; 
+        box-sizing: border-box;
+        background: white;
+    }
+    
+    /* 3. Tamaño del QR para que quepa en los 23mm de alto */
+    #qr-canvas {
+        width: 19mm !important;
+        height: 19mm !important;
+        margin-right: 2mm;
+    }
+    
+    /* 4. Texto del código al lado del QR */
+    #qr-texto-id {
+        font-family: 'Inter', sans-serif, monospace;
+        font-size: 11pt !important; 
+        font-weight: 800;
+        color: black;
+        word-break: break-all; 
+        line-height: 1.1;
+        margin: 0;
+        text-align: left;
     }
     
     .no-print { display: none !important; }
