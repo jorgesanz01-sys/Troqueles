@@ -3,11 +3,10 @@ const btnLimpiar = document.getElementById('btn-limpiar');
 const contenedorGrid = document.getElementById('grid-troqueles');
 const contenedorCamara = document.getElementById('contenedor-camara');
 let html5QrCode;
-let listaTroquelesCache = []; // Guardamos los datos para buscar rápido
+let listaTroquelesCache = []; 
 
-// --- 1. REGLA DE ORO: BUSCADOR CON "X" ---
+// --- 1. BUSCADOR (REGLA DE ORO) ---
 buscador.addEventListener('input', () => {
-    // Si hay texto, mostramos la X. Si no, la ocultamos.
     if (buscador.value.length > 0) {
         btnLimpiar.classList.remove('oculto');
     } else {
@@ -19,35 +18,35 @@ buscador.addEventListener('input', () => {
 btnLimpiar.addEventListener('click', () => {
     buscador.value = '';
     btnLimpiar.classList.add('oculto');
-    renderizarTarjetas(listaTroquelesCache); // Mostramos todos de nuevo
+    renderizarTarjetas(listaTroquelesCache); 
 });
 
-// --- 2. COMUNICACIÓN CON PYTHON (API) ---
+// --- 2. COMUNICACIÓN CON PYTHON ---
 async function cargarDatos() {
     try {
         const respuesta = await fetch('/api/troqueles');
         const datos = await respuesta.json();
-        listaTroquelesCache = datos; // Guardamos en memoria
+        listaTroquelesCache = datos; 
         renderizarTarjetas(datos);
     } catch (error) {
-        contenedorGrid.innerHTML = '<p style="color:red;">Error al conectar con el servidor. Revisa tu consola.</p>';
+        contenedorGrid.innerHTML = '<p style="color:red; padding: 20px;">Error al conectar con el servidor.</p>';
         console.error(error);
     }
 }
 
 function renderizarTarjetas(datos) {
     if (datos.length === 0) {
-        contenedorGrid.innerHTML = '<p>No hay troqueles activos para mostrar.</p>';
+        contenedorGrid.innerHTML = '<p style="padding: 20px;">No hay troqueles activos para mostrar.</p>';
         return;
     }
 
+    // Aquí usamos las clases exactas de tu CSS (tarjeta, badge, btn-peligro)
     contenedorGrid.innerHTML = datos.map(troquel => `
         <div class="tarjeta">
-            <div class="tarjeta-contenido">
+            <div>
                 <h3>${troquel.nombre}</h3>
                 <p><strong>Ubicación:</strong> ${troquel.ubicacion || 'Sin asignar'}</p>
                 <p><strong>ID:</strong> <span class="badge">${troquel.id_troquel}</span></p>
-                <p><small>Últ. Mov: ${new Date(troquel.fecha_ultimo_mov).toLocaleDateString()}</small></p>
             </div>
             <div class="tarjeta-acciones">
                 <button class="btn-peligro" onclick="moverAPapelera(${troquel.id})">🗑️ Papelera</button>
@@ -56,38 +55,35 @@ function renderizarTarjetas(datos) {
     `).join('');
 }
 
-// --- 3. REGLA DE ORO: SOFT DELETE ---
+// --- 3. SOFT DELETE ---
 async function moverAPapelera(id_db) {
     if (confirm("¿Estás seguro de mover este troquel a la papelera?")) {
         try {
             await fetch(`/api/borrar/${id_db}`, { method: 'POST' });
-            cargarDatos(); // Recargamos la lista actualizada
+            cargarDatos(); 
         } catch (error) {
             alert("Hubo un error al mover a la papelera.");
         }
     }
 }
 
-// --- 4. LECTOR DE CÓDIGOS QR ---
+// --- 4. LECTOR QR ---
 function iniciarEscaneo() {
     contenedorCamara.classList.remove('oculto');
     html5QrCode = new Html5Qrcode("reader");
     
     html5QrCode.start(
-        { facingMode: "environment" }, // Cámara trasera
+        { facingMode: "environment" }, 
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (textoDecodificado) => {
-            // Éxito al leer el QR
             detenerEscaneo();
             buscador.value = textoDecodificado;
             btnLimpiar.classList.remove('oculto');
             filtrarResultados(textoDecodificado);
         },
-        (errorMensaje) => {
-            // Ignoramos errores de lectura continuos (es normal mientras enfoca)
-        }
+        (errorMensaje) => { /* Ignorar errores de enfoque */ }
     ).catch(err => {
-        alert("No se pudo acceder a la cámara. Revisa los permisos.");
+        alert("No se pudo acceder a la cámara.");
         detenerEscaneo();
     });
 }
@@ -113,5 +109,5 @@ function filtrarResultados(texto) {
     renderizarTarjetas(filtrados);
 }
 
-// Iniciar la aplicación
+// Iniciar aplicación
 cargarDatos();
