@@ -309,7 +309,6 @@ body {
     background: #fecaca;
 }
 
-/* Píldoras especiales para los códigos de artículo */
 .obs-pildora {
     display: inline-block;
     padding: 4px 8px;
@@ -483,7 +482,7 @@ input[type="checkbox"] {
 }
 
 /* =======================================================
-   MODALES FLOTANTES (CÁMARA Y QR)
+   MODALES FLOTANTES 
    ======================================================= */
 .modal {
     position: fixed;
@@ -516,51 +515,82 @@ input[type="checkbox"] {
 }
 
 /* =======================================================
-   REGLAS PARA IMPRESORA TÉRMICA GODEX (ETIQUETA 50x23mm)
+   DISEÑO DE ETIQUETA EN PANTALLA (PREVIEW 50x23)
+   ======================================================= */
+.etiqueta-preview {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    padding: 2mm;
+    width: 50mm;
+    height: 23mm;
+    margin: 0 auto;
+    background: white;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-align: left;
+}
+
+.etiqueta-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-left: 2mm;
+    width: calc(100% - 21mm);
+}
+
+.etiq-id { 
+    font-weight: 900; 
+    font-size: 10pt; 
+    font-family: monospace; 
+    line-height: 1.1; 
+    word-break: break-all; 
+    color: black;
+}
+
+.etiq-ubi { 
+    font-weight: 600; 
+    font-size: 7pt; 
+    margin-top: 2px; 
+    color: black;
+}
+
+.etiq-desc { 
+    font-weight: 400; 
+    font-size: 6pt; 
+    margin-top: 1px; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    color: black;
+}
+
+/* =======================================================
+   REGLAS PARA IMPRESORA TÉRMICA GODEX (50x23mm REAL)
    ======================================================= */
 @media print {
     body * { visibility: hidden; }
     #zona-impresion, #zona-impresion * { visibility: visible; }
     
-    /* 1. Le decimos al navegador el tamaño exacto del papel */
     @page {
         size: 50mm 23mm;
-        margin: 0mm; 
+        margin: 0; 
     }
     
-    /* 2. Maquetamos la etiqueta apaisada */
     #zona-impresion {
         position: absolute;
         left: 0;
         top: 0;
         width: 50mm;
         height: 23mm;
-        display: flex;
-        flex-direction: row; 
-        align-items: center;
-        justify-content: flex-start;
+        border: none;
         padding: 1mm 2mm; 
-        box-sizing: border-box;
-        background: white;
+        margin: 0;
     }
     
-    /* 3. Tamaño del QR para que quepa en los 23mm de alto */
     #qr-canvas {
         width: 19mm !important;
         height: 19mm !important;
-        margin-right: 2mm;
-    }
-    
-    /* 4. Texto del código al lado del QR */
-    #qr-texto-id {
-        font-family: 'Inter', sans-serif, monospace;
-        font-size: 11pt !important; 
-        font-weight: 800;
-        color: black;
-        word-break: break-all; 
-        line-height: 1.1;
-        margin: 0;
-        text-align: left;
     }
     
     .no-print { display: none !important; }

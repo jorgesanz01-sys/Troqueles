@@ -357,18 +357,27 @@ window.cargarHistorial = async function() {
 }
 
 // ==========================================
-// 10. GENERACIÓN QR (OPTIMIZADO GODEX) Y ESCÁNER
+// 10. GENERACIÓN QR (GODEX 50x23) Y ESCÁNER
 // ==========================================
-window.generarQR = function(id) { 
+window.generarQR = function(id_troquel) { 
+    // Buscamos los datos completos del troquel para inyectarlos en la etiqueta
+    const t = listaTroquelesCache.find(x => x.id_troquel === id_troquel);
+    if (!t) return;
+
     document.getElementById('modal-qr').classList.remove('oculto'); 
-    document.getElementById('qr-texto-id').innerText = id; 
     
+    // Rellenamos el texto de la etiqueta
+    document.getElementById('qr-texto-id').innerText = t.id_troquel; 
+    document.getElementById('qr-texto-ubi').innerText = "📍 " + (t.ubicacion || 'Sin ubicar');
+    document.getElementById('qr-texto-desc').innerText = t.nombre || '';
+
+    // Generamos el QR optimizado para térmica
     new QRious({ 
         element: document.getElementById('qr-canvas'), 
-        value: id, 
-        size: 200,    // Calidad alta para evitar pixelado en la térmica
-        padding: 0,   // Sin borde blanco para maximizar tamaño en 50x23
-        level: 'M'    // Nivel de corrección Medio (ideal)
+        value: id_troquel, 
+        size: 200,    
+        padding: 0,   
+        level: 'M'    
     }); 
 }
 

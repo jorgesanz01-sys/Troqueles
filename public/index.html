@@ -190,11 +190,19 @@
     </div>
 
     <div id="modal-qr" class="modal oculto">
-        <div class="modal-contenido text-center" id="zona-impresion">
-            <h2 class="no-print">Etiqueta de Producción</h2>
-            <canvas id="qr-canvas"></canvas>
-            <h3 id="qr-texto-id"></h3>
-            <div class="modal-botones no-print" style="justify-content: center;">
+        <div class="modal-contenido text-center">
+            <h2 class="no-print" style="margin-bottom: 20px;">Vista Previa Etiqueta</h2>
+            
+            <div id="zona-impresion" class="etiqueta-preview">
+                <canvas id="qr-canvas"></canvas>
+                <div class="etiqueta-info">
+                    <div id="qr-texto-id" class="etiq-id"></div>
+                    <div id="qr-texto-ubi" class="etiq-ubi"></div>
+                    <div id="qr-texto-desc" class="etiq-desc"></div>
+                </div>
+            </div>
+
+            <div class="modal-botones no-print" style="justify-content: center; margin-top: 25px;">
                 <button type="button" class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cerrar</button>
                 <button type="button" class="btn-accion" onclick="window.print()">🖨️ Imprimir Etiqueta</button>
             </div>
