@@ -13,16 +13,35 @@ let idsSeleccionados = new Set();
 // 1. NAVEGACIÓN ENTRE VISTAS
 // ==========================================
 window.cambiarVista = function(idVista, btnElement) { 
-    document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); 
-    document.getElementById(idVista).classList.remove('oculto'); 
-    document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo')); 
-    if(btnElement) btnElement.classList.add('activo'); 
+    // Ocultar todas las vistas
+    const vistas = document.querySelectorAll('.vista');
+    vistas.forEach(v => {
+        v.classList.add('oculto');
+    });
+    
+    // Mostrar la vista seleccionada
+    const vistaDestino = document.getElementById(idVista);
+    vistaDestino.classList.remove('oculto'); 
+    
+    // Quitar la clase activo de todos los botones del menú
+    const botonesMenu = document.querySelectorAll('.menu-item');
+    botonesMenu.forEach(b => {
+        b.classList.remove('activo');
+    });
+    
+    // Poner la clase activo al botón pulsado
+    if (btnElement) {
+        btnElement.classList.add('activo'); 
+    }
 }
 
 window.abrirVistaCrear = function(btnElement) { 
+    // Limpiar formulario completo
     document.getElementById('form-troquel').reset(); 
     document.getElementById('input-id-db').value = ""; 
     document.getElementById('titulo-formulario').innerText = "Alta de Nuevo Troquel"; 
+    
+    // Cambiar a la vista del formulario
     cambiarVista('vista-formulario', btnElement); 
 }
 
@@ -31,6 +50,7 @@ window.abrirVistaCrear = function(btnElement) {
 // ==========================================
 async function cargarDatos() {
     try {
+        // Cargar Categorías
         const resCat = await fetch('/api/categorias'); 
         const categorias = await resCat.json();
         
@@ -38,20 +58,25 @@ async function cargarDatos() {
         const selectBulk = document.getElementById('bulk-categoria'); 
         const chips = document.getElementById('contenedor-chips');
         
+        // Limpiar opciones previas
         select.innerHTML = '<option value="">Seleccionar...</option>'; 
         selectBulk.innerHTML = '<option value="">Cambiar familia a...</option>'; 
         chips.innerHTML = '<button class="chip activo" onclick="filtrarPorChip(\'TODOS\', this)">Todas</button>';
         
+        // Rellenar categorías
         categorias.forEach(cat => { 
             select.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`; 
             selectBulk.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`; 
             chips.innerHTML += `<button class="chip" onclick="filtrarPorChip('${cat.nombre}', this)">${cat.nombre}</button>`; 
         });
 
+        // Cargar Troqueles
         const resTroq = await fetch('/api/troqueles'); 
         listaTroquelesCache = await resTroq.json(); 
         
+        // Aplicar filtros iniciales y pintar tabla
         aplicarFiltrosYOrden();
+        
     } catch (error) { 
         console.error("Error cargando datos:", error); 
     }
@@ -62,19 +87,29 @@ async function cargarDatos() {
 // ==========================================
 window.crearCategoriaAlVuelo = async function() {
     const nueva = prompt("Introduce el nombre de la nueva familia/tipo:"); 
-    if (!nueva || nueva.trim() === "") return;
+    
+    if (!nueva || nueva.trim() === "") {
+        return;
+    }
     
     try { 
+        // Guardar nueva categoría en base de datos
         await fetch('/api/categorias', { 
             method: 'POST', 
             headers: {'Content-Type': 'application/json'}, 
             body: JSON.stringify({ nombre: nueva.trim() }) 
         }); 
+        
+        // Recargar los datos para actualizar los desplegables
         await cargarDatos(); 
         
+        // Buscar la categoría recién creada y dejarla seleccionada en el formulario
         const opciones = Array.from(document.getElementById('input-categoria').options); 
         const opcionNueva = opciones.find(o => o.text === nueva.trim().toUpperCase()); 
-        if (opcionNueva) opcionNueva.selected = true;
+        
+        if (opcionNueva) {
+            opcionNueva.selected = true;
+        }
     } catch (error) { 
         alert("Error al crear la familia"); 
     }
@@ -86,8 +121,13 @@ window.crearCategoriaAlVuelo = async function() {
 const buscador = document.getElementById('buscador'); 
 const btnLimpiar = document.getElementById('btn-limpiar');
 
+// Escuchar cambios en el buscador
 buscador.addEventListener('input', () => { 
-    btnLimpiar.classList.toggle('oculto', buscador.value === ''); 
+    if (buscador.value === '') {
+        btnLimpiar.classList.add('oculto');
+    } else {
+        btnLimpiar.classList.remove('oculto');
+    }
     aplicarFiltrosYOrden(); 
 });
 
@@ -109,7 +149,12 @@ window.ordenarPor = function(columna) {
 
 window.filtrarPorChip = function(familia, btnElement) { 
     familiaActiva = familia; 
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('activo')); 
+    
+    const chips = document.querySelectorAll('.chip');
+    chips.forEach(c => {
+        c.classList.remove('activo');
+    });
+    
     btnElement.classList.add('activo'); 
     aplicarFiltrosYOrden(); 
 }
@@ -117,9 +162,11 @@ window.filtrarPorChip = function(familia, btnElement) {
 function aplicarFiltrosYOrden() {
     const texto = buscador.value.toLowerCase();
     
+    // 1. Aplicar Filtrado
     let procesados = listaTroquelesCache.filter(t => {
         const catNom = t.categorias?.nombre || '';
         const pasaFam = (familiaActiva === 'TODOS') || (catNom === familiaActiva);
+        
         const pasaTxt = (
             (t.nombre && t.nombre.toLowerCase().includes(texto)) || 
             (t.id_troquel && t.id_troquel.toLowerCase().includes(texto)) ||
@@ -127,19 +174,32 @@ function aplicarFiltrosYOrden() {
             (t.referencias_ot && t.referencias_ot.toLowerCase().includes(texto)) ||
             (t.observaciones && t.observaciones.toLowerCase().includes(texto))
         );
+        
         return pasaFam && pasaTxt;
     });
 
+    // 2. Aplicar Ordenación
     procesados.sort((a, b) => {
-        let valA = (columnaOrden === 'familia' ? a.categorias?.nombre : a[columnaOrden]) || "";
-        let valB = (columnaOrden === 'familia' ? b.categorias?.nombre : b[columnaOrden]) || "";
+        let valA = "";
+        let valB = "";
+        
+        if (columnaOrden === 'familia') {
+            valA = (a.categorias?.nombre || "").toLowerCase();
+            valB = (b.categorias?.nombre || "").toLowerCase();
+        } else {
+            valA = (a[columnaOrden] || "").toString().toLowerCase();
+            valB = (b[columnaOrden] || "").toString().toLowerCase();
+        }
         
         if (valA < valB) return ordenAscendente ? -1 : 1;
         if (valA > valB) return ordenAscendente ? 1 : -1;
         return 0;
     });
 
+    // Guardar para posible exportación Excel
     datosExportables = procesados; 
+    
+    // Llamar a renderizar
     renderizarTabla(procesados);
 }
 
@@ -155,20 +215,43 @@ function renderizarTabla(datos) {
         return; 
     }
 
-    tbody.innerHTML = datos.map(t => {
-        let pdfLink = t.enlace_archivo ? `<a href="${t.enlace_archivo}" target="_blank" title="Ver Plano" class="btn-pdf">📄 Ver</a>` : '-';
-        const isChecked = idsSeleccionados.has(t.id) ? 'checked' : '';
-        const arts = t.codigos_articulo ? `<span class="obs-pildora" style="background:#f0fdf4; color:#166534; border-color:#bbf7d0;" title="${t.codigos_articulo}">${t.codigos_articulo}</span>` : '-';
+    let filasHTML = "";
+    
+    datos.forEach(t => {
+        let pdfLink = '-';
+        if (t.enlace_archivo) {
+            pdfLink = `<a href="${t.enlace_archivo}" target="_blank" title="Ver Plano" class="btn-pdf">📄 Ver</a>`;
+        }
         
-        return `
-        <tr class="${isChecked ? 'fila-seleccionada' : ''}">
+        let isChecked = '';
+        if (idsSeleccionados.has(t.id)) {
+            isChecked = 'checked';
+        }
+        
+        let claseFila = '';
+        if (idsSeleccionados.has(t.id)) {
+            claseFila = 'fila-seleccionada';
+        }
+        
+        let arts = '-';
+        if (t.codigos_articulo) {
+            arts = `<span class="obs-pildora" style="background:#f0fdf4; color:#166534; border-color:#bbf7d0;" title="${t.codigos_articulo}">${t.codigos_articulo}</span>`;
+        }
+        
+        let nombreCategoria = '-';
+        if (t.categorias && t.categorias.nombre) {
+            nombreCategoria = t.categorias.nombre;
+        }
+        
+        filasHTML += `
+        <tr class="${claseFila}">
             <td class="text-center">
                 <input type="checkbox" class="check-row" value="${t.id}" ${isChecked} onclick="toggleCheck(this, ${t.id})">
             </td>
             <td class="text-primary" style="font-size: 13px; font-weight: bold;">${t.id_troquel}</td>
             <td style="max-width: 200px;">${arts}</td>
             <td class="fw-bold">${t.nombre}</td>
-            <td><span class="etiqueta-familia">${t.categorias?.nombre || '-'}</span></td>
+            <td><span class="etiqueta-familia">${nombreCategoria}</span></td>
             <td>${t.ubicacion || '-'}</td>
             <td>${t.tamano_troquel || '-'}</td>
             <td>${t.tamano_final || '-'}</td>
@@ -180,8 +263,9 @@ function renderizarTabla(datos) {
                 </div>
             </td>
         </tr>`;
-    }).join('');
-    
+    });
+
+    tbody.innerHTML = filasHTML;
     evaluarBarraFlotante();
 }
 
@@ -189,13 +273,17 @@ function renderizarTabla(datos) {
 // 6. ACCIONES MASIVAS (BULK) Y SELECCIÓN
 // ==========================================
 window.toggleCheck = function(checkbox, id) { 
-    if (checkbox.checked) idsSeleccionados.add(id); 
-    else idsSeleccionados.delete(id); 
+    if (checkbox.checked) {
+        idsSeleccionados.add(id); 
+    } else {
+        idsSeleccionados.delete(id); 
+    }
     aplicarFiltrosYOrden(); 
 }
 
 window.toggleAllChecks = function(mainCheckbox) { 
     const checkboxes = document.querySelectorAll('.check-row'); 
+    
     checkboxes.forEach(chk => { 
         chk.checked = mainCheckbox.checked; 
         if (mainCheckbox.checked) {
@@ -204,12 +292,14 @@ window.toggleAllChecks = function(mainCheckbox) {
             idsSeleccionados.delete(parseInt(chk.value)); 
         }
     }); 
+    
     aplicarFiltrosYOrden(); 
 }
 
 function evaluarBarraFlotante() { 
     const barra = document.getElementById('barra-flotante'); 
     const contador = document.getElementById('contador-seleccionados'); 
+    
     if (idsSeleccionados.size > 0) { 
         contador.innerText = `${idsSeleccionados.size} seleccionados`; 
         barra.classList.remove('oculto'); 
@@ -220,25 +310,35 @@ function evaluarBarraFlotante() {
 
 window.aplicarBulkCategoria = async function() { 
     const catId = document.getElementById('bulk-categoria').value; 
-    if (!catId) return alert("Selecciona una familia."); 
+    
+    if (!catId) {
+        return alert("Selecciona una familia."); 
+    }
     
     await fetch('/api/troqueles/bulk/categoria', { 
         method: 'PUT', 
         headers: {'Content-Type': 'application/json'}, 
-        body: JSON.stringify({ ids: Array.from(idsSeleccionados), categoria_id: parseInt(catId) }) 
+        body: JSON.stringify({ 
+            ids: Array.from(idsSeleccionados), 
+            categoria_id: parseInt(catId) 
+        }) 
     }); 
+    
     idsSeleccionados.clear(); 
     cargarDatos(); 
 }
 
 window.aplicarBulkBorrar = async function() { 
-    if (!confirm(`¿Borrar ${idsSeleccionados.size} troqueles?`)) return; 
+    if (!confirm(`¿Estás seguro de mover ${idsSeleccionados.size} troqueles a la papelera?`)) {
+        return;
+    }
     
     await fetch('/api/troqueles/bulk/borrar', { 
         method: 'POST', 
         headers: {'Content-Type': 'application/json'}, 
         body: JSON.stringify({ ids: Array.from(idsSeleccionados) }) 
     }); 
+    
     idsSeleccionados.clear(); 
     cargarDatos(); 
 }
@@ -247,18 +347,25 @@ window.aplicarBulkBorrar = async function() {
 // 7. EXPORTACIÓN A EXCEL (CSV)
 // ==========================================
 window.exportarCSV = function() {
-    if (datosExportables.length === 0) return alert("No hay datos para exportar");
+    if (datosExportables.length === 0) {
+        return alert("No hay datos para exportar");
+    }
     
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
     csvContent += "QR_Fisico,Codigos_Articulo,Referencias_OT,Descripcion,Familia,Ubicacion,Tam_Troquel,Tam_Final,Observaciones\r\n";
     
     datosExportables.forEach(t => {
+        let nombreCat = '';
+        if (t.categorias && t.categorias.nombre) {
+            nombreCat = t.categorias.nombre;
+        }
+        
         const row = [ 
             `"${t.id_troquel}"`, 
             `"${t.codigos_articulo || ''}"`, 
             `"${t.referencias_ot || ''}"`, 
             `"${t.nombre}"`, 
-            `"${t.categorias?.nombre || ''}"`, 
+            `"${nombreCat}"`, 
             `"${t.ubicacion}"`, 
             `"${t.tamano_troquel || ''}"`, 
             `"${t.tamano_final || ''}"`, 
@@ -267,9 +374,11 @@ window.exportarCSV = function() {
         csvContent += row.join(",") + "\r\n";
     });
     
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a"); 
-    link.setAttribute("href", encodeURI(csvContent)); 
+    link.setAttribute("href", encodedUri); 
     link.setAttribute("download", "inventario_troqueles.csv"); 
+    
     document.body.appendChild(link); 
     link.click(); 
     document.body.removeChild(link);
@@ -280,7 +389,9 @@ window.exportarCSV = function() {
 // ==========================================
 window.abrirVistaEditar = function(id_db) {
     const t = listaTroquelesCache.find(x => x.id === id_db); 
-    if (!t) return;
+    if (!t) {
+        return;
+    }
     
     document.getElementById('input-id-db').value = t.id; 
     document.getElementById('input-id').value = t.id_troquel;
@@ -295,22 +406,34 @@ window.abrirVistaEditar = function(id_db) {
     document.getElementById('input-observaciones').value = t.observaciones || "";
     
     document.getElementById('titulo-formulario').innerText = "Editar Ficha de Troquel"; 
+    
     cambiarVista('vista-formulario'); 
     
-    document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
+    const botonesMenu = document.querySelectorAll('.menu-item');
+    botonesMenu.forEach(b => {
+        b.classList.remove('activo');
+    });
 }
 
 document.getElementById('form-troquel').addEventListener('submit', async (e) => {
     e.preventDefault(); 
     
     const id_db = document.getElementById('input-id-db').value;
+    
+    let categoriaId = document.getElementById('input-categoria').value;
+    if (categoriaId === "") {
+        categoriaId = null;
+    } else {
+        categoriaId = parseInt(categoriaId);
+    }
+    
     const datos = {
         id_troquel: document.getElementById('input-id').value,
         codigos_articulo: document.getElementById('input-articulos').value,
         referencias_ot: document.getElementById('input-ot').value,
         nombre: document.getElementById('input-nombre').value, 
         ubicacion: document.getElementById('input-ubicacion').value,
-        categoria_id: parseInt(document.getElementById('input-categoria').value) || null,
+        categoria_id: categoriaId,
         tamano_troquel: document.getElementById('input-tamano-troquel').value, 
         tamano_final: document.getElementById('input-tamano-final').value,
         enlace_archivo: document.getElementById('input-archivo').value, 
@@ -319,19 +442,29 @@ document.getElementById('form-troquel').addEventListener('submit', async (e) => 
 
     try {
         if (id_db) {
-            await fetch(`/api/troqueles/${id_db}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(datos) });
+            await fetch(`/api/troqueles/${id_db}`, { 
+                method: 'PUT', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(datos) 
+            });
         } else {
-            await fetch('/api/troqueles', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(datos) });
+            await fetch('/api/troqueles', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(datos) 
+            });
         }
+        
         await cargarDatos(); 
         document.querySelector('.menu-item').click();
+        
     } catch (error) {
-        alert("Ocurrió un error guardando el troquel.");
+        alert("Ocurrió un error guardando el troquel en la base de datos.");
     }
 });
 
 // ==========================================
-// 9. HISTORIAL
+// 9. HISTORIAL Y AUDITORÍA
 // ==========================================
 window.cargarHistorial = async function() {
     try {
@@ -344,57 +477,129 @@ window.cargarHistorial = async function() {
             return; 
         }
         
-        tbody.innerHTML = datos.map(h => `
+        let htmlHistorial = "";
+        datos.forEach(h => {
+            let infoTroquel = "Troquel Eliminado";
+            if (h.troqueles) {
+                infoTroquel = `[${h.troqueles.id_troquel}] ${h.troqueles.nombre}`;
+            }
+            
+            const fechaFormateada = new Date(h.fecha_hora).toLocaleString();
+            
+            htmlHistorial += `
             <tr>
-                <td class="text-muted" style="font-weight: 600;">${new Date(h.fecha_hora).toLocaleString()}</td>
-                <td class="fw-bold">${h.troqueles ? `[${h.troqueles.id_troquel}] ${h.troqueles.nombre}` : 'Troquel Eliminado'}</td>
+                <td class="text-muted" style="font-weight: 600;">${fechaFormateada}</td>
+                <td class="fw-bold">${infoTroquel}</td>
                 <td>${h.accion}</td>
-            </tr>
-        `).join('');
-    } catch (e) { 
-        console.error("Error historial", e); 
+            </tr>`;
+        });
+        
+        tbody.innerHTML = htmlHistorial;
+        
+    } catch (error) { 
+        console.error("Error cargando el historial", error); 
     }
 }
 
 // ==========================================
-// 10. GENERACIÓN QR (GODEX 50x23) Y ESCÁNER
+// 10. GENERACIÓN QR CON UBICACIÓN INCRUSTADA
 // ==========================================
 window.generarQR = function(id_troquel) { 
-    // Buscamos los datos completos del troquel para inyectarlos en la etiqueta
+    // 1. Encontrar los datos del troquel en el cache local
     const t = listaTroquelesCache.find(x => x.id_troquel === id_troquel);
-    if (!t) return;
+    if (!t) {
+        return;
+    }
 
+    // Mostrar el modal
     document.getElementById('modal-qr').classList.remove('oculto'); 
     
-    // Rellenamos el texto de la etiqueta
+    // 2. Rellenar los textos de la derecha de la etiqueta
     document.getElementById('qr-texto-id').innerText = t.id_troquel; 
-    document.getElementById('qr-texto-ubi').innerText = "📍 " + (t.ubicacion || 'Sin ubicar');
-    document.getElementById('qr-texto-desc').innerText = t.nombre || '';
+    
+    if (t.codigos_articulo) {
+        document.getElementById('qr-texto-arts').innerText = t.codigos_articulo;
+    } else {
+        document.getElementById('qr-texto-arts').innerText = '';
+    }
+    
+    if (t.nombre) {
+        document.getElementById('qr-texto-desc').innerText = t.nombre;
+    } else {
+        document.getElementById('qr-texto-desc').innerText = '';
+    }
 
-    // Generamos el QR optimizado para térmica
+    // 3. Configuración y Generación del QR Base
+    const canvas = document.getElementById('qr-canvas');
+    const size = 250; // Resolución alta interna para que no pixele
+    
+    // Nivel 'H' es crucial: Permite un 30% de destrucción/superposición de errores
     new QRious({ 
-        element: document.getElementById('qr-canvas'), 
+        element: canvas, 
         value: id_troquel, 
-        size: 200,    
+        size: size,    
         padding: 0,   
-        level: 'M'    
+        level: 'H' 
     }); 
+
+    // 4. Dibujar la ubicación en el centro exacto del QR
+    if (t.ubicacion) {
+        const ctx = canvas.getContext('2d');
+        const ubicacionTexto = t.ubicacion.toUpperCase();
+        
+        // Calcular el tamaño de la caja blanca (máximo el 35% del ancho del QR)
+        const boxSize = size * 0.35; 
+        const posX = (size - boxSize) / 2;
+        const posY = (size - boxSize) / 2;
+
+        // Pintar el fondo blanco
+        ctx.fillStyle = 'white';
+        ctx.fillRect(posX, posY, boxSize, boxSize);
+
+        // Configurar pincel para el texto en negro
+        ctx.fillStyle = 'black';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Ajuste dinámico de fuente: Si el texto es muy largo, se hace más pequeño
+        let fontSize = 35;
+        ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+        
+        // Bajar tamaño si sobrepasa la caja
+        while (ctx.measureText(ubicacionTexto).width > boxSize - 10 && fontSize > 10) {
+            fontSize--;
+            ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+        }
+
+        // Estampar el texto exactamente en el medio de la caja
+        ctx.fillText(ubicacionTexto, size / 2, size / 2);
+    }
 }
 
+// ==========================================
+// 11. ESCÁNER DE CÁMARA (SMARTPHONE)
+// ==========================================
 window.iniciarEscaneo = function() { 
     document.getElementById('contenedor-camara').classList.remove('oculto'); 
     html5QrCode = new Html5Qrcode("reader"); 
+    
     html5QrCode.start( 
         { facingMode: "environment" }, 
         { fps: 10, qrbox: 250 }, 
         (textoScaneado) => { 
+            // Si escanea algo, detiene cámara, va a la lista y busca ese texto
             window.detenerEscaneo(); 
             document.querySelector('.menu-item').click(); 
             document.getElementById('buscador').value = textoScaneado; 
             aplicarFiltrosYOrden(); 
         }, 
-        () => {} 
-    ).catch(() => window.detenerEscaneo()); 
+        (errorMessage) => {
+            // Ignoramos errores de lectura por falta de enfoque
+        } 
+    ).catch((error) => {
+        alert("Error al iniciar la cámara. Asegúrate de dar permisos al navegador.");
+        window.detenerEscaneo();
+    }); 
 }
 
 window.detenerEscaneo = function() { 
@@ -408,5 +613,7 @@ window.detenerEscaneo = function() {
     } 
 }
 
-// INICIALIZACIÓN
+// ==========================================
+// ARRANQUE DE LA APLICACIÓN
+// ==========================================
 cargarDatos();

@@ -279,9 +279,19 @@ body {
     background-color: #f8fafc;
 }
 
-.fw-bold { font-weight: 600; }
-.text-primary { color: var(--primary); font-family: monospace; font-size: 15px; }
-.text-center { text-align: center; }
+.fw-bold { 
+    font-weight: 600; 
+}
+
+.text-primary { 
+    color: var(--primary); 
+    font-family: monospace; 
+    font-size: 15px; 
+}
+
+.text-center { 
+    text-align: center; 
+}
 
 .etiqueta-familia {
     background: #e0e7ff;
@@ -322,7 +332,7 @@ body {
     cursor: help;
 }
 
-/* SELECCIÓN MÚLTIPLE EN TABLA (CHECKBOXES) */
+/* SELECCIÓN MÚLTIPLE EN TABLA */
 .fila-seleccionada td {
     background-color: #eff6ff !important;
     border-bottom-color: #bfdbfe !important;
@@ -515,28 +525,30 @@ input[type="checkbox"] {
 }
 
 /* =======================================================
-   DISEÑO DE ETIQUETA EN PANTALLA (PREVIEW 50x23)
+   DISEÑO ETIQUETA EN PANTALLA (PREVIEW 50x23)
    ======================================================= */
 .etiqueta-preview {
     display: flex;
     align-items: center;
     border: 1px solid #ccc;
-    padding: 2mm;
+    padding: 1mm 2mm;
     width: 50mm;
     height: 23mm;
     margin: 0 auto;
     background: white;
     box-sizing: border-box;
     overflow: hidden;
-    text-align: left;
 }
 
 .etiqueta-info {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: center; 
+    align-items: center;     
+    text-align: center;
     margin-left: 2mm;
     width: calc(100% - 21mm);
+    height: 100%;
 }
 
 .etiq-id { 
@@ -548,20 +560,25 @@ input[type="checkbox"] {
     color: black;
 }
 
-.etiq-ubi { 
+.etiq-arts { 
     font-weight: 600; 
     font-size: 7pt; 
     margin-top: 2px; 
     color: black;
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    max-width: 100%;
 }
 
 .etiq-desc { 
     font-weight: 400; 
     font-size: 6pt; 
-    margin-top: 1px; 
+    margin-top: 2px; 
     white-space: nowrap; 
     overflow: hidden; 
     text-overflow: ellipsis; 
+    max-width: 100%;
     color: black;
 }
 
@@ -570,7 +587,10 @@ input[type="checkbox"] {
    ======================================================= */
 @media print {
     body * { visibility: hidden; }
-    #zona-impresion, #zona-impresion * { visibility: visible; }
+    
+    #zona-impresion, #zona-impresion * { 
+        visibility: visible; 
+    }
     
     @page {
         size: 50mm 23mm;
@@ -593,5 +613,7 @@ input[type="checkbox"] {
         height: 19mm !important;
     }
     
-    .no-print { display: none !important; }
+    .no-print { 
+        display: none !important; 
+    }
 }
