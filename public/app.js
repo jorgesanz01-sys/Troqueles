@@ -399,33 +399,51 @@ window.exportarCSV = function() {
 }
 
 // ==========================================
-// 8. IMPORTAR CSV VIEJO (NUEVA FUNCIÓN)
+// 8. IMPORTAR CSV (UNIVERSAL)
 // ==========================================
-window.subirCSVViejo = async function() {
-    const input = document.getElementById('input-csv-viejo');
+window.subirCSV = async function() {
+    const input = document.getElementById('input-csv-import');
     if (!input.files[0]) return;
 
     const formData = new FormData();
     formData.append('file', input.files[0]);
 
-    if (!confirm("¿Seguro que quieres importar este archivo? Se añadirán los troqueles a la base de datos.")) {
+    if (!confirm("¿Seguro que quieres importar este archivo? Se añadirán o actualizarán los troqueles.")) {
         return;
     }
 
     try {
+        // Mostrar feedback de carga en el botón
+        const btn = document.querySelector('button[onclick*="input-csv-import"]');
+        const textoOriginal = btn.innerText;
+        btn.innerText = "⏳ Procesando...";
+        btn.disabled = true;
+
         const res = await fetch('/api/importar_csv', { 
             method: 'POST', 
             body: formData 
         });
         
+        const data = await res.json();
+        
+        // Restaurar botón
+        btn.innerText = textoOriginal;
+        btn.disabled = false;
+
         if (res.ok) {
-            alert("¡Importación completada con éxito!");
+            alert(`¡Importación completada! Se han procesado ${data.total_importados} registros.`);
             cargarDatos();
         } else {
-            alert("Hubo un error al procesar el archivo. Revisa que sea el CSV correcto.");
+            alert("Error del servidor: " + (data.detail || "No se pudo procesar el archivo."));
         }
     } catch (error) { 
         alert("Error de conexión al subir el archivo."); 
+        // Restaurar botón si falla la conexión
+        const btn = document.querySelector('button[onclick*="input-csv-import"]');
+        if (btn) {
+            btn.innerText = "📤 Importar CSV";
+            btn.disabled = false;
+        }
     }
 }
 
@@ -574,7 +592,7 @@ window.generarQR = function(id_troquel) {
         ubiEl.innerText = t.ubicacion ? t.ubicacion.toUpperCase() : "SIN UBICACIÓN";
     }
     
-    // LÍNEA 2: CÓDIGO (CENTRO) - Prioridad: Artículos > ID
+    // LÍNEA 2: CÓDIGO (CENTRO) - Prioridad: ID
     if (idEl) {
         idEl.innerText = t.id_troquel; 
     }
@@ -592,7 +610,7 @@ window.generarQR = function(id_troquel) {
             value: id_troquel, 
             size: 200,    
             padding: 0,   
-            level: 'M' // Nivel medio es suficiente
+            level: 'M' 
         }); 
     }
 }
