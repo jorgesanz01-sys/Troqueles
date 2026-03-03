@@ -9,26 +9,15 @@
     /* Materiales */
     --wood-texture: linear-gradient(135deg, #3d2b1f 0%, #2a1b12 100%); /* Madera oscura */
     --wood-accent: #d97706;      /* Barniz Naranja/Dorado */
-    --steel-light: #f8fafc;      /* Acero brillante */
-    --steel-dark: #cbd5e1;       /* Acero mate */
-    --blade-edge: #94a3b8;       /* Filo de cuchilla */
-
+    
     /* Colores Funcionales */
     --primary: #0f766e;          /* Verde técnico oscuro */
-    --primary-hover: #115e59;
-    --danger: #ef4444;           /* Rojo seguridad */
-    --success: #10b981;          /* Verde OK */
-    
-    /* Tipografía */
     --text-main: #334155;        /* Gris plomo */
-    --text-muted: #64748b;
     --text-light: #e2e8f0;
+    --border: #cbd5e1;           /* Borde metálico suave */
 
-    /* Estructural */
-    --radius-lg: 4px;            /* Bordes más rectos (Industrial) */
-    --radius-sm: 2px;
-    --shadow-hard: 2px 2px 0px rgba(0,0,0,0.15); /* Sombra dura "troquelada" */
-    --shadow-soft: 0 4px 6px -1px rgba(0,0,0,0.1);
+    /* Sombras */
+    --shadow-hard: 2px 2px 0px rgba(0,0,0,0.15);
 }
 
 body {
@@ -39,7 +28,6 @@ body {
     color: var(--text-main);
     height: 100vh;
     overflow: hidden;
-    /* Trama de fondo sutil (Papel milimetrado) */
     background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
     background-size: 20px 20px;
 }
@@ -55,413 +43,196 @@ body {
 /* --- BARRA LATERAL (EL TABLERO) --- */
 .sidebar {
     width: 270px;
-    background: var(--wood-texture); /* Fondo madera */
+    background: var(--wood-texture);
     color: var(--text-light);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    border-right: 4px solid var(--wood-accent); /* Canto de madera */
+    border-right: 5px solid var(--wood-accent);
     box-shadow: 5px 0 15px rgba(0,0,0,0.2);
     z-index: 20;
 }
 
 .sidebar-logo {
     padding: 25px;
-    background: rgba(0,0,0,0.3); /* Barniz oscuro */
+    background: rgba(0,0,0,0.3);
     border-bottom: 1px solid rgba(255,255,255,0.1);
-    display: flex;
-    align-items: center;
-    gap: 15px;
+    display: flex; align-items: center; gap: 15px;
 }
 
 .sidebar-logo h2 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 900;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: #fce7f3; /* Blanco sucio */
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 1px;
+    text-transform: uppercase; color: #fce7f3;
 }
 
 .sidebar-menu {
     padding: 20px 15px;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-grow: 1; display: flex; flex-direction: column; gap: 8px;
 }
 
-/* BOTONES MENÚ (Aspecto herramienta) */
 .menu-item {
-    background: rgba(255,255,255,0.03);
-    color: #cbd5e1;
-    border: 1px solid transparent;
-    padding: 12px 18px;
-    text-align: left;
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: all 0.15s ease;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    background: rgba(255,255,255,0.03); color: #cbd5e1; border: none;
+    padding: 12px 18px; text-align: left; font-size: 14px; font-weight: 600;
+    border-radius: 4px; cursor: pointer; transition: all 0.15s ease;
+    display: flex; align-items: center; gap: 12px;
 }
 
-.menu-item:hover {
-    background: rgba(255,255,255,0.1);
-    color: white;
-    transform: translateX(2px);
-}
+.menu-item:hover { background: rgba(255,255,255,0.1); color: white; transform: translateX(2px); }
 
-/* ESTADO ACTIVO: "Grabado" en la madera */
 .menu-item.activo {
     background: linear-gradient(90deg, rgba(217, 119, 6, 0.2) 0%, transparent 100%);
-    color: var(--wood-accent);
-    border-left: 4px solid var(--wood-accent);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+    color: var(--wood-accent); border-left: 4px solid var(--wood-accent);
 }
 
-.menu-divisor {
-    height: 1px;
-    background: rgba(255,255,255,0.1);
-    margin: 15px 10px;
-}
+.menu-divisor { height: 1px; background: rgba(255,255,255,0.1); margin: 15px 10px; }
 
 /* --- ZONA DE TRABAJO --- */
 .main-content {
-    flex-grow: 1;
-    padding: 30px 40px;
-    overflow-y: auto;
+    flex-grow: 1; padding: 30px 40px; overflow-y: auto;
 }
 
-/* CABECERAS (Placa metálica) */
 .header-modulo {
-    background: white;
-    padding: 20px 30px;
-    border-radius: var(--radius-lg);
-    border: 1px solid #cbd5e1;
-    border-left: 5px solid var(--primary); /* Marca técnica */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
-    box-shadow: var(--shadow-soft);
+    background: white; padding: 20px 30px; border-radius: 6px;
+    border: 1px solid #cbd5e1; border-left: 5px solid var(--primary);
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
 }
 
-.header-modulo h1 {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 800;
-    color: var(--text-main);
-    text-transform: uppercase;
-    letter-spacing: -0.5px;
-}
+.header-modulo h1 { margin: 0; font-size: 24px; font-weight: 800; text-transform: uppercase; color: #1e293b; }
 
-/* =======================================================
-   CONTROLES Y FILTROS
-   ======================================================= */
-/* CHIPS (Botones físicos) */
-.filtros-chips {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
+/* CONTROLES */
+.filtros-chips { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
 
 .chip {
-    padding: 8px 20px;
-    background: #f8fafc;
-    border: 1px solid #cbd5e1;
-    border-bottom: 3px solid #cbd5e1; /* Efecto 3D */
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 12px;
-    color: #64748b;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.1s;
+    padding: 8px 20px; background: #f8fafc; border: 1px solid #cbd5e1;
+    border-bottom: 3px solid #cbd5e1; border-radius: 4px;
+    font-weight: 700; font-size: 12px; color: #64748b; text-transform: uppercase;
+    cursor: pointer; transition: all 0.1s;
 }
 
-.chip:hover {
-    transform: translateY(1px);
-    border-bottom-width: 2px;
-    color: var(--primary);
-    background: white;
-}
+.chip:hover { transform: translateY(1px); border-bottom-width: 2px; color: var(--primary); background: white; }
 
 .chip.activo {
-    background: var(--bg-sidebar);
-    color: var(--wood-accent);
-    border-color: #0f172a;
-    border-bottom-color: #0f172a;
-    transform: translateY(2px);
-    border-bottom-width: 1px;
+    background: #1e293b; color: var(--wood-accent); border-color: #0f172a;
+    transform: translateY(2px); border-bottom-width: 1px;
 }
 
-/* BUSCADOR Y DROPDOWNS */
-.caja-buscador {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
+.caja-buscador { position: relative; display: flex; align-items: center; }
 
-input[type="text"], 
-input[type="url"],
-select, 
-textarea {
-    width: 100%;
-    padding: 10px 15px;
-    border: 2px solid #e2e8f0;
-    border-radius: var(--radius-lg);
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    color: var(--text-main);
-    background: #fff;
-    transition: all 0.2s;
+input, select, textarea {
+    width: 100%; padding: 10px 15px; border: 2px solid #e2e8f0; border-radius: 4px;
+    font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text-main); background: #fff;
+    box-sizing: border-box;
 }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
 
-input:focus, select:focus, textarea:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+/* TABLAS */
+.contenedor-tabla {
+    background: white; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;
 }
+.tabla-pro { width: 100%; border-collapse: collapse; }
+.tabla-pro th {
+    background: #f1f5f9; padding: 15px; text-align: left; font-size: 11px;
+    font-weight: 800; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #cbd5e1;
+}
+.tabla-pro td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: middle; }
+.fila-seleccionada td { background-color: #f0fdfa !important; }
 
-.select-bulk {
-    border: none !important;
-    background: rgba(255,255,255,0.1) !important;
-    color: white !important;
+.text-primary { color: var(--primary); font-family: monospace; font-weight: 900; font-size: 15px; }
+.etiqueta-familia { background: #fff7ed; color: #c2410c; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; border: 1px solid #ffedd5; }
+.obs-pildora { font-family: monospace; font-size: 12px; background: #f1f5f9; padding: 2px 6px; border-radius: 3px; color: #475569; border: 1px solid #e2e8f0; }
+
+/* BOTONES */
+.btn-accion {
+    background: var(--primary); color: white; border: none; padding: 10px 20px;
+    border-radius: 4px; font-weight: 700; font-size: 13px; text-transform: uppercase;
+    cursor: pointer; box-shadow: 0 3px 0 #0f514c;
 }
+.btn-accion:active { transform: translateY(2px); box-shadow: 0 1px 0 #0f514c; }
+
+.btn-secundario {
+    background: white; border: 1px solid #cbd5e1; color: #475569; padding: 8px 16px;
+    border-radius: 4px; font-weight: 700; font-size: 13px; cursor: pointer; box-shadow: 0 2px 0 #cbd5e1;
+}
+.btn-secundario:active { transform: translateY(2px); box-shadow: none; }
+
+.btn-icono {
+    background: white; border: 1px solid #cbd5e1; padding: 6px; border-radius: 4px;
+    cursor: pointer; box-shadow: 0 2px 0 #cbd5e1; margin: 0 2px;
+}
+.btn-icono:active { transform: translateY(2px); box-shadow: none; }
+
+/* FORMULARIO */
+.panel-formulario {
+    background: white; padding: 40px; border-radius: 6px; border: 1px solid #cbd5e1;
+    border-top: 5px solid var(--wood-accent); max-width: 900px; margin: 0 auto;
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+.full-width { grid-column: span 2; }
+.form-group label { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; }
+
+/* MODALES */
+.oculto { display: none !important; }
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.9); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+.modal-contenido { background: #f8fafc; padding: 30px; border-radius: 6px; width: 90%; max-width: 450px; border: 2px solid #475569; }
+
+.barra-acciones-bulk {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: #1e293b; padding: 12px 25px; border-radius: 8px; display: flex; align-items: center;
+    gap: 15px; color: white; border: 2px solid var(--wood-accent); box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 1000;
+}
+.select-bulk { background: rgba(255,255,255,0.1); border: none; color: white; }
 .select-bulk option { color: black; }
 
 /* =======================================================
-   TABLAS (Planos Técnicos)
-   ======================================================= */
-.contenedor-tabla {
-    background: white;
-    border: 1px solid #cbd5e1;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-soft);
-    overflow: hidden;
-}
-
-.tabla-pro {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.tabla-pro th {
-    background: #f1f5f9;
-    padding: 15px;
-    text-align: left;
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-    color: #64748b;
-    border-bottom: 2px solid #cbd5e1;
-    letter-spacing: 0.5px;
-}
-
-.tabla-pro td {
-    padding: 12px 15px;
-    border-bottom: 1px solid #f1f5f9;
-    font-size: 14px;
-    color: var(--text-main);
-    vertical-align: middle;
-}
-
-.tabla-pro tr:hover td {
-    background-color: #f8fafc;
-}
-
-.fila-seleccionada td {
-    background-color: #f0fdfa !important; /* Verde muy suave */
-    border-bottom: 1px solid #ccfbf1 !important;
-}
-
-/* Etiquetas visuales */
-.text-primary { 
-    color: var(--primary); 
-    font-family: 'Courier New', monospace; 
-    font-weight: 900;
-    font-size: 15px;
-}
-
-.etiqueta-familia {
-    background: #fff7ed;
-    color: #c2410c;
-    border: 1px solid #ffedd5;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    display: inline-block;
-}
-
-.obs-pildora {
-    font-family: monospace;
-    font-size: 12px;
-    background: #f1f5f9;
-    padding: 2px 6px;
-    border-radius: 3px;
-    color: #475569;
-    border: 1px solid #e2e8f0;
-}
-
-/* =======================================================
-   FORMULARIOS (Ficha Técnica)
-   ======================================================= */
-.panel-formulario {
-    background: white;
-    padding: 40px;
-    border-radius: var(--radius-lg);
-    border: 1px solid #cbd5e1;
-    border-top: 5px solid var(--wood-accent); /* Detalle madera superior */
-    box-shadow: var(--shadow-soft);
-    max-width: 900px;
-    margin: 0 auto;
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 25px;
-}
-
-.full-width { grid-column: span 2; }
-
-.form-group label {
-    display: block;
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-    color: #64748b;
-    margin-bottom: 6px;
-    letter-spacing: 0.5px;
-}
-
-/* =======================================================
-   BOTONES (Estilo Maquinaria)
-   ======================================================= */
-.btn-accion {
-    background: var(--primary);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 13px;
-    text-transform: uppercase;
-    cursor: pointer;
-    box-shadow: 0 3px 0 #0f514c; /* Sombra dura */
-    transition: all 0.1s;
-}
-
-.btn-accion:active {
-    transform: translateY(2px);
-    box-shadow: 0 1px 0 #0f514c;
-}
-
-.btn-secundario {
-    background: white;
-    border: 1px solid #cbd5e1;
-    color: #475569;
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 13px;
-    cursor: pointer;
-    box-shadow: 0 2px 0 #cbd5e1;
-    transition: all 0.1s;
-}
-
-.btn-secundario:active {
-    transform: translateY(2px);
-    box-shadow: none;
-}
-
-.btn-icono {
-    background: white;
-    border: 1px solid #cbd5e1;
-    padding: 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    box-shadow: 0 2px 0 #cbd5e1;
-    transition: all 0.1s;
-    margin: 0 2px;
-}
-
-.btn-icono:active {
-    transform: translateY(2px);
-    box-shadow: none;
-}
-
-/* =======================================================
-   MODALES Y FLOTANTES
-   ======================================================= */
-.oculto { display: none !important; }
-
-.modal {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(15, 23, 42, 0.85); /* Oscuro técnico */
-    backdrop-filter: blur(2px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
-
-.modal-contenido {
-    background: #f8fafc;
-    padding: 30px;
-    border-radius: 6px;
-    border: 2px solid #475569;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    width: 90%;
-    max-width: 450px;
-}
-
-/* Barra de Acciones Masivas */
-.barra-acciones-bulk {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--bg-sidebar);
-    padding: 12px 25px;
-    border-radius: 8px; /* Rectangular con bordes suaves */
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    color: white;
-    border: 2px solid var(--wood-accent); /* Borde madera */
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    z-index: 1000;
-}
-
-/* =======================================================
-   ETIQUETA GODEX (Preview 50x23)
+   ETIQUETA GODEX (50x23mm) - PREVISUALIZACIÓN
    ======================================================= */
 .etiqueta-preview {
     width: 50mm; height: 23mm;
-    border: 1px solid #000;
-    display: flex; align-items: center;
-    background: white; padding: 1mm;
-    margin: 0 auto; box-sizing: border-box;
+    background: white; border: 1px dashed #333;
+    margin: 0 auto; display: flex; align-items: center;
+    padding: 0; box-sizing: border-box; overflow: hidden;
 }
-.etiqueta-info { width: calc(100% - 18mm); margin-left: 2mm; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
-.etiq-ubi { font-weight:900; font-size:9pt; text-transform:uppercase; line-height: 1.1; }
-.etiq-id { font-family:'Courier New', monospace; font-size:8pt; font-weight:700; color:#333; }
-.etiq-desc { font-size:6pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;}
 
-/* IMPRESIÓN */
+#qr-canvas {
+    width: 18mm !important; height: 18mm !important;
+    flex-shrink: 0; margin-left: 1mm;
+    image-rendering: pixelated;
+}
+
+.etiqueta-info {
+    margin-left: 2mm; width: 28mm; height: 21mm;
+    display: flex; flex-direction: column; justify-content: center;
+    overflow: hidden; line-height: 1.1;
+}
+
+.etiq-ubi { font-size: 14px; font-weight: 900; color: black; text-transform: uppercase; }
+.etiq-id { font-size: 9px; font-family: monospace; font-weight: 700; color: #333; margin-top: 1px; }
+.etiq-desc { font-size: 7px; font-weight: 600; color: black; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+/* =======================================================
+   IMPRESIÓN REAL (GODEX 50x23mm)
+   ======================================================= */
 @media print {
-    body * { visibility: hidden; }
-    #zona-impresion, #zona-impresion * { visibility: visible; }
-    #zona-impresion { position: fixed; top: 0; left: 0; border: none; margin: 0; }
     @page { size: 50mm 23mm; margin: 0; }
+    body { margin: 0; padding: 0; background: white; }
+    body * { visibility: hidden; height: 0; overflow: hidden; }
+    
+    #zona-impresion, #zona-impresion * { visibility: visible; height: auto; overflow: visible; }
+    
+    #zona-impresion {
+        position: fixed; left: 0; top: 0;
+        width: 50mm; height: 23mm;
+        border: none; margin: 0; padding: 0;
+        display: flex; align-items: center;
+        background: white !important; color: black !important;
+        z-index: 9999;
+    }
+    
+    /* Forzar estilos de impresión */
+    .etiq-ubi { font-size: 12pt !important; color: black !important; }
+    .etiq-id { font-size: 8pt !important; color: black !important; }
+    .etiq-desc { font-size: 6pt !important; color: black !important; }
+    
     .no-print { display: none !important; }
 }
