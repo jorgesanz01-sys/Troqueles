@@ -2,72 +2,89 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERP Packaging | V7 Final</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ERP Packaging | V8</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 </head>
 <body>
     <div class="erp-layout">
-        <aside class="sidebar">
-            <div class="sidebar-logo"><span>🏭</span><h2>ERP V7</h2></div>
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo"><span>🏭</span><h2>ERP V8</h2></div>
             <nav class="sidebar-menu">
-                <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario</button>
-                <button class="menu-item" onclick="App.nuevoTroquel()">➕ Nuevo Troquel</button>
-                <button class="menu-item" onclick="App.nav('vista-historial', this); App.cargarHistorial()">📝 Historial</button>
+                <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
+                
+                <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
+                
                 <div class="menu-divisor"></div>
-                <button class="menu-item" onclick="App.toggleScanner()">📷 Escáner Lotes</button>
+                <button class="menu-item" onclick="App.nuevoTroquel()">➕ Nuevo Troquel</button>
+                <button class="menu-item" onclick="App.abrirGestionAux()">⚙️ Familias/Tipos</button>
+                <button class="menu-item" onclick="App.nav('vista-historial', this); App.cargarHistorial()">📝 Historial</button>
             </nav>
         </aside>
 
         <main class="main-content">
+            
+            <section id="vista-movil" class="vista oculto" style="padding:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h1 style="margin:0;">Zona Operario</h1>
+                    <button class="btn-secundario" onclick="App.desactivarModoMovil()">Ver versión PC</button>
+                </div>
+
+                <div class="grid-movil">
+                    <button class="btn-gigante scan" onclick="App.toggleScanner(true, 'LOTE')">
+                        <span style="font-size:40px;">📷</span><br>ESCANEAR LOTE<br><small>Salidas / Retornos</small>
+                    </button>
+                    
+                    <button class="btn-gigante nuevo" onclick="App.nuevoTroquel()">
+                        <span style="font-size:40px;">➕</span><br>NUEVO TROQUEL<br><small>Hacer Ficha y Foto</small>
+                    </button>
+
+                    <button class="btn-gigante buscar" onclick="document.getElementById('buscador-movil').focus()">
+                        <span style="font-size:40px;">🔍</span><br>BUSCAR RÁPIDO
+                    </button>
+                </div>
+
+                <div style="margin-top:20px;">
+                    <input type="text" id="buscador-movil" placeholder="Escribe matrícula o ubicación..." style="width:100%; padding:15px; font-size:18px; border:2px solid #334155; border-radius:8px;" oninput="App.buscarMovil(this.value)">
+                    <div id="resultados-movil" style="margin-top:10px; display:flex; flex-direction:column; gap:10px;"></div>
+                </div>
+            </section>
+
             <section id="vista-lista" class="vista">
                 <div class="header-modulo">
                     <h1>Inventario</h1>
-                    <button class="btn-secundario" onclick="App.exportarCSV()">📥 Excel</button>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn-secundario" onclick="App.exportarCSV()">📥 Excel</button>
+                    </div>
                 </div>
 
                 <div class="filtros-chips" id="chips-tipos"></div>
                 
                 <div style="display:flex; gap:15px; margin-bottom:15px; align-items:center;">
-                    <select id="filtro-familia" onchange="App.filtrar()" style="width:200px; padding:8px;">
-                        <option value="TODAS">Todas las Familias</option>
-                    </select>
-                    
+                    <select id="filtro-familia" onchange="App.filtrar()" style="width:200px; padding:8px;"><option value="TODAS">Todas las Familias</option></select>
                     <select id="filtro-estado" onchange="App.filtrar()" style="width:150px; padding:8px;">
-                        <option value="TODOS">Todos Estados</option>
-                        <option value="EN ALMACEN">En Almacén</option>
-                        <option value="EN PRODUCCION">En Producción</option>
-                        <option value="DESCATALOGADO">Descatalogados</option>
+                        <option value="TODOS">Todos</option><option value="EN ALMACEN">Almacén</option><option value="EN PRODUCCION">Producción</option><option value="DESCATALOGADO">Descatalogado</option>
                     </select>
-
                     <div class="caja-buscador" style="flex:1; position:relative;">
-                        <input type="text" id="buscador" placeholder="Buscar..." oninput="App.filtrar()" style="width:100%; padding-right:30px;">
-                        <button id="btn-limpiar" onclick="App.limpiarBuscador()" class="oculto" style="position:absolute; right:5px; top:5px; border:none; background:transparent; cursor:pointer;">✕</button>
+                        <input type="text" id="buscador" placeholder="Buscar..." oninput="App.filtrar()" style="width:100%;">
+                        <button id="btn-limpiar" onclick="App.limpiarBuscador()" class="oculto" style="position:absolute; right:5px; top:5px; background:none; border:none; cursor:pointer;">✕</button>
                     </div>
                 </div>
 
-                <div id="panel-acciones" class="panel-acciones oculto" style="background:#e0f2fe; padding:10px; border-radius:6px; margin-bottom:15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div id="panel-acciones" class="panel-acciones oculto">
                     <strong style="color:#0369a1;"><span id="contador-sel">0</span> sel.</strong>
-                    
                     <button class="btn-accion" style="background:#e11d48;" onclick="App.moverLote('SALIDA')">🏭 A Prod.</button>
                     <button class="btn-accion" style="background:#16a34a;" onclick="App.moverLote('RETORNO')">✅ Devolver</button>
                     
-                    <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
-
-                    <select id="bulk-familia" class="select-bulk" style="color:black; background:white; border:1px solid #93c5fd;">
-                        <option value="">Asignar Familia...</option>
-                    </select>
+                    <select id="bulk-familia" class="select-bulk" style="color:black; background:white; border:1px solid #93c5fd;"><option value="">Familia...</option></select>
                     <button class="btn-secundario" onclick="App.asignarMasivo('familia')">OK</button>
 
-                    <select id="bulk-tipo" class="select-bulk" style="color:black; background:white; border:1px solid #93c5fd;">
-                        <option value="">Asignar Tipo...</option>
-                    </select>
+                    <select id="bulk-tipo" class="select-bulk" style="color:black; background:white; border:1px solid #93c5fd;"><option value="">Tipo...</option></select>
                     <button class="btn-secundario" onclick="App.asignarMasivo('categoria')">OK</button>
 
-                    <div style="flex-grow:1;"></div>
                     <button class="btn-secundario" onclick="App.limpiarSeleccion()">Cancelar</button>
                 </div>
 
@@ -82,7 +99,7 @@
                                 <th onclick="App.ordenar('nombre')" style="cursor:pointer;">Descripción ↕️</th>
                                 <th onclick="App.ordenar('categoria')" style="cursor:pointer;">Tipo ↕️</th>
                                 <th onclick="App.ordenar('familia')" style="cursor:pointer;">Familia ↕️</th>
-                                <th width="140">Acciones</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tabla-body"></tbody>
@@ -93,61 +110,64 @@
             <section id="vista-formulario" class="vista oculto">
                 <div class="header-modulo">
                     <h1 id="titulo-form">Ficha Troquel</h1>
-                    <button class="btn-secundario" onclick="App.nav('vista-lista')">Volver</button>
+                    <button class="btn-secundario" onclick="App.volverDesdeForm()">Volver</button>
                 </div>
                 <div class="panel-formulario">
                     <form onsubmit="App.guardarFicha(event)">
                         <input type="hidden" id="f-id-db">
                         <div class="form-grid">
-                            
                             <div class="full-width" style="background:#f0fdf4; padding:15px; border:1px solid #86efac; border-radius:4px;">
                                 <label style="color:#15803d; font-weight:900;">1. TIPO DE TROQUEL (Calcula Matrícula)</label>
-                                <select id="f-cat" required onchange="App.calcularSiguienteId()" style="font-weight:bold; border:2px solid #16a34a;"></select>
+                                <select id="f-cat" required onchange="App.calcularSiguienteId()" style="font-weight:bold; border:2px solid #16a34a; width:100%; padding:10px;"></select>
                             </div>
-
-                            <div>
-                                <label>Matrícula (Automática)</label>
-                                <input type="text" id="f-matricula" required style="font-weight:900; background:#eee;" readonly>
-                            </div>
-                            <div>
-                                <label>Ubicación Actual</label>
-                                <input type="text" id="f-ubicacion" required style="font-weight:900;">
-                            </div>
+                            <div><label>Matrícula</label><input type="text" id="f-matricula" required readonly style="background:#eee; font-weight:900;"></div>
+                            <div><label>Ubicación</label><input type="text" id="f-ubicacion" required style="font-weight:900;"></div>
 
                             <div class="full-width" style="text-align:center; padding:15px; border:2px dashed #cbd5e1; background:#f8fafc;">
                                 <div id="preview-container" style="margin-bottom:10px;"></div>
                                 <input type="hidden" id="f-foto-url">
-                                
-                                <label class="btn-secundario" style="cursor:pointer; display:inline-block; padding:10px 20px;">
-                                    📎 Subir Foto o PDF
+                                <label class="btn-accion" style="cursor:pointer; display:inline-block; width:100%; padding:15px;">
+                                    📷 FOTO / PDF
                                     <input type="file" accept="image/*,.pdf" capture="environment" onchange="App.subirArchivo(this)" style="display:none;">
                                 </label>
                             </div>
 
-                            <div class="full-width"><label>Descripción / Nombre *</label><input type="text" id="f-nombre" required></div>
+                            <div class="full-width"><label>Nombre *</label><input type="text" id="f-nombre" required></div>
                             
                             <div>
                                 <label>Familia</label>
                                 <div style="display:flex; gap:5px;">
                                     <select id="f-fam" style="flex:1;"></select>
-                                    <button type="button" class="btn-secundario" onclick="App.crearFamilia()" title="Nueva Familia">+</button>
+                                    <button type="button" class="btn-secundario" onclick="App.crearFamilia()" style="background:#dbeafe; border-color:#93c5fd;">➕ Nueva</button>
                                 </div>
                             </div>
                             
-                            <div><label>OT Referencia</label><input type="text" id="f-ot"></div>
+                            <div><label>OT</label><input type="text" id="f-ot"></div>
                             <div><label>Medidas Madera</label><input type="text" id="f-medidas-madera"></div>
                             <div><label>Medidas Corte</label><input type="text" id="f-medidas-corte"></div>
-                            
                             <div class="full-width"><label>Artículos</label><textarea id="f-arts" rows="2"></textarea></div>
                             <div class="full-width"><label>Observaciones</label><textarea id="f-obs" rows="2"></textarea></div>
                         </div>
                         <div style="margin-top:20px; text-align:right;">
-                            <button type="button" class="btn-secundario" onclick="App.nav('vista-lista')">Cancelar</button>
-                            <button type="submit" class="btn-accion">💾 GUARDAR</button>
+                            <button type="submit" class="btn-accion" style="padding:15px 30px; font-size:16px;">💾 GUARDAR FICHA</button>
                         </div>
                     </form>
                 </div>
             </section>
+
+            <div id="modal-aux" class="modal oculto">
+                <div class="modal-contenido">
+                    <h2>Gestión de Familias y Tipos</h2>
+                    <p>Añade nuevas opciones para los desplegables.</p>
+                    <div style="display:flex; gap:10px; margin-top:20px;">
+                        <button class="btn-accion" onclick="App.crearFamilia()">➕ Nueva Familia</button>
+                        <button class="btn-accion" onclick="App.crearTipo()">➕ Nuevo Tipo</button>
+                    </div>
+                    <div style="margin-top:20px; text-align:right;">
+                        <button class="btn-secundario" onclick="document.getElementById('modal-aux').classList.add('oculto')">Cerrar</button>
+                    </div>
+                </div>
+            </div>
 
             <section id="vista-historial" class="vista oculto">
                 <div class="header-modulo"><h1>Historial</h1></div>
@@ -156,15 +176,22 @@
         </main>
     </div>
 
-    <div id="modal-scanner" class="modal oculto">
-        <div class="modal-contenido">
-            <h2>Escáner Lotes</h2>
-            <div id="reader"></div>
-            <div id="lista-escaneados" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:5px;"></div>
-            <div style="margin-top:15px; display:flex; gap:10px; justify-content:center;">
-                <button class="btn-accion" onclick="App.procesarEscaneo('SALIDA')">🏭 Salida</button>
-                <button class="btn-accion" style="background:#16a34a;" onclick="App.procesarEscaneo('RETORNO')">✅ Entrada</button>
-                <button class="btn-secundario" onclick="App.toggleScanner(false)">Cerrar</button>
+    <div id="modal-scanner" class="modal oculto" style="background:black;">
+        <div class="modal-contenido" style="background:#1e293b; color:white; width:100%; height:100%; max-width:none; border:none; display:flex; flex-direction:column;">
+            <div style="padding:10px; display:flex; justify-content:space-between;">
+                <h3>📸 Escáner Lote</h3>
+                <button class="btn-secundario" onclick="App.toggleScanner(false)" style="background:transparent; color:white; border:1px solid white;">✕ Cerrar</button>
+            </div>
+            
+            <div id="reader" style="flex:1; background:black;"></div>
+            
+            <div style="height:30%; background:#0f172a; padding:10px; overflow-y:auto;">
+                <div id="lista-escaneados" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+            </div>
+            
+            <div style="padding:15px; display:flex; gap:10px; justify-content:center; background:#0f172a;">
+                <button class="btn-accion" style="background:#e11d48; width:50%; padding:15px;" onclick="App.procesarEscaneo('SALIDA')">A PRODUCCIÓN</button>
+                <button class="btn-accion" style="background:#16a34a; width:50%; padding:15px;" onclick="App.procesarEscaneo('RETORNO')">DEVOLVER</button>
             </div>
         </div>
     </div>

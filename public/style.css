@@ -1,246 +1,90 @@
 /* =======================================================
-   TEMA: INDUSTRIAL DIE-CUTTING PRO (MADERA & ACERO)
+   TEMA: INDUSTRIAL DIE-CUTTING PRO V8
    ======================================================= */
 :root {
-    /* Paleta Base */
-    --bg-app: #f1f5f9;           
-    --bg-sidebar: #1e293b;       
-    
-    /* Materiales */
-    --wood-texture: linear-gradient(135deg, #3d2b1f 0%, #2a1b12 100%); 
-    --wood-accent: #d97706;      
-    
-    /* Colores Funcionales */
-    --primary: #0f766e;          
-    --text-main: #334155;        
-    --text-light: #e2e8f0;
-    --border: #cbd5e1;           
-
-    /* Sombras */
-    --shadow-hard: 2px 2px 0px rgba(0,0,0,0.15);
+    --bg-app: #f1f5f9; --bg-sidebar: #1e293b; --wood-texture: linear-gradient(135deg, #3d2b1f 0%, #2a1b12 100%);
+    --wood-accent: #d97706; --primary: #0f766e; --text-main: #334155; --border: #cbd5e1;
 }
+body { font-family: 'Inter', sans-serif; margin: 0; background-color: var(--bg-app); color: var(--text-main); height: 100vh; overflow: hidden; }
+.erp-layout { display: flex; height: 100%; }
 
-body {
-    font-family: 'Inter', system-ui, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: var(--bg-app);
-    color: var(--text-main);
-    height: 100vh;
-    overflow: hidden;
-    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
-    background-size: 20px 20px;
-}
+/* SIDEBAR */
+.sidebar { width: 260px; background: var(--wood-texture); color: #e2e8f0; display: flex; flex-direction: column; border-right: 5px solid var(--wood-accent); flex-shrink: 0; transition: all 0.3s; }
+.sidebar-logo { padding: 25px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 15px; font-weight: 900; font-size: 20px; color: #fce7f3; }
+.sidebar-menu { padding: 10px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.menu-item { background: rgba(255,255,255,0.03); color: #cbd5e1; border: none; padding: 15px; text-align: left; font-size: 14px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+.menu-item:hover { background: rgba(255,255,255,0.1); color: white; }
+.menu-item.activo { background: linear-gradient(90deg, rgba(217, 119, 6, 0.2) 0%, transparent 100%); color: var(--wood-accent); border-left: 4px solid var(--wood-accent); }
+.menu-item.destacado-movil { background: #d97706; color: white; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; justify-content: center; margin-bottom: 10px; }
+.menu-divisor { height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0; }
 
-/* =======================================================
-   LAYOUT PRINCIPAL
-   ======================================================= */
-.erp-layout {
-    display: flex;
-    height: 100%;
-}
+/* CONTENT */
+.main-content { flex-grow: 1; padding: 20px; overflow-y: auto; position: relative; }
+.header-modulo { background: white; padding: 15px 20px; border-radius: 6px; border: 1px solid var(--border); border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.header-modulo h1 { margin: 0; font-size: 20px; text-transform: uppercase; color: #1e293b; }
 
-/* --- BARRA LATERAL (EL TABLERO) --- */
-.sidebar {
-    width: 270px;
-    background: var(--wood-texture);
-    color: var(--text-light);
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    border-right: 5px solid var(--wood-accent);
-    box-shadow: 5px 0 15px rgba(0,0,0,0.2);
-    z-index: 20;
-}
+/* ESTILOS MODO MÓVIL (GRID BOTONES GIGANTES) */
+.grid-movil { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
+.btn-gigante { border: none; border-radius: 12px; padding: 30px; font-size: 18px; font-weight: 900; color: white; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: transform 0.1s; }
+.btn-gigante:active { transform: scale(0.98); }
+.btn-gigante.scan { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
+.btn-gigante.nuevo { background: linear-gradient(135deg, #10b981 0%, #047857 100%); }
+.btn-gigante.buscar { background: linear-gradient(135deg, #64748b 0%, #334155 100%); }
 
-.sidebar-logo {
-    padding: 25px;
-    background: rgba(0,0,0,0.3);
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    display: flex; align-items: center; gap: 15px;
-}
+.card-movil { background: white; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
-.sidebar-logo h2 {
-    margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 1px;
-    text-transform: uppercase; color: #fce7f3;
-}
+/* CONTROLES PC */
+.filtros-chips { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+.chip { padding: 6px 12px; background: #fff; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 11px; font-weight: 700; color: #64748b; cursor: pointer; }
+.chip.activo { background: #1e293b; color: #d97706; border-color: #1e293b; }
+input, select, textarea { width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 4px; font-family: 'Inter'; box-sizing: border-box; }
 
-.sidebar-menu {
-    padding: 20px 15px;
-    flex-grow: 1; display: flex; flex-direction: column; gap: 8px;
-}
-
-.menu-item {
-    background: rgba(255,255,255,0.03); color: #cbd5e1; border: none;
-    padding: 12px 18px; text-align: left; font-size: 14px; font-weight: 600;
-    border-radius: 4px; cursor: pointer; transition: all 0.15s ease;
-    display: flex; align-items: center; gap: 12px;
-}
-
-.menu-item:hover { background: rgba(255,255,255,0.1); color: white; transform: translateX(2px); }
-
-.menu-item.activo {
-    background: linear-gradient(90deg, rgba(217, 119, 6, 0.2) 0%, transparent 100%);
-    color: var(--wood-accent); border-left: 4px solid var(--wood-accent);
-}
-
-.menu-divisor { height: 1px; background: rgba(255,255,255,0.1); margin: 15px 10px; }
-
-/* --- ZONA DE TRABAJO --- */
-.main-content {
-    flex-grow: 1; padding: 30px 40px; overflow-y: auto;
-}
-
-.header-modulo {
-    background: white; padding: 20px 30px; border-radius: 6px;
-    border: 1px solid #cbd5e1; border-left: 5px solid var(--primary);
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-}
-
-.header-modulo h1 { margin: 0; font-size: 24px; font-weight: 800; text-transform: uppercase; color: #1e293b; }
-
-/* CONTROLES */
-.filtros-chips { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-
-.chip {
-    padding: 8px 20px; background: #f8fafc; border: 1px solid #cbd5e1;
-    border-bottom: 3px solid #cbd5e1; border-radius: 4px;
-    font-weight: 700; font-size: 12px; color: #64748b; text-transform: uppercase;
-    cursor: pointer; transition: all 0.1s;
-}
-
-.chip:hover { transform: translateY(1px); border-bottom-width: 2px; color: var(--primary); background: white; }
-
-.chip.activo {
-    background: #1e293b; color: var(--wood-accent); border-color: #0f172a;
-    transform: translateY(2px); border-bottom-width: 1px;
-}
-
-.caja-buscador { position: relative; display: flex; align-items: center; }
-
-input, select, textarea {
-    width: 100%; padding: 10px 15px; border: 2px solid #e2e8f0; border-radius: 4px;
-    font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text-main); background: #fff;
-    box-sizing: border-box;
-}
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
-
-/* TABLAS */
-.contenedor-tabla {
-    background: white; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;
-}
-.tabla-pro { width: 100%; border-collapse: collapse; }
-.tabla-pro th {
-    background: #f1f5f9; padding: 15px; text-align: left; font-size: 11px;
-    font-weight: 800; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #cbd5e1;
-}
-.tabla-pro td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: middle; }
+/* TABLA */
+.contenedor-tabla { background: white; border: 1px solid var(--border); border-radius: 6px; overflow-x: auto; }
+.tabla-pro { width: 100%; border-collapse: collapse; min-width: 800px; }
+.tabla-pro th { background: #f8fafc; padding: 12px; text-align: left; font-size: 11px; font-weight: 800; color: #64748b; border-bottom: 2px solid var(--border); }
+.tabla-pro td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
 .fila-seleccionada td { background-color: #f0fdfa !important; }
 
-.text-primary { color: var(--primary); font-family: monospace; font-weight: 900; font-size: 15px; }
-.etiqueta-familia { background: #fff7ed; color: #c2410c; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; border: 1px solid #ffedd5; }
-.obs-pildora { font-family: monospace; font-size: 12px; background: #f1f5f9; padding: 2px 6px; border-radius: 3px; color: #475569; border: 1px solid #e2e8f0; }
+/* PANEL ACCIONES */
+.panel-acciones { background: #e0f2fe; padding: 10px; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 /* BOTONES */
-.btn-accion {
-    background: var(--primary); color: white; border: none; padding: 10px 20px;
-    border-radius: 4px; font-weight: 700; font-size: 13px; text-transform: uppercase;
-    cursor: pointer; box-shadow: 0 3px 0 #0f514c;
-}
-.btn-accion:active { transform: translateY(2px); box-shadow: 0 1px 0 #0f514c; }
+.btn-accion { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 700; cursor: pointer; }
+.btn-secundario { background: white; border: 1px solid #cbd5e1; color: #475569; padding: 8px 16px; border-radius: 4px; font-weight: 700; cursor: pointer; }
+.btn-icono { background: white; border: 1px solid #cbd5e1; padding: 5px; border-radius: 4px; cursor: pointer; margin-right: 3px; }
 
-.btn-secundario {
-    background: white; border: 1px solid #cbd5e1; color: #475569; padding: 8px 16px;
-    border-radius: 4px; font-weight: 700; font-size: 13px; cursor: pointer; box-shadow: 0 2px 0 #cbd5e1;
-}
-.btn-secundario:active { transform: translateY(2px); box-shadow: none; }
+/* ETIQUETA GODEX */
+.etiqueta-preview { width: 50mm; height: 23mm; background: white; border: 1px dashed #333; margin: 0 auto; display: flex; align-items: center; padding: 0; box-sizing: border-box; overflow: hidden; }
+#qr-canvas { width: 17mm !important; height: 17mm !important; flex-shrink: 0; margin-left: 1.5mm; image-rendering: pixelated; }
+.etiqueta-info { margin-left: 2mm; width: 29mm; height: 21mm; display: flex; flex-direction: column; justify-content: center; overflow: hidden; line-height: 1.1; }
+.etiq-ubi { font-size: 14px; font-weight: 900; color: black; text-transform: uppercase; margin-bottom: 1px; }
+.etiq-id { font-size: 10px; font-family: monospace; font-weight: 700; color: #333; margin-bottom: 2px; }
+.etiq-desc { font-size: 8px; font-weight: 600; color: black; white-space: normal; max-height: 2.2em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
-.btn-icono {
-    background: white; border: 1px solid #cbd5e1; padding: 6px; border-radius: 4px;
-    cursor: pointer; box-shadow: 0 2px 0 #cbd5e1; margin: 0 2px;
+/* IMPRESIÓN */
+@media print {
+    @page { size: 50mm 23mm; margin: 0 !important; }
+    html, body { margin: 0 !important; padding: 0 !important; width: 50mm; height: 23mm; background: white; }
+    .erp-layout, .sidebar, .main-content, .modal, .barra-acciones-bulk, .no-print { display: none !important; }
+    #modal-qr { display: block !important; position: static !important; width: 50mm; height: 23mm; overflow: hidden; }
+    .modal-contenido { border: none; padding: 0; margin: 0; width: 50mm; height: 23mm; }
+    .etiqueta-preview { border: none; }
+    #zona-impresion { position: fixed; left: 0; top: 0; width: 50mm; height: 23mm; display: flex; align-items: center; z-index: 9999; }
+    .etiq-ubi { font-size: 12pt !important; } .etiq-id { font-size: 8pt !important; } .etiq-desc { font-size: 7pt !important; }
 }
-.btn-icono:active { transform: translateY(2px); box-shadow: none; }
-
-/* FORMULARIO */
-.panel-formulario {
-    background: white; padding: 40px; border-radius: 6px; border: 1px solid #cbd5e1;
-    border-top: 5px solid var(--wood-accent); max-width: 900px; margin: 0 auto;
-}
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
-.full-width { grid-column: span 2; }
-.form-group label { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; }
 
 /* MODALES */
 .oculto { display: none !important; }
-.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.9); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-.modal-contenido { background: #f8fafc; padding: 30px; border-radius: 6px; width: 90%; max-width: 450px; border: 2px solid #475569; }
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; }
+.modal-contenido { background: white; padding: 20px; border-radius: 8px; max-width: 90%; width: 500px; max-height: 90vh; overflow-y: auto; }
 
-.barra-acciones-bulk {
-    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-    background: #1e293b; padding: 12px 25px; border-radius: 8px; display: flex; align-items: center;
-    gap: 15px; color: white; border: 2px solid var(--wood-accent); box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 1000;
-}
-.select-bulk { background: rgba(255,255,255,0.1); border: none; color: white; }
-.select-bulk option { color: black; }
-
-/* =======================================================
-   ETIQUETA GODEX (50x23mm) - AJUSTE MULTILÍNEA
-   ======================================================= */
-.etiqueta-preview {
-    width: 50mm; height: 23mm;
-    background: white; border: 1px dashed #333;
-    margin: 0 auto; display: flex; align-items: center;
-    padding: 0; box-sizing: border-box; overflow: hidden;
-}
-
-#qr-canvas {
-    width: 17mm !important; height: 17mm !important;
-    flex-shrink: 0; margin-left: 1mm;
-    image-rendering: pixelated;
-}
-
-.etiqueta-info {
-    margin-left: 2mm; width: 29mm; height: 21mm;
-    display: flex; flex-direction: column; justify-content: center;
-    overflow: hidden; line-height: 1.1;
-}
-
-.etiq-ubi { font-size: 14px; font-weight: 900; color: black; text-transform: uppercase; margin-bottom: 1px; }
-.etiq-id { font-size: 10px; font-family: monospace; font-weight: 700; color: #333; margin-bottom: 2px; }
-
-/* DESCRIPCIÓN AJUSTADA PARA NO CORTARSE */
-.etiq-desc { 
-    font-size: 8px; 
-    font-weight: 600; 
-    color: black; 
-    /* Permitir que el texto baje de línea */
-    white-space: normal; 
-    line-height: 1.1;
-    /* Mostrar máximo 2-3 líneas */
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* IMPRESIÓN REAL */
-@media print {
-    @page { size: 50mm 23mm; margin: 0 !important; }
-    html, body { margin: 0 !important; padding: 0 !important; background: white; width: 50mm; height: 23mm; }
-    .erp-layout, .sidebar, .main-content, .modal, .barra-acciones-bulk, .no-print { display: none !important; }
-    
-    #modal-qr { display: block !important; position: static !important; width: 50mm; height: 23mm; background: white !important; }
-    .modal-contenido { border: none; box-shadow: none; padding: 0; margin: 0; width: 50mm; height: 23mm; }
-    .etiqueta-preview { border: none; }
-    
-    #zona-impresion {
-        position: fixed; left: 0; top: 0; width: 50mm; height: 23mm;
-        padding: 0; margin: 0; display: flex; align-items: center;
-        background: white !important; color: black !important; z-index: 9999;
-    }
-    
-    .etiq-ubi { font-size: 12pt !important; }
-    .etiq-id { font-size: 8pt !important; }
-    .etiq-desc { font-size: 7pt !important; -webkit-line-clamp: 3; }
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .erp-layout { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; padding-bottom: 10px; }
+    .sidebar-menu { flex-direction: row; overflow-x: auto; padding: 10px; }
+    .menu-item { white-space: nowrap; padding: 10px; font-size: 12px; }
+    .menu-divisor { display: none; }
+    .main-content { padding: 10px; }
 }

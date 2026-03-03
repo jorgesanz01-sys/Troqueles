@@ -7,10 +7,10 @@ const App = {
     columnaOrden: 'id_troquel',
     ordenAsc: true,
     scanner: null,
-    escaneadosTemp: new Set(),
+    modoMovil: false,
 
     init: async () => {
-        console.log("Iniciando ERP V7...");
+        console.log("Iniciando ERP V8...");
         await App.cargarTodo();
         App.cargarSelects();
     },
@@ -21,7 +21,7 @@ const App = {
             const res = await fetch('/api/troqueles');
             if(res.ok) {
                 App.datos = await res.json();
-                App.renderTabla();
+                App.renderTabla(); // Renderiza tabla PC
             }
         } catch (e) { console.error(e); }
     },
@@ -41,103 +41,85 @@ const App = {
             divChips.innerHTML = `<button class="chip activo" onclick="App.setFiltroTipo('TODOS', this)">TODOS</button>`;
             cats.forEach(c => divChips.innerHTML += `<button class="chip" onclick="App.setFiltroTipo('${c.nombre}', this)">${c.nombre}</button>`);
 
-            // Selects
-            const els = ['f-cat', 'bulk-tipo', 'f-fam', 'bulk-familia', 'filtro-familia'];
-            els.forEach(id => document.getElementById(id).innerHTML = id.includes('fam') ? '<option value="">Sin Familia/Todas</option>' : '<option value="">Seleccionar...</option>');
+            // Selects Form y Bulk
+            const updateSelect = (id, data) => {
+                const el = document.getElementById(id);
+                if(el) {
+                    el.innerHTML = id.includes('fam') ? '<option value="">Sin Familia/Todas</option>' : '<option value="">Seleccionar...</option>';
+                    data.forEach(d => el.innerHTML += `<option value="${d.id}">${d.nombre}</option>`);
+                }
+            };
 
-            cats.forEach(c => {
-                document.getElementById('f-cat').innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
-                document.getElementById('bulk-tipo').innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
-            });
-            fams.forEach(f => {
-                document.getElementById('f-fam').innerHTML += `<option value="${f.id}">${f.nombre}</option>`;
-                document.getElementById('bulk-familia').innerHTML += `<option value="${f.id}">${f.nombre}</option>`;
-                document.getElementById('filtro-familia').innerHTML += `<option value="${f.nombre}">${f.nombre}</option>`;
-            });
+            updateSelect('f-cat', cats);
+            updateSelect('bulk-tipo', cats);
+            updateSelect('f-fam', fams);
+            updateSelect('bulk-familia', fams);
+            updateSelect('filtro-familia', fams);
+
         } catch(e) { console.error(e); }
     },
 
-    // --- NUEVAS ACCIONES INDIVIDUALES ---
-    descatalogar: async (id) => {
-        if(!confirm("¿Descatalogar este troquel? Pasará a estado DESCATALOGADO.")) return;
-        // Simulamos movimiento a "estado" descatalogado. No borramos, solo cambiamos estado.
-        // Como tu backend usa 'mover_lote', podemos reutilizarlo o editar directamente.
-        // Haremos un update directo para ser más precisos.
-        const t = App.datos.find(x => x.id === id);
-        t.estado = "DESCATALOGADO";
-        t.ubicacion = "DESCATALOGADO"; // Opcional, para que no ocupe sitio
+    // --- MODO MÓVIL ---
+    activarModoMovil: () => {
+        App.modoMovil = true;
+        document.getElementById('sidebar').classList.add('oculto');
+        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
+        document.getElementById('vista-movil').classList.remove('oculto');
+    },
+    desactivarModoMovil: () => {
+        App.modoMovil = false;
+        document.getElementById('sidebar').classList.remove('oculto');
+        App.nav('vista-lista');
+    },
+    buscarMovil: (txt) => {
+        const div = document.getElementById('resultados-movil');
+        div.innerHTML = "";
+        if(txt.length < 2) return;
         
-        await fetch(`/api/troqueles/${id}`, {
-            method: 'PUT', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify(t)
-        });
-        App.cargarTodo();
+        const hits = App.datos.filter(t => (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt.toLowerCase()));
+        
+        div.innerHTML = hits.slice(0, 10).map(t => `
+            <div class="card-movil" onclick="App.editar(${t.id})">
+                <div style="font-weight:900; color:#0f766e; font-size:18px;">${t.id_troquel}</div>
+                <div style="font-weight:bold;">${t.ubicacion}</div>
+                <div>${t.nombre}</div>
+                <button class="btn-secundario" style="width:100%; margin-top:5px;">Editar / Ver</button>
+            </div>
+        `).join('');
     },
 
-    borrar: async (id) => {
-        if(!confirm("PELIGRO: ¿Estás seguro de eliminar este troquel? Irá a la papelera.")) return;
-        await fetch(`/api/troqueles/${id}`, { method: 'DELETE' });
-        App.cargarTodo();
-    },
-
+    // --- GESTIÓN AUXILIARES ---
+    abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
     crearFamilia: async () => {
         const nombre = prompt("Nombre de la nueva Familia:");
         if(!nombre) return;
         await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ nombre: nombre }) });
-        App.cargarSelects(); // Recargar listas
+        App.cargarSelects(); 
+        alert("Familia creada");
+    },
+    crearTipo: async () => {
+        const nombre = prompt("Nombre del nuevo Tipo:");
+        if(!nombre) return;
+        await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ nombre: nombre }) });
+        App.cargarSelects();
+        alert("Tipo creado");
     },
 
-    // --- SUBIDA ARCHIVOS (FOTO / PDF) ---
-    subirArchivo: async (input) => {
-        if(!input.files[0]) return;
-        const file = input.files[0];
-        const btn = input.parentElement;
-        const txt = btn.innerText;
-        btn.innerText = "⏳ Subiendo...";
-        
-        const fd = new FormData(); fd.append('file', file);
-        
-        try {
-            const res = await fetch('/api/subir_foto', { method: 'POST', body: fd });
-            if(res.ok) {
-                const data = await res.json();
-                document.getElementById('f-foto-url').value = data.url;
-                
-                // Mostrar preview según tipo
-                const container = document.getElementById('preview-container');
-                if (file.type.includes('pdf')) {
-                    container.innerHTML = `<a href="${data.url}" target="_blank" class="btn-secundario">📄 Ver PDF cargado</a>`;
-                } else {
-                    container.innerHTML = `<img src="${data.url}" style="max-height:150px; border-radius:4px;">`;
-                }
-            }
-        } catch(e) { alert("Error subida"); }
-        btn.innerText = txt;
-    },
-
-    // --- ACCIONES MASIVAS (V7) ---
+    // --- ACCIONES MASIVAS ---
     asignarMasivo: async (campo) => {
-        // campo puede ser 'familia' o 'categoria' (tipo)
         let selectId = campo === 'familia' ? 'bulk-familia' : 'bulk-tipo';
         let val = document.getElementById(selectId).value;
-        
-        if(!val) return alert("Selecciona un valor primero");
-        if(App.seleccionados.size === 0) return alert("Selecciona troqueles");
+        if(!val || App.seleccionados.size === 0) return alert("Selecciona valor y troqueles");
+        if(!confirm(`¿Aplicar a ${App.seleccionados.size} troqueles?`)) return;
 
-        if(!confirm(`¿Asignar a ${App.seleccionados.size} troqueles?`)) return;
-
-        // Reutilizamos el endpoint bulk que ya teníamos (si existe) o hacemos loop
-        // En V6 tenias /api/troqueles/bulk/familia
         await fetch(`/api/troqueles/bulk/${campo}`, { 
             method: 'PUT', headers: {'Content-Type':'application/json'}, 
             body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(val) }) 
         });
-        
-        App.limpiarSeleccion();
-        App.cargarTodo();
+        App.limpiarSeleccion(); App.cargarTodo();
     },
 
-    // --- LOGICA STANDARD ---
+    // --- FUNCIONES CORE (Cálculo ID, Filtros, Render) ---
     calcularSiguienteId: async () => {
         const idDb = document.getElementById('f-id-db').value;
         if(idDb) return;
@@ -181,12 +163,10 @@ const App = {
         let filtrados = App.datos.filter(t => {
             const nCat = App.mapaCat[t.categoria_id] || '';
             const nFam = App.mapaFam[t.familia_id] || '';
-            
             const okTipo = App.filtroTipo === 'TODOS' || nCat === App.filtroTipo;
             const okFam = fam === 'TODAS' || nFam === fam;
             const okEst = est === 'TODOS' || (t.estado || 'EN ALMACEN') === est;
             const okTxt = (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt);
-            
             return okTipo && okFam && okEst && okTxt;
         });
 
@@ -205,9 +185,6 @@ const App = {
         tbody.innerHTML = filtrados.map(t => {
             const chk = App.seleccionados.has(t.id) ? 'checked' : '';
             const bg = t.estado === 'EN PRODUCCION' ? '#fee2e2' : (t.estado === 'DESCATALOGADO' ? '#f3f4f6' : '');
-            const opacity = t.estado === 'DESCATALOGADO' ? '0.6' : '1';
-            
-            // Icono Foto/PDF
             let iconoFile = '-';
             if(t.foto_url) {
                 if(t.foto_url.toLowerCase().endsWith('.pdf')) iconoFile = `<a href="${t.foto_url}" target="_blank">📄</a>`;
@@ -215,7 +192,7 @@ const App = {
             }
 
             return `
-            <tr style="background:${bg}; opacity:${opacity}; cursor:pointer;" onclick="App.editar(${t.id})">
+            <tr style="background:${bg}; cursor:pointer;" onclick="App.editar(${t.id})">
                 <td onclick="event.stopPropagation()" style="text-align:center;"><input type="checkbox" value="${t.id}" ${chk} onchange="App.select(this, ${t.id})"></td>
                 <td style="text-align:center;">${iconoFile}</td>
                 <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td>
@@ -233,13 +210,25 @@ const App = {
         }).join('');
     },
 
-    // --- RESTO DE FUNCIONES (CRUD, NAV) ---
-    nav: (v) => { document.querySelectorAll('.vista').forEach(x => x.classList.add('oculto')); document.getElementById(v).classList.remove('oculto'); },
+    // --- CRUD ---
+    nav: (v) => { 
+        document.querySelectorAll('.vista').forEach(x => x.classList.add('oculto')); 
+        document.getElementById(v).classList.remove('oculto');
+        // Si volvemos a lista desde móvil, asegurar sidebar visible
+        if(v === 'vista-lista') document.getElementById('sidebar').classList.remove('oculto');
+    },
+    volverDesdeForm: () => {
+        if(App.modoMovil) App.activarModoMovil();
+        else App.nav('vista-lista');
+    },
     nuevoTroquel: () => { 
         document.getElementById('titulo-form').innerText = "Nuevo"; 
         document.querySelector('form').reset(); 
         document.getElementById('f-id-db').value = ""; 
         document.getElementById('preview-container').innerHTML = "";
+        
+        // Si estamos en modo móvil, ocultamos sidebar
+        if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto');
         App.nav('vista-formulario'); 
     },
     editar: (id) => {
@@ -252,20 +241,21 @@ const App = {
         document.getElementById('f-nombre').value = t.nombre;
         document.getElementById('f-cat').value = t.categoria_id || "";
         document.getElementById('f-fam').value = t.familia_id || "";
-        document.getElementById('f-arts').value = t.codigos_articulo || "";
-        document.getElementById('f-ot').value = t.referencias_ot || "";
         document.getElementById('f-medidas-madera').value = t.tamano_troquel || "";
         document.getElementById('f-medidas-corte').value = t.tamano_final || "";
+        document.getElementById('f-arts').value = t.codigos_articulo || "";
+        document.getElementById('f-ot').value = t.referencias_ot || "";
         document.getElementById('f-obs').value = t.observaciones || "";
         document.getElementById('f-foto-url').value = t.foto_url || "";
         
-        // Preview Foto/PDF
         const container = document.getElementById('preview-container');
         container.innerHTML = "";
         if(t.foto_url) {
             if (t.foto_url.toLowerCase().endsWith('.pdf')) container.innerHTML = `<a href="${t.foto_url}" target="_blank" class="btn-secundario">📄 Ver PDF Actual</a>`;
             else container.innerHTML = `<img src="${t.foto_url}" style="max-height:150px;">`;
         }
+        
+        if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto');
         App.nav('vista-formulario');
     },
     guardarFicha: async (e) => {
@@ -277,10 +267,10 @@ const App = {
             nombre: document.getElementById('f-nombre').value,
             categoria_id: parseInt(document.getElementById('f-cat').value) || null,
             familia_id: parseInt(document.getElementById('f-fam').value) || null,
-            codigos_articulo: document.getElementById('f-arts').value,
-            referencias_ot: document.getElementById('f-ot').value,
             tamano_troquel: document.getElementById('f-medidas-madera').value,
             tamano_final: document.getElementById('f-medidas-corte').value,
+            codigos_articulo: document.getElementById('f-arts').value,
+            referencias_ot: document.getElementById('f-ot').value,
             observaciones: document.getElementById('f-obs').value,
             foto_url: document.getElementById('f-foto-url').value
         };
@@ -288,8 +278,44 @@ const App = {
         const url = id ? `/api/troqueles/${id}` : '/api/troqueles';
         await fetch(url, { method: method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
         App.cargarTodo();
-        App.nav('vista-lista');
+        App.volverDesdeForm();
     },
+    
+    // --- UPLOAD ---
+    subirArchivo: async (input) => {
+        if(!input.files[0]) return;
+        const file = input.files[0];
+        const btn = input.parentElement;
+        btn.innerText = "⏳ Subiendo...";
+        const fd = new FormData(); fd.append('file', file);
+        try {
+            const res = await fetch('/api/subir_foto', { method: 'POST', body: fd });
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById('f-foto-url').value = data.url;
+                const container = document.getElementById('preview-container');
+                if (file.type.includes('pdf')) container.innerHTML = `<a href="${data.url}" target="_blank" class="btn-secundario">📄 PDF Cargado</a>`;
+                else container.innerHTML = `<img src="${data.url}" style="max-height:150px;">`;
+            }
+        } catch(e) { alert("Error"); }
+        btn.innerText = "📷 Cambiar Archivo";
+    },
+
+    // --- ACCIONES EXTRA ---
+    descatalogar: async (id) => {
+        if(!confirm("¿Descatalogar?")) return;
+        const t = App.datos.find(x => x.id === id);
+        t.estado = "DESCATALOGADO";
+        await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(t) });
+        App.cargarTodo();
+    },
+    borrar: async (id) => {
+        if(!confirm("¿ELIMINAR DEFINITIVAMENTE?")) return;
+        await fetch(`/api/troqueles/${id}`, { method: 'DELETE' });
+        App.cargarTodo();
+    },
+
+    // --- SELECCION ---
     select: (chk, id) => { if (chk.checked) App.seleccionados.add(id); else App.seleccionados.delete(id); App.updatePanel(); },
     toggleAll: (chk) => { document.querySelectorAll('#tabla-body input[type="checkbox"]').forEach(c => { c.checked = chk.checked; if(chk.checked) App.seleccionados.add(parseInt(c.value)); else App.seleccionados.delete(parseInt(c.value)); }); App.updatePanel(); },
     updatePanel: () => { const p = document.getElementById('panel-acciones'); if(App.seleccionados.size>0) { p.classList.remove('oculto'); document.getElementById('contador-sel').innerText=App.seleccionados.size; } else p.classList.add('oculto'); },
