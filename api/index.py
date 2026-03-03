@@ -4,12 +4,14 @@ from typing import Optional, List
 from supabase import create_client, Client
 import io
 import csv
+import codecs
 
 app = FastAPI()
 
 # ==========================================
 # CONFIGURACIÓN DE BASE DE DATOS
 # ==========================================
+# !!! REVISA QUE ESTAS SEAN TUS CREDENCIALES !!!
 SUPABASE_URL = "https://pkaqgtelkdhxlyjodzbq.supabase.co"
 SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -44,114 +46,138 @@ class BulkBorrar(BaseModel):
 # ==========================================
 @app.get("/api/categorias")
 async def listar_categorias():
-    response = supabase.table("categorias").select("*").order("nombre").execute()
-    return response.data
+    return supabase.table("categorias").select("*").order("nombre").execute().data
 
 @app.get("/api/troqueles")
 async def listar_troqueles():
-    response = supabase.table("troqueles")\
-        .select("*, categorias(nombre)")\
-        .neq("estado_activo", "En Papelera")\
-        .order("id_troquel")\
-        .execute()
-    return response.data
+    return supabase.table("troqueles").select("*, categorias(nombre)").neq("estado_activo", "En Papelera").order("id_troquel").execute().data
 
 @app.get("/api/historial")
 async def listar_historial():
-    response = supabase.table("historial")\
-        .select("*, troqueles(id_troquel, nombre)")\
-        .order("fecha_hora", desc=True)\
-        .execute()
-    return response.data
+    return supabase.table("historial").select("*, troqueles(id_troquel, nombre)").order("fecha_hora", desc=True).execute().data
 
 # ==========================================
 # RUTAS DE ESCRITURA (POST/PUT)
 # ==========================================
 @app.post("/api/categorias")
 async def crear_categoria(cat: NuevaCategoria):
-    response = supabase.table("categorias").insert({"nombre": cat.nombre.upper()}).execute()
-    return {"status": "success", "data": response.data}
+    return supabase.table("categorias").insert({"nombre": cat.nombre.upper()}).execute()
 
 @app.post("/api/troqueles")
 async def crear_troquel(troquel: TroquelForm):
-    nuevo_dato = troquel.dict()
-    nuevo_dato["estado_activo"] = "Activo"
-    response = supabase.table("troqueles").insert(nuevo_dato).execute()
-    return {"status": "success", "data": response.data}
+    datos = troquel.dict()
+    datos["estado_activo"] = "Activo"
+    return supabase.table("troqueles").insert(datos).execute()
 
 @app.put("/api/troqueles/{id_db}")
 async def editar_troquel(id_db: int, troquel: TroquelForm):
-    datos_actualizados = troquel.dict()
-    response = supabase.table("troqueles").update(datos_actualizados).eq("id", id_db).execute()
-    return {"status": "success", "data": response.data}
+    return supabase.table("troqueles").update(troquel.dict()).eq("id", id_db).execute()
 
 @app.post("/api/borrar/{id_db}")
 async def mover_a_papelera(id_db: int):
-    response = supabase.table("troqueles").update({"estado_activo": "En Papelera"}).eq("id", id_db).execute()
-    return {"status": "success"}
+    return supabase.table("troqueles").update({"estado_activo": "En Papelera"}).eq("id", id_db).execute()
 
 # ==========================================
 # RUTAS DE ACCIONES MASIVAS
 # ==========================================
 @app.put("/api/troqueles/bulk/categoria")
 async def bulk_update_categoria(data: BulkCategoria):
-    response = supabase.table("troqueles").update({"categoria_id": data.categoria_id}).in_("id", data.ids).execute()
-    return {"status": "success"}
+    return supabase.table("troqueles").update({"categoria_id": data.categoria_id}).in_("id", data.ids).execute()
 
 @app.post("/api/troqueles/bulk/borrar")
 async def bulk_borrar(data: BulkBorrar):
-    response = supabase.table("troqueles").update({"estado_activo": "En Papelera"}).in_("id", data.ids).execute()
-    return {"status": "success"}
+    return supabase.table("troqueles").update({"estado_activo": "En Papelera"}).in_("id", data.ids).execute()
 
 # ==========================================
-# NUEVA RUTA: IMPORTAR CSV VIEJO
+# DETECTOR INTELIGENTE DE COLUMNAS
 # ==========================================
+def buscar_valor(row, posibles_nombres):
+    """Busca el valor en la fila probando varios nombres de columna"""
+    # Normalizamos las claves del CSV (quitamos espacios extra y pasamos a mayúsculas para comparar)
+    row_clean = {k.strip().upper(): v for k, v in row.items() if k}
+    
+    for nombre in posibles_nombres:
+        nombre_upper = nombre.upper()
+        if nombre_upper in row_clean:
+            valor = row_clean[nombre_upper]
+            if valor and valor.strip():
+                return valor.strip()
+    return ""
+
 @app.post("/api/importar_csv")
 async def importar_csv(file: UploadFile = File(...)):
     try:
-        # Leer el contenido del archivo subido
-        contenido = await file.read()
-        texto_csv = contenido.decode('utf-8')
+        content = await file.read()
+        # Decodificar quitando el BOM si existe (utf-8-sig)
+        text = content.decode("utf-8-sig")
+        f = io.StringIO(text)
         
-        # Usar la librería CSV de Python para parsear correctamente
-        f = io.StringIO(texto_csv)
-        reader = csv.DictReader(f)
+        # Detectar el dialecto (separador ; o ,) automáticamente
+        try:
+            dialect = csv.Sniffer().sniff(text[:1024])
+            reader = csv.DictReader(f, dialect=dialect)
+        except:
+            # Si falla, intentamos por defecto con comas
+            f.seek(0)
+            reader = csv.DictReader(f)
         
         lista_para_insertar = []
         
         for row in reader:
-            # Mapeamos las columnas de tu Excel Viejo a la Base de Datos Nueva
-            # Tu Excel tiene: UBICACIÓN, DESCRIPCIÓN, CÓDIGO Artículo, Número OT
+            # --- MAPEO INTELIGENTE ---
+            # 1. ID DEL TROQUEL (QR)
+            # Prioridad: 'CODIGO TROQUE' (nuevos) > 'UBICACIÓN' (viejos) > 'ID'
+            id_t = buscar_valor(row, ["CODIGO TROQUE", "CODIGO_TROQUE", "UBICACIÓN", "UBICACION", "ID", "CODIGO"])
             
-            # Limpieza básica de la ID antigua
-            id_viejo = row.get('UBICACIÓN', '').strip()
+            # Si no encontramos ID, saltamos la fila (puede ser una fila vacía o de totales)
+            if not id_t: continue
+
+            # 2. NOMBRE / DESCRIPCIÓN
+            nombre = buscar_valor(row, ["DESCRIPCIÓN", "DESCRIPCION", "NOMBRE", "ARTICULO"])
             
-            # Si no tiene ID (fila vacía), la saltamos
-            if not id_viejo: 
-                continue 
+            # 3. CÓDIGOS DE ARTÍCULO
+            codigos = buscar_valor(row, ["CÓDIGO Artículo", "CODIGO ARTICULO", "CODIGO_ARTICULO", "REF"])
             
+            # 4. REFERENCIAS OT
+            ot = buscar_valor(row, ["Número OT", "NUMERO OT", "OT", "Nº OT"])
+            
+            # 5. OBSERVACIONES
+            obs = buscar_valor(row, ["OBSERVACIONES", "NOTAS", "COMENTARIOS"])
+
+            # 6. UBICACIÓN FÍSICA
+            # En los nuevos CSV, la ubicación a veces viene en "UBICACIÓN" pero a veces es el ID.
+            # Si usamos 'UBICACIÓN' como ID, marcamos la ubicación física como "PENDIENTE"
+            # Si tenemos 'CODIGO TROQUE', entonces 'UBICACIÓN' es la estantería real.
+            ubi_real = "PENDIENTE"
+            val_ubi = buscar_valor(row, ["UBICACIÓN", "UBICACION"])
+            
+            # Si el ID que hemos cogido NO es el valor de ubicación, entonces el valor de ubicación es real
+            if val_ubi and val_ubi != id_t:
+                ubi_real = val_ubi
+
             nuevo_troquel = {
-                "id_troquel": id_viejo,  # El número viejo (1, 2, 3...) pasa a ser el QR
-                "nombre": row.get('DESCRIPCIÓN', '').strip(),
-                "codigos_articulo": row.get('CÓDIGO Artículo', '').strip(),
-                "referencias_ot": row.get('Número OT', '').strip(),
-                "ubicacion": "PENDIENTE", # Lo marcamos para revisar luego
+                "id_troquel": id_t,
+                "nombre": nombre,
+                "codigos_articulo": codigos,
+                "referencias_ot": ot,
+                "ubicacion": ubi_real,
+                "observaciones": obs,
                 "estado_activo": "Activo"
             }
             lista_para_insertar.append(nuevo_troquel)
             
-        # Insertar en bloques de 100 para no saturar
+        # Insertar en bloques de 100 para velocidad y seguridad
         chunk_size = 100
         for i in range(0, len(lista_para_insertar), chunk_size):
             chunk = lista_para_insertar[i:i + chunk_size]
-            # upsert=True significa que si ya existe el ID, lo actualiza
+            # upsert=True: Si el ID ya existe, actualiza los datos. Si no, lo crea.
             supabase.table("troqueles").upsert(chunk, on_conflict="id_troquel").execute()
             
-        return {"status": "success", "total": len(lista_para_insertar)}
+        return {"status": "ok", "total_importados": len(lista_para_insertar)}
         
     except Exception as e:
-        print("Error importando:", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error importación: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error procesando CSV: {str(e)}")
 
 @app.get("/api/health")
 def health():
