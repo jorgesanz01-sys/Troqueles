@@ -65,7 +65,7 @@ async function cargarDatos() {
         // Limpiar opciones previas
         if (select) select.innerHTML = '<option value="">Seleccionar...</option>'; 
         if (selectBulk) selectBulk.innerHTML = '<option value="">Cambiar familia a...</option>'; 
-        if (chips) chips.innerHTML = '<button class="chip activo" onclick="filtrarPorChip(\'TODOS\', this)">Todas</button>';
+        if (chips) chips.innerHTML = '<button class="chip activo" onclick="filtrarPorChip(\'TODOS\', this)">Todas las Familias</button>';
         
         // Rellenar categorías
         categorias.forEach(cat => { 
@@ -223,7 +223,7 @@ function renderizarTabla(datos) {
     if (!tbody) return;
 
     if (datos.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center" style="padding:40px;">No se encontraron resultados.</td></tr>'; 
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding:40px;">No se encontraron resultados.</td></tr>'; 
         return; 
     }
 
@@ -399,24 +399,28 @@ window.exportarCSV = function() {
 }
 
 // ==========================================
-// 8. IMPORTAR CSV (UNIVERSAL)
+// 8. IMPORTAR CSV (UNIVERSAL E INTELIGENTE)
 // ==========================================
 window.subirCSV = async function() {
     const input = document.getElementById('input-csv-import');
+    const tipoSelect = document.getElementById('select-tipo-importacion');
+    
     if (!input.files[0]) return;
-
-    const formData = new FormData();
+    
+    const tipo = tipoSelect.value;
+    const formData = new FormData(); 
     formData.append('file', input.files[0]);
-
-    if (!confirm("¿Seguro que quieres importar este archivo? Se añadirán o actualizarán los troqueles.")) {
+    formData.append('categoria_nombre', tipo); // Enviamos el tipo seleccionado al backend
+    
+    if (!confirm(`¿Importar este archivo como familia "${tipo}"?\n\nEl sistema usará la UBICACIÓN como ID.`)) {
         return;
     }
 
     try {
-        // Mostrar feedback de carga en el botón
+        // Feedback visual en el botón
         const btn = document.querySelector('button[onclick*="input-csv-import"]');
-        const textoOriginal = btn.innerText;
-        btn.innerText = "⏳ Procesando...";
+        const txtOrig = btn.innerText;
+        btn.innerText = "⏳ Subiendo...";
         btn.disabled = true;
 
         const res = await fetch('/api/importar_csv', { 
@@ -427,7 +431,7 @@ window.subirCSV = async function() {
         const data = await res.json();
         
         // Restaurar botón
-        btn.innerText = textoOriginal;
+        btn.innerText = txtOrig;
         btn.disabled = false;
 
         if (res.ok) {
@@ -438,7 +442,7 @@ window.subirCSV = async function() {
         }
     } catch (error) { 
         alert("Error de conexión al subir el archivo."); 
-        // Restaurar botón si falla la conexión
+        // Restaurar botón si falla
         const btn = document.querySelector('button[onclick*="input-csv-import"]');
         if (btn) {
             btn.innerText = "📤 Importar CSV";
@@ -570,7 +574,7 @@ window.cargarHistorial = async function() {
 }
 
 // ==========================================
-// 11. GENERACIÓN QR CON UBICACIÓN INCRUSTADA
+// 11. GENERACIÓN QR (DISEÑO GODEX 3 LÍNEAS)
 // ==========================================
 window.generarQR = function(id_troquel) { 
     // 1. Encontrar los datos del troquel en el cache local
@@ -589,10 +593,11 @@ window.generarQR = function(id_troquel) {
 
     // LÍNEA 1: UBICACIÓN (ARRIBA)
     if (ubiEl) {
+        // Si no tiene ubicación, mostramos "SIN UBICAR"
         ubiEl.innerText = t.ubicacion ? t.ubicacion.toUpperCase() : "SIN UBICACIÓN";
     }
     
-    // LÍNEA 2: CÓDIGO (CENTRO) - Prioridad: ID
+    // LÍNEA 2: CÓDIGO (CENTRO) - Siempre mostramos el ID/Ubicación que es el QR
     if (idEl) {
         idEl.innerText = t.id_troquel; 
     }
@@ -610,7 +615,7 @@ window.generarQR = function(id_troquel) {
             value: id_troquel, 
             size: 200,    
             padding: 0,   
-            level: 'M' 
+            level: 'M' // Nivel medio es suficiente y más fácil de leer
         }); 
     }
 }
