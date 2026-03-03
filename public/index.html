@@ -38,33 +38,44 @@
             
             <section id="vista-lista" class="vista activa">
                 <div class="header-modulo">
-                    <h1>Directorio de Troqueles</h1>
-                    <div style="display: flex; gap: 15px; align-items: center;">
-                        <button class="btn-secundario" onclick="exportarCSV()">📥 Exportar Excel</button>
+                    <h1>Inventario de Troqueles</h1>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn-secundario" onclick="exportarCSV()">📥 Excel</button>
                         
                         <div style="display: flex; align-items: center; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding-left: 10px;">
-                            <select id="select-tipo-importacion" style="border: none; background: transparent; font-family: 'Inter'; font-size: 13px; color: #475569; font-weight: 600; outline: none; cursor: pointer;">
+                            <span style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-right: 5px;">SUBIR:</span>
+                            <select id="select-tipo-importacion" style="border: none; background: transparent; font-family: 'Inter'; font-size: 13px; color: #1e293b; font-weight: 600; outline: none; cursor: pointer; max-width: 150px;">
                                 <option value="TROQUELES NORMALES">Normales</option>
                                 <option value="TROQUELES PEQUEÑOS">Pequeños</option>
                                 <option value="CON EXPULSOR">Con Expulsor</option>
                                 <option value="DESCATALOGADOS">Descatalogados</option>
-                                <option value="OTROS">Otros</option>
+                                <option value="OTROS">Otros...</option>
                             </select>
                             <input type="file" id="input-csv-import" accept=".csv" style="display: none;" onchange="subirCSV()">
-                            <button class="btn-secundario" style="border: none; border-left: 1px solid #e2e8f0; border-radius: 0 8px 8px 0; margin-left: 5px;" onclick="document.getElementById('input-csv-import').click()">
+                            <button class="btn-secundario" style="border: none; border-left: 1px solid #e2e8f0; border-radius: 0 8px 8px 0; margin-left: 5px; background-color: #f8fafc;" onclick="document.getElementById('input-csv-import').click()">
                                 📤 Importar CSV
                             </button>
-                        </div>
-                        <div class="caja-buscador">
-                            <span class="icono-lupa">🔍</span>
-                            <input type="text" id="buscador" placeholder="Buscar artículo, QR, descripción...">
-                            <button id="btn-limpiar" class="btn-limpiar oculto" onclick="limpiarBuscador()">✕</button>
                         </div>
                     </div>
                 </div>
 
                 <div class="filtros-chips" id="contenedor-chips">
-                    <button class="chip activo" onclick="filtrarPorChip('TODOS', this)">Todas las Familias</button>
+                    <button class="chip activo" onclick="filtrarPorTipo('TODOS', this)">Todos los Tipos</button>
+                    </div>
+
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center;">
+                    <div style="position: relative; min-width: 220px;">
+                        <span style="position: absolute; left: 12px; top: 12px; pointer-events: none;">📂</span>
+                        <select id="filtro-familia" onchange="filtrarPorFamilia(this)" style="width: 100%; padding: 12px 10px 12px 35px; border-radius: 8px; border: 1px solid #e2e8f0; outline: none; font-weight: 600; color: #475569; appearance: none; background: white;">
+                            <option value="TODAS">Todas las Familias</option>
+                            </select>
+                    </div>
+
+                    <div class="caja-buscador" style="flex-grow: 1;">
+                        <span class="icono-lupa">🔍</span>
+                        <input type="text" id="buscador" placeholder="Buscar por código, descripción, artículos...">
+                        <button id="btn-limpiar" class="btn-limpiar oculto" onclick="limpiarBuscador()">✕</button>
+                    </div>
                 </div>
 
                 <div class="contenedor-tabla">
@@ -74,19 +85,17 @@
                                 <th style="width: 40px; text-align: center;">
                                     <input type="checkbox" id="check-all" onclick="toggleAllChecks(this)">
                                 </th>
-                                <th onclick="ordenarPor('id_troquel')" class="sortable">QR Físico ↕️</th>
-                                <th onclick="ordenarPor('codigos_articulo')" class="sortable">Artículos ↕️</th>
+                                <th onclick="ordenarPor('id_troquel')" class="sortable">ID / Ubicación ↕️</th>
                                 <th onclick="ordenarPor('nombre')" class="sortable">Descripción ↕️</th>
-                                <th onclick="ordenarPor('familia')" class="sortable">Tipo / Familia ↕️</th>
-                                <th onclick="ordenarPor('ubicacion')" class="sortable">Ubicación ↕️</th>
-                                <th onclick="ordenarPor('tamano_troquel')" class="sortable">Medidas ↕️</th>
+                                <th onclick="ordenarPor('familia')" class="sortable">Familia ↕️</th>
+                                <th onclick="ordenarPor('tipo')" class="sortable">Tipo ↕️</th>
+                                <th onclick="ordenarPor('codigos_articulo')" class="sortable">Artículos ↕️</th>
+                                <th onclick="ordenarPor('referencias_ot')" class="sortable">OT ↕️</th>
                                 <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="lista-troqueles">
-                            <tr>
-                                <td colspan="9" class="text-center" style="padding:40px;">Cargando base de datos...</td>
-                            </tr>
+                            <tr><td colspan="8" class="text-center" style="padding:40px;">Cargando base de datos...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -95,92 +104,87 @@
             <section id="vista-formulario" class="vista oculto">
                 <div class="header-modulo">
                     <h1 id="titulo-formulario">Alta de Nuevo Troquel</h1>
-                    <button class="btn-secundario" onclick="document.querySelector('.menu-item').click()">Volver a la lista</button>
+                    <button class="btn-secundario" onclick="document.querySelector('.menu-item').click()">Volver</button>
                 </div>
                 
                 <div class="panel-formulario">
                     <form id="form-troquel">
                         <input type="hidden" id="input-id-db">
-                        
                         <div class="form-grid">
+                            
                             <div class="form-group full-width" style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                                <label style="color: var(--primary);">ID Troquel (Ubicación / QR) *</label>
-                                <input type="text" id="input-id" placeholder="Ej. 50, TR-001..." required style="border-color: var(--primary); font-weight: bold;">
-                            </div>
-
-                            <div class="form-group full-width">
-                                <label>Códigos de Artículo</label>
-                                <textarea id="input-articulos" rows="2" placeholder="Ej. 108657 - Mates..."></textarea>
+                                <label style="color: var(--primary);">ID Troquel (QR / Ubicación) *</label>
+                                <input type="text" id="input-id" required style="border-color: var(--primary); font-weight: 800; font-size: 16px;">
+                                <small style="color: #64748b; display: block; margin-top: 5px;">Este código será el QR y la ubicación física en la estantería.</small>
                             </div>
 
                             <div class="form-group">
-                                <label>Tipo / Familia *</label>
-                                <div style="display: flex; gap: 10px;">
+                                <label>Tipo de Troquel (Normal, Pequeño...) *</label>
+                                <div style="display: flex; gap: 8px;">
                                     <select id="input-categoria" required style="flex-grow: 1;"></select>
-                                    <button type="button" class="btn-secundario btn-sm" onclick="crearCategoriaAlVuelo()">+ Nueva</button>
+                                    <button type="button" class="btn-secundario btn-sm" onclick="crearEntidad('categorias')" title="Crear nuevo Tipo">+</button>
                                 </div>
                             </div>
-                            
                             <div class="form-group">
-                                <label>Referencias OT</label>
-                                <input type="text" id="input-ot" placeholder="Ej. OT-2345...">
+                                <label>Familia de Producto (Caja, Carpeta...) *</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <select id="input-familia" required style="flex-grow: 1;"></select>
+                                    <button type="button" class="btn-secundario btn-sm" onclick="crearEntidad('familias')" title="Crear nueva Familia">+</button>
+                                </div>
                             </div>
 
                             <div class="form-group full-width">
                                 <label>Descripción del Troquel *</label>
-                                <input type="text" id="input-nombre" placeholder="Nombre descriptivo" required>
+                                <input type="text" id="input-nombre" required>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>Códigos de Artículo</label>
+                                <textarea id="input-articulos" rows="2"></textarea>
                             </div>
 
                             <div class="form-group">
-                                <label>Ubicación Física (Igual que ID si aplica) *</label>
-                                <input type="text" id="input-ubicacion" placeholder="Estantería 1..." required>
+                                <label>Ubicación Física</label>
+                                <input type="text" id="input-ubicacion" readonly style="background-color: #e2e8f0; color: #64748b; cursor: not-allowed;">
                             </div>
-                            
+                            <div class="form-group">
+                                <label>Referencias OT</label>
+                                <input type="text" id="input-ot">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Medidas Troquel</label>
+                                <input type="text" id="input-tamano-troquel">
+                            </div>
+                            <div class="form-group">
+                                <label>Medidas Finales</label>
+                                <input type="text" id="input-tamano-final">
+                            </div>
+
                             <div class="form-group full-width">
                                 <label>Enlace al Plano (URL)</label>
-                                <input type="url" id="input-archivo" placeholder="https://...">
+                                <input type="url" id="input-archivo">
                             </div>
-                            
-                            <div class="form-group">
-                                <label>Tamaño Troquel</label>
-                                <input type="text" id="input-tamano-troquel" placeholder="Ej. 700x1000mm">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Tamaño Final</label>
-                                <input type="text" id="input-tamano-final" placeholder="Ej. 210x297mm">
-                            </div>
-                            
                             <div class="form-group full-width">
                                 <label>Observaciones</label>
-                                <textarea id="input-observaciones" rows="3"></textarea>
+                                <textarea id="input-observaciones" rows="2"></textarea>
                             </div>
                         </div>
                         
                         <div class="modal-botones">
                             <button type="button" class="btn-secundario" onclick="document.querySelector('.menu-item').click()">Cancelar</button>
-                            <button type="submit" class="btn-accion">💾 Guardar en Base de Datos</button>
+                            <button type="submit" class="btn-accion">💾 Guardar Ficha</button>
                         </div>
                     </form>
                 </div>
             </section>
 
             <section id="vista-historial" class="vista oculto">
-                <div class="header-modulo">
-                    <h1>Auditoría de Movimientos</h1>
-                </div>
+                <div class="header-modulo"><h1>Auditoría</h1></div>
                 <div class="contenedor-tabla">
                     <table class="tabla-pro">
-                        <thead>
-                            <tr>
-                                <th>Fecha y Hora</th>
-                                <th>Troquel Afectado</th>
-                                <th>Acción Registrada</th>
-                            </tr>
-                        </thead>
-                        <tbody id="lista-historial">
-                            <tr><td colspan="3" class="text-center" style="padding:40px;">Cargando historial...</td></tr>
-                        </tbody>
+                        <thead><tr><th>Fecha</th><th>Troquel</th><th>Acción</th></tr></thead>
+                        <tbody id="lista-historial"></tbody>
                     </table>
                 </div>
             </section>
@@ -190,33 +194,35 @@
     <div id="barra-flotante" class="barra-acciones-bulk oculto">
         <span id="contador-seleccionados" style="font-weight: 600;">0 seleccionados</span>
         <div style="height: 20px; width: 1px; background: #475569; margin: 0 10px;"></div>
-        <select id="bulk-categoria" class="select-bulk"></select>
-        <button class="btn-accion btn-sm" style="background: white; color: black;" onclick="aplicarBulkCategoria()">Asignar Familia</button>
-        <button class="btn-icono peligro btn-sm" style="background: #fef2f2; border:none;" onclick="aplicarBulkBorrar()">🗑️ Borrar</button>
+        
+        <select id="bulk-categoria" class="select-bulk"><option value="">Asignar Tipo...</option></select>
+        <button class="btn-accion btn-sm" style="background: white; color: black; margin-right: 10px;" onclick="aplicarBulk('categoria')">Aplicar</button>
+        
+        <select id="bulk-familia" class="select-bulk"><option value="">Asignar Familia...</option></select>
+        <button class="btn-accion btn-sm" style="background: white; color: black;" onclick="aplicarBulk('familia')">Aplicar</button>
+        
+        <button class="btn-icono peligro btn-sm" style="background: #fef2f2; border:none; margin-left: 10px;" onclick="aplicarBulkBorrar()">🗑️</button>
     </div>
 
     <div id="contenedor-camara" class="modal oculto">
         <div class="modal-contenido text-center">
-            <h2>Escanear Etiqueta QR</h2>
+            <h2>Escanear QR</h2>
             <div id="reader" style="width:100%; margin-bottom:20px;"></div>
-            <button onclick="detenerEscaneo()" class="btn-secundario">Cancelar Escaneo</button>
+            <button onclick="detenerEscaneo()" class="btn-secundario">Cerrar</button>
         </div>
     </div>
 
     <div id="modal-qr" class="modal oculto">
         <div class="modal-contenido text-center">
-            <h2 class="no-print" style="margin-bottom: 20px;">Vista Previa Godex (50x23)</h2>
-            
+            <h2 class="no-print" style="margin-bottom: 20px;">Vista Previa Godex</h2>
             <div id="zona-impresion" class="etiqueta-preview">
                 <canvas id="qr-canvas"></canvas>
-                
                 <div class="etiqueta-info">
                     <div id="qr-texto-ubi" class="etiq-ubi"></div>
                     <div id="qr-texto-id" class="etiq-id"></div>
                     <div id="qr-texto-desc" class="etiq-desc"></div>
                 </div>
             </div>
-
             <div class="modal-botones no-print" style="justify-content: center; margin-top: 25px;">
                 <button type="button" class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cerrar</button>
                 <button type="button" class="btn-accion" onclick="window.print()">🖨️ Imprimir</button>

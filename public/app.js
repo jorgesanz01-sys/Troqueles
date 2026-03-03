@@ -1,139 +1,164 @@
 // ==========================================
-// VARIABLES GLOBALES DE ESTADO
+// 1. VARIABLES GLOBALES DE ESTADO
 // ==========================================
 let listaTroquelesCache = []; 
 let datosExportables = []; 
-let familiaActiva = 'TODOS'; 
+
+// Filtros Activos
+let filtroTipoActivo = 'TODOS';      // Chips superiores (Categorias)
+let filtroFamiliaActivo = 'TODAS';   // Dropdown (Familias)
+
+// Ordenación
 let columnaOrden = 'id_troquel'; 
 let ordenAscendente = true; 
+
+// Herramientas
 let html5QrCode; 
-let idsSeleccionados = new Set();
+let idsSeleccionados = new Set(); // Para acciones masivas
 
 // ==========================================
-// 1. NAVEGACIÓN ENTRE VISTAS
+// 2. SISTEMA DE NAVEGACIÓN (VISTAS)
 // ==========================================
 window.cambiarVista = function(idVista, btnElement) { 
-    // Ocultar todas las vistas
+    // 1. Ocultar todas las secciones
     const vistas = document.querySelectorAll('.vista');
-    vistas.forEach(v => {
-        v.classList.add('oculto');
-    });
+    vistas.forEach(v => v.classList.add('oculto'));
     
-    // Mostrar la vista seleccionada
+    // 2. Mostrar la deseada
     const vistaDestino = document.getElementById(idVista);
     if (vistaDestino) {
         vistaDestino.classList.remove('oculto'); 
     }
     
-    // Quitar la clase activo de todos los botones del menú
+    // 3. Gestionar estado de los botones del menú
     const botonesMenu = document.querySelectorAll('.menu-item');
-    botonesMenu.forEach(b => {
-        b.classList.remove('activo');
-    });
+    botonesMenu.forEach(b => b.classList.remove('activo'));
     
-    // Poner la clase activo al botón pulsado
     if (btnElement) {
         btnElement.classList.add('activo'); 
     }
 }
 
 window.abrirVistaCrear = function(btnElement) { 
-    // Limpiar formulario completo
+    // Resetear formulario
     const form = document.getElementById('form-troquel');
     if (form) form.reset();
     
     document.getElementById('input-id-db').value = ""; 
     document.getElementById('titulo-formulario').innerText = "Alta de Nuevo Troquel"; 
     
-    // Cambiar a la vista del formulario
+    // Truco: Al escribir el ID, copiamos valor a Ubicación (son lo mismo)
+    const inputId = document.getElementById('input-id');
+    const inputUbi = document.getElementById('input-ubicacion');
+    inputId.oninput = function() {
+        inputUbi.value = inputId.value;
+    };
+    
     cambiarVista('vista-formulario', btnElement); 
 }
 
 // ==========================================
-// 2. CARGA DE DATOS DESDE EL SERVIDOR
+// 3. CARGA DE DATOS (CORE)
 // ==========================================
 async function cargarDatos() {
     try {
-        // Cargar Categorías
-        const resCat = await fetch('/api/categorias'); 
-        const categorias = await resCat.json();
-        
-        const select = document.getElementById('input-categoria'); 
-        const selectBulk = document.getElementById('bulk-categoria'); 
-        const chips = document.getElementById('contenedor-chips');
-        
-        // Limpiar opciones previas
-        if (select) select.innerHTML = '<option value="">Seleccionar...</option>'; 
-        if (selectBulk) selectBulk.innerHTML = '<option value="">Cambiar familia a...</option>'; 
-        if (chips) chips.innerHTML = '<button class="chip activo" onclick="filtrarPorChip(\'TODOS\', this)">Todas las Familias</button>';
-        
-        // Rellenar categorías
-        categorias.forEach(cat => { 
-            if (select) select.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`; 
-            if (selectBulk) selectBulk.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`; 
-            if (chips) chips.innerHTML += `<button class="chip" onclick="filtrarPorChip('${cat.nombre}', this)">${cat.nombre}</button>`; 
-        });
+        console.log("Iniciando carga de datos...");
 
-        // Cargar Troqueles
-        const resTroq = await fetch('/api/troqueles'); 
-        listaTroquelesCache = await resTroq.json(); 
-        
-        // Aplicar filtros iniciales y pintar tabla
+        // Carga paralela para velocidad: Tipos, Familias y Troqueles
+        const [resCat, resFam, resTroq] = await Promise.all([
+            fetch('/api/categorias'), // Tipos (Normal, Pequeño...)
+            fetch('/api/familias'),   // Familias (Cajas, Carpetas...)
+            fetch('/api/troqueles')   // Datos
+        ]);
+
+        const categorias = await resCat.json();
+        const familias = await resFam.json();
+        listaTroquelesCache = await resTroq.json();
+
+        // Una vez cargado todo, pintamos la interfaz
+        rellenarSelectoresYFiltros(categorias, familias);
         aplicarFiltrosYOrden();
         
     } catch (error) { 
-        console.error("Error cargando datos:", error); 
+        console.error("Error crítico cargando datos:", error); 
+        alert("Error de conexión con el servidor. Revisa la consola.");
     }
 }
 
-// ==========================================
-// 3. CREACIÓN DE CATEGORÍAS EN CALIENTE
-// ==========================================
-window.crearCategoriaAlVuelo = async function() {
-    const nueva = prompt("Introduce el nombre de la nueva familia/tipo:"); 
+function rellenarSelectoresYFiltros(categorias, familias) {
+    // A. Selectores del Formulario (Alta/Edición)
+    const formCat = document.getElementById('input-categoria');
+    const formFam = document.getElementById('input-familia');
     
-    if (!nueva || nueva.trim() === "") {
-        return;
-    }
+    formCat.innerHTML = '<option value="">Seleccionar Tipo...</option>';
+    formFam.innerHTML = '<option value="">Seleccionar Familia...</option>';
+
+    // B. Selectores de Acciones Masivas (Bulk)
+    const bulkCat = document.getElementById('bulk-categoria');
+    const bulkFam = document.getElementById('bulk-familia');
     
-    try { 
-        // Guardar nueva categoría en base de datos
-        await fetch('/api/categorias', { 
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'}, 
-            body: JSON.stringify({ nombre: nueva.trim() }) 
-        }); 
-        
-        // Recargar los datos para actualizar los desplegables
-        await cargarDatos(); 
-        
-        // Buscar la categoría recién creada y dejarla seleccionada en el formulario
-        const opciones = Array.from(document.getElementById('input-categoria').options); 
-        const opcionNueva = opciones.find(o => o.text === nueva.trim().toUpperCase()); 
-        
-        if (opcionNueva) {
-            opcionNueva.selected = true;
-        }
-    } catch (error) { 
-        alert("Error al crear la familia"); 
-    }
+    bulkCat.innerHTML = '<option value="">Asignar Tipo...</option>';
+    bulkFam.innerHTML = '<option value="">Asignar Familia...</option>';
+
+    // C. Filtros Visuales (Chips y Buscador)
+    const contenedorChips = document.getElementById('contenedor-chips');
+    const filtroFam = document.getElementById('filtro-familia');
+    
+    contenedorChips.innerHTML = '<button class="chip activo" onclick="filtrarPorTipo(\'TODOS\', this)">Todos los Tipos</button>';
+    filtroFam.innerHTML = '<option value="TODAS">Todas las Familias</option>';
+
+    // --- RELLENADO DE DATOS ---
+    
+    // 1. Tipos (Categorías)
+    categorias.forEach(cat => {
+        // En formulario
+        formCat.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`;
+        // En bulk
+        bulkCat.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`;
+        // En chips
+        contenedorChips.innerHTML += `<button class="chip" onclick="filtrarPorTipo('${cat.nombre}', this)">${cat.nombre}</button>`;
+    });
+
+    // 2. Familias
+    familias.forEach(fam => {
+        // En formulario
+        formFam.innerHTML += `<option value="${fam.id}">${fam.nombre}</option>`;
+        // En bulk
+        bulkFam.innerHTML += `<option value="${fam.id}">${fam.nombre}</option>`;
+        // En filtro
+        filtroFam.innerHTML += `<option value="${fam.nombre}">${fam.nombre}</option>`;
+    });
 }
 
 // ==========================================
-// 4. SISTEMA DE BÚSQUEDA Y FILTRADO
+// 4. LÓGICA DE FILTRADO Y BÚSQUEDA
 // ==========================================
+
+// Filtro por Chips (Tipos)
+window.filtrarPorTipo = function(nombreTipo, btnElement) { 
+    filtroTipoActivo = nombreTipo; 
+    
+    // Actualizar visualmente los chips
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('activo'));
+    if (btnElement) btnElement.classList.add('activo'); 
+    
+    aplicarFiltrosYOrden(); 
+}
+
+// Filtro por Dropdown (Familias)
+window.filtrarPorFamilia = function(selectElement) {
+    filtroFamiliaActivo = selectElement.value;
+    aplicarFiltrosYOrden();
+}
+
+// Buscador de Texto
 const buscador = document.getElementById('buscador'); 
 const btnLimpiar = document.getElementById('btn-limpiar');
 
-// Escuchar cambios en el buscador
 if (buscador) {
     buscador.addEventListener('input', () => { 
         if (btnLimpiar) {
-            if (buscador.value === '') {
-                btnLimpiar.classList.add('oculto');
-            } else {
-                btnLimpiar.classList.remove('oculto');
-            }
+            btnLimpiar.classList.toggle('oculto', buscador.value === '');
         }
         aplicarFiltrosYOrden(); 
     });
@@ -155,28 +180,23 @@ window.ordenarPor = function(columna) {
     aplicarFiltrosYOrden(); 
 }
 
-window.filtrarPorChip = function(familia, btnElement) { 
-    familiaActiva = familia; 
-    
-    const chips = document.querySelectorAll('.chip');
-    chips.forEach(c => {
-        c.classList.remove('activo');
-    });
-    
-    if (btnElement) btnElement.classList.add('activo'); 
-    aplicarFiltrosYOrden(); 
-}
-
+// --- MOTOR PRINCIPAL DE FILTRADO ---
 function aplicarFiltrosYOrden() {
     if (!buscador) return;
     const texto = buscador.value.toLowerCase();
     
-    // 1. Aplicar Filtrado
+    // 1. Filtrado
     let procesados = listaTroquelesCache.filter(t => {
-        const catNom = t.categorias?.nombre || '';
-        const pasaFam = (familiaActiva === 'TODOS') || (catNom === familiaActiva);
+        // A. Coincidencia de TIPO
+        const nombreTipo = t.categorias?.nombre || '';
+        const pasaTipo = (filtroTipoActivo === 'TODOS') || (nombreTipo === filtroTipoActivo);
         
-        const pasaTxt = (
+        // B. Coincidencia de FAMILIA
+        const nombreFam = t.familias?.nombre || '';
+        const pasaFam = (filtroFamiliaActivo === 'TODAS') || (nombreFam === filtroFamiliaActivo);
+
+        // C. Coincidencia de TEXTO
+        const pasaTexto = (
             (t.nombre && t.nombre.toLowerCase().includes(texto)) || 
             (t.id_troquel && t.id_troquel.toLowerCase().includes(texto)) ||
             (t.codigos_articulo && t.codigos_articulo.toLowerCase().includes(texto)) ||
@@ -184,36 +204,47 @@ function aplicarFiltrosYOrden() {
             (t.observaciones && t.observaciones.toLowerCase().includes(texto))
         );
         
-        return pasaFam && pasaTxt;
+        return pasaTipo && pasaFam && pasaTexto;
     });
 
-    // 2. Aplicar Ordenación
+    // 2. Ordenación
     procesados.sort((a, b) => {
-        let valA = "";
-        let valB = "";
+        let valA = "", valB = "";
         
-        if (columnaOrden === 'familia') {
-            valA = (a.categorias?.nombre || "").toLowerCase();
-            valB = (b.categorias?.nombre || "").toLowerCase();
+        // Gestión especial de columnas relacionales
+        if (columnaOrden === 'tipo') {
+            valA = a.categorias?.nombre || "";
+            valB = b.categorias?.nombre || "";
+        } else if (columnaOrden === 'familia') {
+            valA = a.familias?.nombre || "";
+            valB = b.familias?.nombre || "";
         } else {
-            valA = (a[columnaOrden] || "").toString().toLowerCase();
-            valB = (b[columnaOrden] || "").toString().toLowerCase();
+            valA = (a[columnaOrden] || "").toString();
+            valB = (b[columnaOrden] || "").toString();
         }
         
-        if (valA < valB) return ordenAscendente ? -1 : 1;
-        if (valA > valB) return ordenAscendente ? 1 : -1;
-        return 0;
+        // Intento de ordenación numérica inteligente (para que "10" vaya después de "2")
+        const numA = parseFloat(valA);
+        const numB = parseFloat(valB);
+
+        if (!isNaN(numA) && !isNaN(numB) && !valA.match(/[a-z]/i) && !valB.match(/[a-z]/i)) {
+            // Si ambos son números puros
+            return ordenAscendente ? numA - numB : numB - numA;
+        }
+        
+        // Ordenación alfabética normal
+        return ordenAscendente ? valA.localeCompare(valB) : valB.localeCompare(valA);
     });
 
-    // Guardar para posible exportación Excel
+    // Guardar para exportar lo que se ve
     datosExportables = procesados; 
     
-    // Llamar a renderizar
+    // Renderizar
     renderizarTabla(procesados);
 }
 
 // ==========================================
-// 5. RENDERIZADO DE TABLA (LISTA)
+// 5. RENDERIZADO DE TABLA HTML
 // ==========================================
 function renderizarTabla(datos) {
     const tbody = document.getElementById('lista-troqueles'); 
@@ -223,55 +254,44 @@ function renderizarTabla(datos) {
     if (!tbody) return;
 
     if (datos.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding:40px;">No se encontraron resultados.</td></tr>'; 
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding:40px; color: #64748b;">No se encontraron troqueles con esos filtros.</td></tr>'; 
         return; 
     }
 
     let filasHTML = "";
     
     datos.forEach(t => {
-        let pdfLink = '-';
-        if (t.enlace_archivo) {
-            pdfLink = `<a href="${t.enlace_archivo}" target="_blank" title="Ver Plano" class="btn-pdf">📄 Ver</a>`;
-        }
+        let pdfLink = t.enlace_archivo ? `<a href="${t.enlace_archivo}" target="_blank" class="btn-pdf">📄</a>` : '-';
+        let isChecked = idsSeleccionados.has(t.id) ? 'checked' : '';
+        let claseFila = idsSeleccionados.has(t.id) ? 'fila-seleccionada' : '';
         
-        let isChecked = '';
-        if (idsSeleccionados.has(t.id)) {
-            isChecked = 'checked';
-        }
-        
-        let claseFila = '';
-        if (idsSeleccionados.has(t.id)) {
-            claseFila = 'fila-seleccionada';
-        }
-        
-        let arts = '-';
-        if (t.codigos_articulo) {
-            arts = `<span class="obs-pildora" style="background:#f0fdf4; color:#166534; border-color:#bbf7d0;" title="${t.codigos_articulo}">${t.codigos_articulo}</span>`;
-        }
-        
-        let nombreCategoria = '-';
-        if (t.categorias && t.categorias.nombre) {
-            nombreCategoria = t.categorias.nombre;
-        }
-        
+        // Formateo de etiquetas visuales
+        let arts = t.codigos_articulo ? `<span class="obs-pildora" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;">${t.codigos_articulo}</span>` : '-';
+        let tipo = t.categorias?.nombre ? `<span style="font-weight:600; color:#475569;">${t.categorias.nombre}</span>` : '-';
+        let familia = t.familias?.nombre ? `<span style="color:#059669; font-weight:600;">${t.familias.nombre}</span>` : '-';
+
         filasHTML += `
         <tr class="${claseFila}">
             <td class="text-center">
                 <input type="checkbox" class="check-row" value="${t.id}" ${isChecked} onclick="toggleCheck(this, ${t.id})">
             </td>
-            <td class="text-primary" style="font-size: 13px; font-weight: bold;">${t.id_troquel}</td>
-            <td style="max-width: 200px;">${arts}</td>
+            <td class="text-primary" style="font-size: 14px; font-weight: 800; font-family: monospace;">${t.id_troquel}</td>
+            
             <td class="fw-bold">${t.nombre}</td>
-            <td><span class="etiqueta-familia">${nombreCategoria}</span></td>
-            <td>${t.ubicacion || '-'}</td>
-            <td>${t.tamano_troquel || '-'}</td>
-            <td>${t.tamano_final || '-'}</td>
+            
+            <td>${familia}</td>
+            
+            <td>${tipo}</td>
+            
+            <td style="max-width: 250px;">${arts}</td>
+            
+            <td>${t.referencias_ot || '-'}</td>
+            
             <td>
                 <div style="display:flex; justify-content:center; align-items: center; gap: 5px;">
                     ${pdfLink}
-                    <button class="btn-icono" onclick="abrirVistaEditar(${t.id})" title="Editar Troquel">✏️</button>
-                    <button class="btn-icono" onclick="generarQR('${t.id_troquel}')" title="Imprimir Etiqueta QR">🖨️</button>
+                    <button class="btn-icono" onclick="abrirVistaEditar(${t.id})" title="Editar">✏️</button>
+                    <button class="btn-icono" onclick="generarQR('${t.id_troquel}')" title="Etiqueta Godex">🖨️</button>
                 </div>
             </td>
         </tr>`;
@@ -282,29 +302,21 @@ function renderizarTabla(datos) {
 }
 
 // ==========================================
-// 6. ACCIONES MASIVAS (BULK) Y SELECCIÓN
+// 6. GESTIÓN DE SELECCIÓN Y BULK
 // ==========================================
 window.toggleCheck = function(checkbox, id) { 
-    if (checkbox.checked) {
-        idsSeleccionados.add(id); 
-    } else {
-        idsSeleccionados.delete(id); 
-    }
+    if (checkbox.checked) idsSeleccionados.add(id); 
+    else idsSeleccionados.delete(id); 
     aplicarFiltrosYOrden(); 
 }
 
 window.toggleAllChecks = function(mainCheckbox) { 
     const checkboxes = document.querySelectorAll('.check-row'); 
-    
     checkboxes.forEach(chk => { 
         chk.checked = mainCheckbox.checked; 
-        if (mainCheckbox.checked) {
-            idsSeleccionados.add(parseInt(chk.value)); 
-        } else {
-            idsSeleccionados.delete(parseInt(chk.value)); 
-        }
+        if (mainCheckbox.checked) idsSeleccionados.add(parseInt(chk.value)); 
+        else idsSeleccionados.delete(parseInt(chk.value)); 
     }); 
-    
     aplicarFiltrosYOrden(); 
 }
 
@@ -322,30 +334,36 @@ function evaluarBarraFlotante() {
     }
 }
 
-window.aplicarBulkCategoria = async function() { 
-    const catId = document.getElementById('bulk-categoria').value; 
+// Aplicar cambios masivos (Tipo o Familia)
+window.aplicarBulk = async function(tipoEntidad) {
+    // tipoEntidad puede ser 'categoria' (Tipo) o 'familia' (Familia)
+    const select = document.getElementById(`bulk-${tipoEntidad}`);
+    const valorId = select.value;
     
-    if (!catId) {
-        return alert("Selecciona una familia."); 
+    if (!valorId) return alert("Por favor selecciona un valor de la lista.");
+    
+    if (!confirm(`¿Aplicar este cambio a ${idsSeleccionados.size} troqueles?`)) return;
+
+    try {
+        await fetch(`/api/troqueles/bulk/${tipoEntidad}`, { 
+            method: 'PUT', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ 
+                ids: Array.from(idsSeleccionados), 
+                valor_id: parseInt(valorId) 
+            }) 
+        });
+        
+        idsSeleccionados.clear(); 
+        cargarDatos();
+        alert("Cambios aplicados correctamente.");
+    } catch (e) {
+        alert("Error al aplicar cambios masivos.");
     }
-    
-    await fetch('/api/troqueles/bulk/categoria', { 
-        method: 'PUT', 
-        headers: {'Content-Type': 'application/json'}, 
-        body: JSON.stringify({ 
-            ids: Array.from(idsSeleccionados), 
-            categoria_id: parseInt(catId) 
-        }) 
-    }); 
-    
-    idsSeleccionados.clear(); 
-    cargarDatos(); 
 }
 
 window.aplicarBulkBorrar = async function() { 
-    if (!confirm(`¿Estás seguro de mover ${idsSeleccionados.size} troqueles a la papelera?`)) {
-        return;
-    }
+    if (!confirm(`PELIGRO: ¿Estás seguro de enviar a la papelera ${idsSeleccionados.size} troqueles?`)) return;
     
     await fetch('/api/troqueles/bulk/borrar', { 
         method: 'POST', 
@@ -358,113 +376,94 @@ window.aplicarBulkBorrar = async function() {
 }
 
 // ==========================================
-// 7. EXPORTACIÓN A EXCEL (CSV)
+// 7. FUNCIONES DE CREACIÓN RÁPIDA (ENTIDADES)
 // ==========================================
-window.exportarCSV = function() {
-    if (datosExportables.length === 0) {
-        return alert("No hay datos para exportar");
+window.crearEntidad = async function(tabla) {
+    const tipoTexto = tabla === 'categorias' ? 'TIPO' : 'FAMILIA';
+    const nombre = prompt(`Escribe el nombre del nuevo ${tipoTexto}:`);
+    
+    if (!nombre || nombre.trim() === "") return;
+    
+    try {
+        await fetch(`/api/${tabla}`, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ nombre: nombre.trim() }) 
+        });
+        await cargarDatos(); // Recargar para ver la nueva opción
+    } catch (e) {
+        alert("Error al crear el registro.");
     }
-    
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-    csvContent += "QR_Fisico,Codigos_Articulo,Referencias_OT,Descripcion,Familia,Ubicacion,Tam_Troquel,Tam_Final,Observaciones\r\n";
-    
-    datosExportables.forEach(t => {
-        let nombreCat = '';
-        if (t.categorias && t.categorias.nombre) {
-            nombreCat = t.categorias.nombre;
-        }
-        
-        const row = [ 
-            `"${t.id_troquel}"`, 
-            `"${t.codigos_articulo || ''}"`, 
-            `"${t.referencias_ot || ''}"`, 
-            `"${t.nombre}"`, 
-            `"${nombreCat}"`, 
-            `"${t.ubicacion}"`, 
-            `"${t.tamano_troquel || ''}"`, 
-            `"${t.tamano_final || ''}"`, 
-            `"${t.observaciones || ''}"` 
-        ];
-        csvContent += row.join(",") + "\r\n";
-    });
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a"); 
-    link.setAttribute("href", encodedUri); 
-    link.setAttribute("download", "inventario_troqueles.csv"); 
-    
-    document.body.appendChild(link); 
-    link.click(); 
-    document.body.removeChild(link);
 }
 
 // ==========================================
-// 8. IMPORTAR CSV (UNIVERSAL E INTELIGENTE)
+// 8. IMPORTACIÓN (CSV) Y EXPORTACIÓN
 // ==========================================
 window.subirCSV = async function() {
     const input = document.getElementById('input-csv-import');
-    const tipoSelect = document.getElementById('select-tipo-importacion');
+    const selectTipo = document.getElementById('select-tipo-importacion');
     
     if (!input.files[0]) return;
     
-    const tipo = tipoSelect.value;
-    const formData = new FormData(); 
+    const tipoNombre = selectTipo.value;
+    const formData = new FormData();
     formData.append('file', input.files[0]);
-    formData.append('categoria_nombre', tipo); // Enviamos el tipo seleccionado al backend
-    
-    if (!confirm(`¿Importar este archivo como familia "${tipo}"?\n\nEl sistema usará la UBICACIÓN como ID.`)) {
-        return;
-    }
+    formData.append('tipo_seleccionado', tipoNombre); // Enviamos el tipo elegido
+
+    if (!confirm(`¿Importar archivo?\n\n- Se asignará el tipo: "${tipoNombre}"\n- El ID será la UBICACIÓN.`)) return;
 
     try {
-        // Feedback visual en el botón
+        // Feedback visual
         const btn = document.querySelector('button[onclick*="input-csv-import"]');
-        const txtOrig = btn.innerText;
-        btn.innerText = "⏳ Subiendo...";
-        btn.disabled = true;
+        const txt = btn.innerText;
+        btn.innerText = "⏳..."; btn.disabled = true;
 
-        const res = await fetch('/api/importar_csv', { 
-            method: 'POST', 
-            body: formData 
-        });
-        
+        const res = await fetch('/api/importar_csv', { method: 'POST', body: formData });
         const data = await res.json();
         
-        // Restaurar botón
-        btn.innerText = txtOrig;
-        btn.disabled = false;
+        btn.innerText = txt; btn.disabled = false;
 
         if (res.ok) {
-            alert(`¡Importación completada! Se han procesado ${data.total_importados} registros.`);
+            alert(`¡Importación completada! ${data.total_importados} registros procesados.`);
             cargarDatos();
         } else {
-            alert("Error del servidor: " + (data.detail || "No se pudo procesar el archivo."));
+            alert("Error: " + (data.detail || "Fallo desconocido"));
         }
-    } catch (error) { 
-        alert("Error de conexión al subir el archivo."); 
-        // Restaurar botón si falla
-        const btn = document.querySelector('button[onclick*="input-csv-import"]');
-        if (btn) {
-            btn.innerText = "📤 Importar CSV";
-            btn.disabled = false;
-        }
+    } catch (e) { 
+        alert("Error de conexión al subir."); 
     }
 }
 
+window.exportarCSV = function() {
+    if (datosExportables.length === 0) return alert("No hay datos para exportar");
+    
+    let csv = "data:text/csv;charset=utf-8,\uFEFF";
+    csv += "ID_Ubicacion,Articulos,OT,Descripcion,Tipo,Familia,Medidas,Obs\r\n";
+    
+    datosExportables.forEach(t => {
+        const cat = t.categorias?.nombre || '';
+        const fam = t.familias?.nombre || '';
+        csv += `"${t.id_troquel}","${t.codigos_articulo||''}","${t.referencias_ot||''}","${t.nombre}","${cat}","${fam}","${t.tamano_troquel||''}","${t.observaciones||''}"\r\n`;
+    });
+    
+    const link = document.createElement("a"); 
+    link.href = encodeURI(csv); 
+    link.download = "inventario_troqueles.csv"; 
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
 // ==========================================
-// 9. CRUD (FORMULARIO)
+// 9. GESTIÓN DEL FORMULARIO (ALTA/EDICIÓN)
 // ==========================================
 window.abrirVistaEditar = function(id_db) {
     const t = listaTroquelesCache.find(x => x.id === id_db); 
-    if (!t) {
-        return;
-    }
+    if (!t) return;
     
+    // Rellenar campos
     document.getElementById('input-id-db').value = t.id; 
     document.getElementById('input-id').value = t.id_troquel;
     document.getElementById('input-articulos').value = t.codigos_articulo || "";
     document.getElementById('input-ot').value = t.referencias_ot || "";
-    document.getElementById('input-categoria').value = t.categoria_id || "";
     document.getElementById('input-nombre').value = t.nombre; 
     document.getElementById('input-ubicacion').value = t.ubicacion;
     document.getElementById('input-tamano-troquel').value = t.tamano_troquel || ""; 
@@ -472,29 +471,19 @@ window.abrirVistaEditar = function(id_db) {
     document.getElementById('input-archivo').value = t.enlace_archivo || ""; 
     document.getElementById('input-observaciones').value = t.observaciones || "";
     
+    // Selectores (manejo de nulos)
+    document.getElementById('input-categoria').value = t.categoria_id || "";
+    document.getElementById('input-familia').value = t.familia_id || ""; // Nuevo campo
+    
     document.getElementById('titulo-formulario').innerText = "Editar Ficha de Troquel"; 
-    
     cambiarVista('vista-formulario'); 
-    
-    const botonesMenu = document.querySelectorAll('.menu-item');
-    botonesMenu.forEach(b => {
-        b.classList.remove('activo');
-    });
 }
 
 const formTroquel = document.getElementById('form-troquel');
 if (formTroquel) {
     formTroquel.addEventListener('submit', async (e) => {
         e.preventDefault(); 
-        
         const id_db = document.getElementById('input-id-db').value;
-        
-        let categoriaId = document.getElementById('input-categoria').value;
-        if (categoriaId === "") {
-            categoriaId = null;
-        } else {
-            categoriaId = parseInt(categoriaId);
-        }
         
         const datos = {
             id_troquel: document.getElementById('input-id').value,
@@ -502,7 +491,9 @@ if (formTroquel) {
             referencias_ot: document.getElementById('input-ot').value,
             nombre: document.getElementById('input-nombre').value, 
             ubicacion: document.getElementById('input-ubicacion').value,
-            categoria_id: categoriaId,
+            // Parsear IDs de selectores
+            categoria_id: parseInt(document.getElementById('input-categoria').value) || null,
+            familia_id: parseInt(document.getElementById('input-familia').value) || null,
             tamano_troquel: document.getElementById('input-tamano-troquel').value, 
             tamano_final: document.getElementById('input-tamano-final').value,
             enlace_archivo: document.getElementById('input-archivo').value, 
@@ -510,104 +501,42 @@ if (formTroquel) {
         };
 
         try {
-            if (id_db) {
-                await fetch(`/api/troqueles/${id_db}`, { 
-                    method: 'PUT', 
-                    headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify(datos) 
-                });
-            } else {
-                await fetch('/api/troqueles', { 
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify(datos) 
-                });
-            }
+            const url = id_db ? `/api/troqueles/${id_db}` : '/api/troqueles';
+            const method = id_db ? 'PUT' : 'POST';
+            
+            await fetch(url, { 
+                method: method, 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(datos) 
+            });
             
             await cargarDatos(); 
-            document.querySelector('.menu-item').click();
+            document.querySelector('.menu-item').click(); // Volver a lista
             
         } catch (error) {
-            alert("Ocurrió un error guardando el troquel en la base de datos.");
+            alert("Error guardando datos.");
         }
     });
 }
 
 // ==========================================
-// 10. HISTORIAL Y AUDITORÍA
-// ==========================================
-window.cargarHistorial = async function() {
-    try {
-        const res = await fetch('/api/historial'); 
-        const datos = await res.json(); 
-        const tbody = document.getElementById('lista-historial');
-        
-        if (!tbody) return;
-
-        if (datos.length === 0) { 
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center" style="padding:40px;">No hay movimientos registrados.</td></tr>'; 
-            return; 
-        }
-        
-        let htmlHistorial = "";
-        datos.forEach(h => {
-            let infoTroquel = "Troquel Eliminado";
-            if (h.troqueles) {
-                infoTroquel = `[${h.troqueles.id_troquel}] ${h.troqueles.nombre}`;
-            }
-            
-            const fechaFormateada = new Date(h.fecha_hora).toLocaleString();
-            
-            htmlHistorial += `
-            <tr>
-                <td class="text-muted" style="font-weight: 600;">${fechaFormateada}</td>
-                <td class="fw-bold">${infoTroquel}</td>
-                <td>${h.accion}</td>
-            </tr>`;
-        });
-        
-        tbody.innerHTML = htmlHistorial;
-        
-    } catch (error) { 
-        console.error("Error cargando el historial", error); 
-    }
-}
-
-// ==========================================
-// 11. GENERACIÓN QR (DISEÑO GODEX 3 LÍNEAS)
+// 10. GENERACIÓN ETIQUETA GODEX (3 LÍNEAS)
 // ==========================================
 window.generarQR = function(id_troquel) { 
-    // 1. Encontrar los datos del troquel en el cache local
-    const t = listaTroquelesCache.find(x => x.id_troquel === id_troquel);
-    if (!t) {
-        return;
-    }
+    const t = listaTroquelesCache.find(x => x.id_troquel === id_troquel); 
+    if (!t) return;
 
-    // Mostrar el modal
     document.getElementById('modal-qr').classList.remove('oculto'); 
     
-    // 2. Rellenar los 3 campos de texto en orden (UBI - ID - DESC)
-    const ubiEl = document.getElementById('qr-texto-ubi');
-    const idEl = document.getElementById('qr-texto-id'); 
-    const descEl = document.getElementById('qr-texto-desc');
+    // Mapeo de campos al diseño
+    // Línea 1: Ubicación
+    document.getElementById('qr-texto-ubi').innerText = t.ubicacion || "SIN UBICAR";
+    // Línea 2: ID (QR)
+    document.getElementById('qr-texto-id').innerText = t.id_troquel; 
+    // Línea 3: Descripción
+    document.getElementById('qr-texto-desc').innerText = t.nombre || '';
 
-    // LÍNEA 1: UBICACIÓN (ARRIBA)
-    if (ubiEl) {
-        // Si no tiene ubicación, mostramos "SIN UBICAR"
-        ubiEl.innerText = t.ubicacion ? t.ubicacion.toUpperCase() : "SIN UBICACIÓN";
-    }
-    
-    // LÍNEA 2: CÓDIGO (CENTRO) - Siempre mostramos el ID/Ubicación que es el QR
-    if (idEl) {
-        idEl.innerText = t.id_troquel; 
-    }
-    
-    // LÍNEA 3: DESCRIPCIÓN (ABAJO)
-    if (descEl) {
-        descEl.innerText = t.nombre || '';
-    }
-
-    // 3. Generación del QR Base (Limpio y legible)
+    // Generar código QR limpio
     const canvas = document.getElementById('qr-canvas');
     if (canvas) {
         new QRious({ 
@@ -615,13 +544,13 @@ window.generarQR = function(id_troquel) {
             value: id_troquel, 
             size: 200,    
             padding: 0,   
-            level: 'M' // Nivel medio es suficiente y más fácil de leer
+            level: 'M' 
         }); 
     }
 }
 
 // ==========================================
-// 12. ESCÁNER DE CÁMARA (SMARTPHONE)
+// 11. ESCÁNER DE CÁMARA
 // ==========================================
 window.iniciarEscaneo = function() { 
     document.getElementById('contenedor-camara').classList.remove('oculto'); 
@@ -631,23 +560,17 @@ window.iniciarEscaneo = function() {
         { facingMode: "environment" }, 
         { fps: 10, qrbox: 250 }, 
         (textoScaneado) => { 
-            // Si escanea algo, detiene cámara, va a la lista y busca ese texto
             window.detenerEscaneo(); 
             document.querySelector('.menu-item').click(); 
             document.getElementById('buscador').value = textoScaneado; 
             aplicarFiltrosYOrden(); 
         }, 
-        (errorMessage) => {
-            // Ignoramos errores de lectura por falta de enfoque
-        } 
-    ).catch((error) => {
-        alert("Error al iniciar la cámara. Asegúrate de dar permisos al navegador.");
-        window.detenerEscaneo();
-    }); 
+        () => {} 
+    ).catch(() => window.detenerEscaneo()); 
 }
 
 window.detenerEscaneo = function() { 
-    if(html5QrCode) { 
+    if (html5QrCode) { 
         html5QrCode.stop().then(() => { 
             html5QrCode.clear(); 
             document.getElementById('contenedor-camara').classList.add('oculto'); 
@@ -658,9 +581,37 @@ window.detenerEscaneo = function() {
 }
 
 // ==========================================
-// ARRANQUE DE LA APLICACIÓN
+// 12. HISTORIAL
 // ==========================================
-// Solo arrancar si estamos en el navegador
+window.cargarHistorial = async function() {
+    try {
+        const res = await fetch('/api/historial'); 
+        const datos = await res.json(); 
+        const tbody = document.getElementById('lista-historial');
+        
+        if (!tbody) return;
+        if (datos.length === 0) { 
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center" style="padding:40px;">Sin movimientos.</td></tr>'; 
+            return; 
+        }
+        
+        let html = "";
+        datos.forEach(h => {
+            let info = h.troqueles ? `[${h.troqueles.id_troquel}] ${h.troqueles.nombre}` : "Troquel Eliminado";
+            html += `
+            <tr>
+                <td class="text-muted" style="font-weight:600;">${new Date(h.fecha_hora).toLocaleString()}</td>
+                <td class="fw-bold">${info}</td>
+                <td>${h.accion}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    } catch (e) { console.error("Error historial", e); }
+}
+
+// ==========================================
+// ARRANQUE
+// ==========================================
 if (typeof window !== 'undefined') {
     window.addEventListener('load', cargarDatos);
 }
