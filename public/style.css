@@ -40,9 +40,7 @@ body {
     overflow: hidden; 
 }
 
-/* =======================================================
-   BARRA LATERAL (SIDEBAR)
-   ======================================================= */
+/* BARRA LATERAL */
 .sidebar {
     width: 260px;
     background-color: var(--bg-sidebar);
@@ -106,9 +104,7 @@ body {
     margin: 15px 10px;
 }
 
-/* =======================================================
-   ZONA DE TRABAJO (MAIN CONTENT)
-   ======================================================= */
+/* ZONA DE TRABAJO */
 .main-content {
     flex-grow: 1;
     padding: 30px 40px;
@@ -228,7 +224,7 @@ body {
 }
 
 /* =======================================================
-   TABLAS DE DATOS (INVENTARIO E HISTORIAL)
+   TABLAS DE DATOS
    ======================================================= */
 .contenedor-tabla {
     background: var(--bg-surface);
@@ -322,7 +318,6 @@ body {
     cursor: help;
 }
 
-/* SELECCIÓN MÚLTIPLE EN TABLA */
 .fila-seleccionada td {
     background-color: #eff6ff !important;
     border-bottom-color: #bfdbfe !important;
@@ -335,7 +330,7 @@ input[type="checkbox"] {
 }
 
 /* =======================================================
-   FORMULARIOS (NUEVO / EDITAR TROQUEL)
+   FORMULARIOS
    ======================================================= */
 .panel-formulario {
     background: var(--bg-surface);
@@ -388,7 +383,7 @@ input[type="checkbox"] {
 }
 
 /* =======================================================
-   BOTONES Y ACCIONES GLOBALES
+   BOTONES Y ACCIONES
    ======================================================= */
 .btn-accion {
     padding: 12px 24px;
@@ -448,7 +443,7 @@ input[type="checkbox"] {
 }
 
 /* =======================================================
-   BARRA FLOTANTE (ACCIONES MASIVAS - BULK)
+   BARRA FLOTANTE
    ======================================================= */
 .barra-acciones-bulk {
     position: fixed;
@@ -521,7 +516,7 @@ input[type="checkbox"] {
     display: flex;
     align-items: center;
     border: 1px solid #ccc;
-    padding: 1mm 2mm;
+    padding: 1mm;
     width: 50mm;
     height: 23mm;
     margin: 0 auto;
@@ -531,16 +526,18 @@ input[type="checkbox"] {
     text-align: left;
 }
 
+/* Estructura flexible para la información a la derecha del QR */
 .etiqueta-info {
     display: flex;
     flex-direction: column;
     justify-content: space-between; 
     margin-left: 2mm;
     height: 100%;
-    width: calc(100% - 21mm); 
+    width: calc(100% - 19mm); /* Restamos el ancho del QR (17mm + margen) */
     overflow: hidden;
 }
 
+/* LÍNEA 1: UBICACIÓN (ARRIBA) */
 .etiq-ubi { 
     font-weight: 800; 
     font-size: 8pt; 
@@ -550,22 +547,24 @@ input[type="checkbox"] {
     text-transform: uppercase;
 }
 
+/* LÍNEA 2: CÓDIGO (CENTRO) */
 .etiq-id { 
     font-weight: 900; 
-    font-size: 11pt; 
+    font-size: 11pt; /* Código grande para leer fácil */
     font-family: monospace; 
     color: black;
     margin-bottom: 2px;
     white-space: nowrap;
 }
 
+/* LÍNEA 3: DESCRIPCIÓN (ABAJO) */
 .etiq-desc { 
     font-weight: 500; 
     font-size: 7pt; 
     color: black;
     line-height: 1;
     display: -webkit-box;
-    -webkit-line-clamp: 2; 
+    -webkit-line-clamp: 2; /* Si es muy larga, permite 2 líneas */
     -webkit-box-orient: vertical;
     overflow: hidden;
     word-break: break-word;
@@ -575,52 +574,37 @@ input[type="checkbox"] {
    REGLAS PARA IMPRESORA TÉRMICA GODEX (50x23mm REAL)
    ======================================================= */
 @media print {
-    /* 1. Ocultar TODO por defecto */
-    body {
-        visibility: hidden;
-        margin: 0;
-        padding: 0;
-    }
-
-    /* 2. Mostrar SOLO la etiqueta */
-    #zona-impresion, #zona-impresion * {
-        visibility: visible;
+    body * { visibility: hidden; }
+    
+    #zona-impresion, #zona-impresion * { 
+        visibility: visible; 
     }
     
-    /* 3. Definir tamaño de papel exacto */
     @page {
         size: 50mm 23mm;
-        margin: 0mm; 
+        margin: 0; 
     }
     
-    /* 4. Posicionar la etiqueta FIJA en la esquina superior izquierda */
     #zona-impresion {
-        position: fixed;
+        position: absolute;
         left: 0;
         top: 0;
-        width: 50mm !important;
-        height: 23mm !important;
-        
-        /* Asegurar que se vea el fondo blanco y no transparencia */
-        background: white !important;
-        border: none !important;
-        padding: 1mm 2mm !important;
-        margin: 0 !important;
-        
-        /* Estilos de layout */
-        display: flex !important;
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-start;
-        box-sizing: border-box;
-        z-index: 9999;
+        width: 50mm;
+        height: 23mm;
+        border: none;
+        padding: 1mm; 
+        margin: 0;
+        /* Asegurar que se renderiza desde arriba a la izquierda */
+        position: fixed;
     }
     
     #qr-canvas {
-        width: 19mm !important;
-        height: 19mm !important;
+        width: 17mm !important;
+        height: 17mm !important;
         flex-shrink: 0;
     }
     
-    .no-print { display: none !important; }
+    .no-print { 
+        display: none !important; 
+    }
 }

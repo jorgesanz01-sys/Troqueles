@@ -13,28 +13,39 @@ let idsSeleccionados = new Set();
 // 1. NAVEGACIÓN ENTRE VISTAS
 // ==========================================
 window.cambiarVista = function(idVista, btnElement) { 
+    // Ocultar todas las vistas
     const vistas = document.querySelectorAll('.vista');
     vistas.forEach(v => {
         v.classList.add('oculto');
     });
     
+    // Mostrar la vista seleccionada
     const vistaDestino = document.getElementById(idVista);
-    vistaDestino.classList.remove('oculto'); 
+    if (vistaDestino) {
+        vistaDestino.classList.remove('oculto'); 
+    }
     
+    // Quitar la clase activo de todos los botones del menú
     const botonesMenu = document.querySelectorAll('.menu-item');
     botonesMenu.forEach(b => {
         b.classList.remove('activo');
     });
     
+    // Poner la clase activo al botón pulsado
     if (btnElement) {
         btnElement.classList.add('activo'); 
     }
 }
 
 window.abrirVistaCrear = function(btnElement) { 
-    document.getElementById('form-troquel').reset(); 
+    // Limpiar formulario completo
+    const form = document.getElementById('form-troquel');
+    if (form) form.reset();
+    
     document.getElementById('input-id-db').value = ""; 
     document.getElementById('titulo-formulario').innerText = "Alta de Nuevo Troquel"; 
+    
+    // Cambiar a la vista del formulario
     cambiarVista('vista-formulario', btnElement); 
 }
 
@@ -43,6 +54,7 @@ window.abrirVistaCrear = function(btnElement) {
 // ==========================================
 async function cargarDatos() {
     try {
+        // Cargar Categorías
         const resCat = await fetch('/api/categorias'); 
         const categorias = await resCat.json();
         
@@ -50,19 +62,23 @@ async function cargarDatos() {
         const selectBulk = document.getElementById('bulk-categoria'); 
         const chips = document.getElementById('contenedor-chips');
         
-        select.innerHTML = '<option value="">Seleccionar...</option>'; 
-        selectBulk.innerHTML = '<option value="">Cambiar familia a...</option>'; 
-        chips.innerHTML = '<button class="chip activo" onclick="filtrarPorChip(\'TODOS\', this)">Todas</button>';
+        // Limpiar opciones previas
+        if (select) select.innerHTML = '<option value="">Seleccionar...</option>'; 
+        if (selectBulk) selectBulk.innerHTML = '<option value="">Cambiar familia a...</option>'; 
+        if (chips) chips.innerHTML = '<button class="chip activo" onclick="filtrarPorChip(\'TODOS\', this)">Todas</button>';
         
+        // Rellenar categorías
         categorias.forEach(cat => { 
-            select.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`; 
-            selectBulk.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`; 
-            chips.innerHTML += `<button class="chip" onclick="filtrarPorChip('${cat.nombre}', this)">${cat.nombre}</button>`; 
+            if (select) select.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`; 
+            if (selectBulk) selectBulk.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`; 
+            if (chips) chips.innerHTML += `<button class="chip" onclick="filtrarPorChip('${cat.nombre}', this)">${cat.nombre}</button>`; 
         });
 
+        // Cargar Troqueles
         const resTroq = await fetch('/api/troqueles'); 
         listaTroquelesCache = await resTroq.json(); 
         
+        // Aplicar filtros iniciales y pintar tabla
         aplicarFiltrosYOrden();
         
     } catch (error) { 
@@ -81,14 +97,17 @@ window.crearCategoriaAlVuelo = async function() {
     }
     
     try { 
+        // Guardar nueva categoría en base de datos
         await fetch('/api/categorias', { 
             method: 'POST', 
             headers: {'Content-Type': 'application/json'}, 
             body: JSON.stringify({ nombre: nueva.trim() }) 
         }); 
         
+        // Recargar los datos para actualizar los desplegables
         await cargarDatos(); 
         
+        // Buscar la categoría recién creada y dejarla seleccionada en el formulario
         const opciones = Array.from(document.getElementById('input-categoria').options); 
         const opcionNueva = opciones.find(o => o.text === nueva.trim().toUpperCase()); 
         
@@ -106,18 +125,23 @@ window.crearCategoriaAlVuelo = async function() {
 const buscador = document.getElementById('buscador'); 
 const btnLimpiar = document.getElementById('btn-limpiar');
 
-buscador.addEventListener('input', () => { 
-    if (buscador.value === '') {
-        btnLimpiar.classList.add('oculto');
-    } else {
-        btnLimpiar.classList.remove('oculto');
-    }
-    aplicarFiltrosYOrden(); 
-});
+// Escuchar cambios en el buscador
+if (buscador) {
+    buscador.addEventListener('input', () => { 
+        if (btnLimpiar) {
+            if (buscador.value === '') {
+                btnLimpiar.classList.add('oculto');
+            } else {
+                btnLimpiar.classList.remove('oculto');
+            }
+        }
+        aplicarFiltrosYOrden(); 
+    });
+}
 
 window.limpiarBuscador = function() { 
-    buscador.value = ''; 
-    btnLimpiar.classList.add('oculto'); 
+    if (buscador) buscador.value = ''; 
+    if (btnLimpiar) btnLimpiar.classList.add('oculto'); 
     aplicarFiltrosYOrden(); 
 }
 
@@ -139,13 +163,15 @@ window.filtrarPorChip = function(familia, btnElement) {
         c.classList.remove('activo');
     });
     
-    btnElement.classList.add('activo'); 
+    if (btnElement) btnElement.classList.add('activo'); 
     aplicarFiltrosYOrden(); 
 }
 
 function aplicarFiltrosYOrden() {
+    if (!buscador) return;
     const texto = buscador.value.toLowerCase();
     
+    // 1. Aplicar Filtrado
     let procesados = listaTroquelesCache.filter(t => {
         const catNom = t.categorias?.nombre || '';
         const pasaFam = (familiaActiva === 'TODOS') || (catNom === familiaActiva);
@@ -161,6 +187,7 @@ function aplicarFiltrosYOrden() {
         return pasaFam && pasaTxt;
     });
 
+    // 2. Aplicar Ordenación
     procesados.sort((a, b) => {
         let valA = "";
         let valB = "";
@@ -178,7 +205,10 @@ function aplicarFiltrosYOrden() {
         return 0;
     });
 
+    // Guardar para posible exportación Excel
     datosExportables = procesados; 
+    
+    // Llamar a renderizar
     renderizarTabla(procesados);
 }
 
@@ -187,10 +217,13 @@ function aplicarFiltrosYOrden() {
 // ==========================================
 function renderizarTabla(datos) {
     const tbody = document.getElementById('lista-troqueles'); 
-    document.getElementById('check-all').checked = false;
+    const checkAll = document.getElementById('check-all');
+    if (checkAll) checkAll.checked = false;
     
+    if (!tbody) return;
+
     if (datos.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding:40px;">No se encontraron resultados.</td></tr>'; 
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center" style="padding:40px;">No se encontraron resultados.</td></tr>'; 
         return; 
     }
 
@@ -262,6 +295,7 @@ window.toggleCheck = function(checkbox, id) {
 
 window.toggleAllChecks = function(mainCheckbox) { 
     const checkboxes = document.querySelectorAll('.check-row'); 
+    
     checkboxes.forEach(chk => { 
         chk.checked = mainCheckbox.checked; 
         if (mainCheckbox.checked) {
@@ -270,6 +304,7 @@ window.toggleAllChecks = function(mainCheckbox) {
             idsSeleccionados.delete(parseInt(chk.value)); 
         }
     }); 
+    
     aplicarFiltrosYOrden(); 
 }
 
@@ -277,16 +312,19 @@ function evaluarBarraFlotante() {
     const barra = document.getElementById('barra-flotante'); 
     const contador = document.getElementById('contador-seleccionados'); 
     
-    if (idsSeleccionados.size > 0) { 
-        contador.innerText = `${idsSeleccionados.size} seleccionados`; 
-        barra.classList.remove('oculto'); 
-    } else { 
-        barra.classList.add('oculto'); 
-    } 
+    if (barra && contador) {
+        if (idsSeleccionados.size > 0) { 
+            contador.innerText = `${idsSeleccionados.size} seleccionados`; 
+            barra.classList.remove('oculto'); 
+        } else { 
+            barra.classList.add('oculto'); 
+        } 
+    }
 }
 
 window.aplicarBulkCategoria = async function() { 
     const catId = document.getElementById('bulk-categoria').value; 
+    
     if (!catId) {
         return alert("Selecciona una familia."); 
     }
@@ -391,53 +429,56 @@ window.abrirVistaEditar = function(id_db) {
     });
 }
 
-document.getElementById('form-troquel').addEventListener('submit', async (e) => {
-    e.preventDefault(); 
-    
-    const id_db = document.getElementById('input-id-db').value;
-    
-    let categoriaId = document.getElementById('input-categoria').value;
-    if (categoriaId === "") {
-        categoriaId = null;
-    } else {
-        categoriaId = parseInt(categoriaId);
-    }
-    
-    const datos = {
-        id_troquel: document.getElementById('input-id').value,
-        codigos_articulo: document.getElementById('input-articulos').value,
-        referencias_ot: document.getElementById('input-ot').value,
-        nombre: document.getElementById('input-nombre').value, 
-        ubicacion: document.getElementById('input-ubicacion').value,
-        categoria_id: categoriaId,
-        tamano_troquel: document.getElementById('input-tamano-troquel').value, 
-        tamano_final: document.getElementById('input-tamano-final').value,
-        enlace_archivo: document.getElementById('input-archivo').value, 
-        observaciones: document.getElementById('input-observaciones').value
-    };
-
-    try {
-        if (id_db) {
-            await fetch(`/api/troqueles/${id_db}`, { 
-                method: 'PUT', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify(datos) 
-            });
+const formTroquel = document.getElementById('form-troquel');
+if (formTroquel) {
+    formTroquel.addEventListener('submit', async (e) => {
+        e.preventDefault(); 
+        
+        const id_db = document.getElementById('input-id-db').value;
+        
+        let categoriaId = document.getElementById('input-categoria').value;
+        if (categoriaId === "") {
+            categoriaId = null;
         } else {
-            await fetch('/api/troqueles', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify(datos) 
-            });
+            categoriaId = parseInt(categoriaId);
         }
         
-        await cargarDatos(); 
-        document.querySelector('.menu-item').click();
-        
-    } catch (error) {
-        alert("Ocurrió un error guardando el troquel en la base de datos.");
-    }
-});
+        const datos = {
+            id_troquel: document.getElementById('input-id').value,
+            codigos_articulo: document.getElementById('input-articulos').value,
+            referencias_ot: document.getElementById('input-ot').value,
+            nombre: document.getElementById('input-nombre').value, 
+            ubicacion: document.getElementById('input-ubicacion').value,
+            categoria_id: categoriaId,
+            tamano_troquel: document.getElementById('input-tamano-troquel').value, 
+            tamano_final: document.getElementById('input-tamano-final').value,
+            enlace_archivo: document.getElementById('input-archivo').value, 
+            observaciones: document.getElementById('input-observaciones').value
+        };
+
+        try {
+            if (id_db) {
+                await fetch(`/api/troqueles/${id_db}`, { 
+                    method: 'PUT', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify(datos) 
+                });
+            } else {
+                await fetch('/api/troqueles', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify(datos) 
+                });
+            }
+            
+            await cargarDatos(); 
+            document.querySelector('.menu-item').click();
+            
+        } catch (error) {
+            alert("Ocurrió un error guardando el troquel en la base de datos.");
+        }
+    });
+}
 
 // ==========================================
 // 9. HISTORIAL Y AUDITORÍA
@@ -448,6 +489,8 @@ window.cargarHistorial = async function() {
         const datos = await res.json(); 
         const tbody = document.getElementById('lista-historial');
         
+        if (!tbody) return;
+
         if (datos.length === 0) { 
             tbody.innerHTML = '<tr><td colspan="3" class="text-center" style="padding:40px;">No hay movimientos registrados.</td></tr>'; 
             return; 
@@ -478,7 +521,7 @@ window.cargarHistorial = async function() {
 }
 
 // ==========================================
-// 10. GENERACIÓN QR (DISEÑO 3 LÍNEAS GODEX)
+// 10. GENERACIÓN QR CON UBICACIÓN INCRUSTADA
 // ==========================================
 window.generarQR = function(id_troquel) { 
     // 1. Encontrar los datos del troquel en el cache local
@@ -490,25 +533,40 @@ window.generarQR = function(id_troquel) {
     // Mostrar el modal
     document.getElementById('modal-qr').classList.remove('oculto'); 
     
-    // 2. Rellenar los 3 campos de texto en orden
-    // LÍNEA 1: Ubicación
-    document.getElementById('qr-texto-ubi').innerText = t.ubicacion ? t.ubicacion.toUpperCase() : "SIN UBICACIÓN";
-    
-    // LÍNEA 2: Código del QR (ID)
-    document.getElementById('qr-texto-id').innerText = t.id_troquel; 
-    
-    // LÍNEA 3: Descripción
-    document.getElementById('qr-texto-desc').innerText = t.nombre || '';
+    // 2. Rellenar los 3 campos de texto en orden (UBI - ID - DESC)
+    const ubiEl = document.getElementById('qr-texto-ubi');
+    const idEl = document.getElementById('qr-texto-id'); // Este es para el Código, aunque se llame ID
+    const descEl = document.getElementById('qr-texto-desc');
 
-    // 3. Generación del QR Base (Limpio y legible, nivel medio)
+    // LÍNEA 1: UBICACIÓN (ARRIBA)
+    if (ubiEl) {
+        ubiEl.innerText = t.ubicacion ? t.ubicacion.toUpperCase() : "SIN UBICACIÓN";
+    }
+    
+    // LÍNEA 2: CÓDIGO (CENTRO) - Prioridad: Artículos > ID
+    if (idEl) {
+        // Mostramos el ID del troquel como dato principal, o los artículos si prefieres
+        // Según tu último comentario, parece que quieres el código visible.
+        // Usaremos el ID del troquel (QR Físico) como principal identificador visual
+        idEl.innerText = t.id_troquel; 
+    }
+    
+    // LÍNEA 3: DESCRIPCIÓN (ABAJO)
+    if (descEl) {
+        descEl.innerText = t.nombre || '';
+    }
+
+    // 3. Generación del QR Base (Limpio y legible)
     const canvas = document.getElementById('qr-canvas');
-    new QRious({ 
-        element: canvas, 
-        value: id_troquel, 
-        size: 200,    
-        padding: 0,   
-        level: 'M' // Nivel Medio: Suficiente corrección, puntos más grandes
-    }); 
+    if (canvas) {
+        new QRious({ 
+            element: canvas, 
+            value: id_troquel, 
+            size: 200,    
+            padding: 0,   
+            level: 'M' // Nivel medio es suficiente
+        }); 
+    }
 }
 
 // ==========================================
@@ -551,4 +609,7 @@ window.detenerEscaneo = function() {
 // ==========================================
 // ARRANQUE DE LA APLICACIÓN
 // ==========================================
-cargarDatos();
+// Solo arrancar si estamos en el navegador
+if (typeof window !== 'undefined') {
+    window.addEventListener('load', cargarDatos);
+}
