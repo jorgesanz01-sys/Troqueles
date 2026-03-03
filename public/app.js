@@ -276,52 +276,48 @@ window.exportarCSV = function() {
 }
 
 // ==========================================
-// 7. EDITAR Y GUARDAR
+// 8. CRUD FORMULARIO (EDICIÓN BLINDADA)
 // ==========================================
 window.abrirVistaEditar = function(id_db) {
-    const t = listaTroquelesCache.find(x => x.id == id_db); 
-    if(!t) return console.error("No encontrado:", id_db);
+    console.log("Intentando editar ID:", id_db); // Para depurar
 
-    document.getElementById('input-id-db').value = t.id;
-    document.getElementById('input-id').value = t.id_troquel;
-    document.getElementById('input-ubicacion').value = t.ubicacion;
-    document.getElementById('input-nombre').value = t.nombre;
-    document.getElementById('input-articulos').value = t.codigos_articulo||"";
-    document.getElementById('input-ot').value = t.referencias_ot||"";
-    document.getElementById('input-tamano-troquel').value = t.tamano_troquel||"";
-    document.getElementById('input-tamano-final').value = t.tamano_final||"";
-    document.getElementById('input-archivo').value = t.enlace_archivo||"";
-    document.getElementById('input-observaciones').value = t.observaciones||"";
+    // 1. BÚSQUEDA INTELIGENTE
+    // Intentamos encontrar el troquel comparando como número Y como texto
+    let t = listaTroquelesCache.find(x => x.id == id_db);
+
+    // Si no lo encuentra por ID interno, probamos por ID de Troquel (Matrícula)
+    if (!t) {
+        t = listaTroquelesCache.find(x => x.id_troquel == id_db);
+    }
+
+    if (!t) {
+        console.error("Troquel no encontrado en cache. IDs disponibles:", listaTroquelesCache.map(x => x.id));
+        alert("Error: No se encuentra el troquel. Prueba a recargar la página.");
+        return;
+    }
     
-    document.getElementById('input-categoria').value = t.categoria_id||"";
-    document.getElementById('input-familia').value = t.familia_id||"";
-
-    document.getElementById('titulo-formulario').innerText = "Editar Troquel";
-    cambiarVista('vista-formulario');
+    // 2. RELLENADO DE DATOS (Con protección contra nulos)
+    // Usamos || "" para que si un dato es null no se rompa el formulario
+    document.getElementById('input-id-db').value = t.id || "";
+    document.getElementById('input-id').value = t.id_troquel || "";       // MATRÍCULA
+    document.getElementById('input-ubicacion').value = t.ubicacion || ""; // UBICACIÓN
+    document.getElementById('input-nombre').value = t.nombre || "";
+    
+    document.getElementById('input-articulos').value = t.codigos_articulo || "";
+    document.getElementById('input-ot').value = t.referencias_ot || "";
+    document.getElementById('input-tamano-troquel').value = t.tamano_troquel || "";
+    document.getElementById('input-tamano-final').value = t.tamano_final || ""; 
+    document.getElementById('input-archivo').value = t.enlace_archivo || ""; 
+    document.getElementById('input-observaciones').value = t.observaciones || "";
+    
+    // 3. SELECTORES (Cuidado con los 0 o nulos)
+    document.getElementById('input-categoria').value = t.categoria_id || "";
+    document.getElementById('input-familia').value = t.familia_id || ""; 
+    
+    // 4. CAMBIO DE VISTA
+    document.getElementById('titulo-formulario').innerText = "Editar Ficha Técnica";
+    cambiarVista('vista-formulario'); 
 }
-
-document.getElementById('form-troquel').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const id_db = document.getElementById('input-id-db').value;
-    const datos = {
-        id_troquel: document.getElementById('input-id').value,
-        ubicacion: document.getElementById('input-ubicacion').value,
-        nombre: document.getElementById('input-nombre').value,
-        codigos_articulo: document.getElementById('input-articulos').value,
-        referencias_ot: document.getElementById('input-ot').value,
-        categoria_id: parseInt(document.getElementById('input-categoria').value)||null,
-        familia_id: parseInt(document.getElementById('input-familia').value)||null,
-        tamano_troquel: document.getElementById('input-tamano-troquel').value,
-        tamano_final: document.getElementById('input-tamano-final').value,
-        enlace_archivo: document.getElementById('input-archivo').value,
-        observaciones: document.getElementById('input-observaciones').value
-    };
-
-    const url = id_db ? `/api/troqueles/${id_db}` : '/api/troqueles';
-    const method = id_db ? 'PUT' : 'POST';
-    await fetch(url, { method: method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(datos) });
-    await cargarDatos(); document.querySelector('.menu-item').click();
-});
 
 // ==========================================
 // 8. QR GODEX
