@@ -38,26 +38,32 @@ window.abrirVistaCrear = function(btnElement) {
 }
 
 // ==========================================
-// 3. CARGA DE DATOS
+// 3. CARGA DE DATOS (CORREGIDO EL ERROR DE SINTAXIS)
 // ==========================================
 async function cargarDatos() {
     try {
-        const [resCat, resFam, resTroq] = await Promise.all([
+        console.log("Cargando datos...");
+        
+        // 1. Cargar auxiliares (SOLO Categorias y Familias aqui)
+        // EL ERROR ESTABA AQUI: Había un resTroq sobrante en el array
+        const [resCat, resFam] = await Promise.all([
             fetch('/api/categorias').then(r => r.ok ? r.json() : []),
             fetch('/api/familias').then(r => r.ok ? r.json() : [])
         ]);
 
-        resCat.forEach(c => mapaCategorias[c.id] = c.nombre);
-        resFam.forEach(f => mapaFamilias[f.id] = f.nombre);
+        // Crear mapas para buscar nombres rápido
+        if(Array.isArray(resCat)) resCat.forEach(c => mapaCategorias[c.id] = c.nombre);
+        if(Array.isArray(resFam)) resFam.forEach(f => mapaFamilias[f.id] = f.nombre);
 
         rellenarSelects(resCat, resFam);
 
-        const resTroq = await fetch('/api/troqueles');
-        listaTroquelesCache = await resTroq.json();
+        // 2. Cargar Troqueles (Ahora la variable se declara una sola vez)
+        const resTroqData = await fetch('/api/troqueles');
+        listaTroquelesCache = await resTroqData.json();
 
         aplicarFiltrosYOrden();
 
-    } catch (error) { console.error("Error carga:", error); }
+    } catch (error) { console.error("Error cargando datos:", error); }
 }
 
 function rellenarSelects(cats, fams) {
@@ -76,17 +82,21 @@ function rellenarSelects(cats, fams) {
     if(chips) chips.innerHTML = '<button class="chip activo" onclick="filtrarPorTipo(\'TODOS\', this)">Todos los Tipos</button>';
     if(filtroFam) filtroFam.innerHTML = '<option value="TODAS">Todas las Familias</option>';
 
-    cats.forEach(c => {
-        if(fCat) fCat.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
-        if(bCat) bCat.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
-        if(chips) chips.innerHTML += `<button class="chip" onclick="filtrarPorTipo('${c.nombre}', this)">${c.nombre}</button>`;
-    });
+    if(Array.isArray(cats)) {
+        cats.forEach(c => {
+            if(fCat) fCat.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+            if(bCat) bCat.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+            if(chips) chips.innerHTML += `<button class="chip" onclick="filtrarPorTipo('${c.nombre}', this)">${c.nombre}</button>`;
+        });
+    }
 
-    fams.forEach(f => {
-        if(fFam) fFam.innerHTML += `<option value="${f.id}">${f.nombre}</option>`;
-        if(bFam) bFam.innerHTML += `<option value="${f.id}">${f.nombre}</option>`;
-        if(filtroFam) filtroFam.innerHTML += `<option value="${f.nombre}">${f.nombre}</option>`;
-    });
+    if(Array.isArray(fams)) {
+        fams.forEach(f => {
+            if(fFam) fFam.innerHTML += `<option value="${f.id}">${f.nombre}</option>`;
+            if(bFam) bFam.innerHTML += `<option value="${f.id}">${f.nombre}</option>`;
+            if(filtroFam) filtroFam.innerHTML += `<option value="${f.nombre}">${f.nombre}</option>`;
+        });
+    }
 }
 
 // ==========================================
@@ -179,9 +189,11 @@ function renderizarTabla(datos) {
         const nCat = getNombreCat(t) || '<span style="color:#cbd5e1;">-</span>';
         const nFam = getNombreFam(t) || '<span style="color:#cbd5e1;">-</span>';
 
-        // LÁPIZ ARREGLADO: comillas simples en el ID '${t.id}' para que funcione con cualquier formato
+        // AÑADIDO: aria-label en el checkbox para evitar el warning
         return `<tr class="${cls}">
-            <td class="text-center"><input type="checkbox" class="check-row" value="${t.id}" ${chk} onclick="toggleCheck(this, ${t.id})"></td>
+            <td class="text-center">
+                <input type="checkbox" class="check-row" value="${t.id}" ${chk} onclick="toggleCheck(this, ${t.id})" aria-label="Seleccionar troquel ${t.id_troquel}">
+            </td>
             <td class="text-primary" style="font-weight:900;">${t.id_troquel || '-'}</td>
             <td style="font-weight:700;">${t.ubicacion || '-'}</td>
             <td class="fw-bold">${t.nombre || 'Sin nombre'}</td>
@@ -190,34 +202,54 @@ function renderizarTabla(datos) {
             <td style="max-width:200px;">${art}</td>
             <td>
                 <div style="display:flex; justify-content:center; gap:5px;">
-                    <button class="btn-icono" onclick="abrirVistaEditar('${t.id}')" title="Editar">✏️</button>
-                    <button class="btn-icono" onclick="generarQR('${t.id_troquel}')" title="Imprimir">🖨️</button>
+                    <button class="btn-icono" onclick="abrirVistaEditar('${t.id}')" title="Editar" aria-label="Editar">✏️</button>
+                    <button class="btn-icono" onclick="generarQR('${t.id_troquel}')" title="Imprimir" aria-label="Imprimir">🖨️</button>
                 </div>
             </td>
         </tr>`;
     }).join('');
-    evaluarBarra();
+    
+    evaluarBarraFlotante();
 }
 
 // ==========================================
 // 5. ACCIONES MASIVAS
 // ==========================================
-window.toggleCheck = function(c, id) { c.checked ? idsSeleccionados.add(id) : idsSeleccionados.delete(id); aplicarFiltrosYOrden(); }
-window.toggleAllChecks = function(m) { document.querySelectorAll('.check-row').forEach(c => { c.checked = m.checked; m.checked ? idsSeleccionados.add(parseInt(c.value)) : idsSeleccionados.delete(parseInt(c.value)); }); aplicarFiltrosYOrden(); }
+window.toggleCheck = function(c, id) { 
+    c.checked ? idsSeleccionados.add(id) : idsSeleccionados.delete(id); 
+    // Actualización visual rápida
+    const row = c.closest('tr');
+    if(row) row.className = c.checked ? 'fila-seleccionada' : '';
+    evaluarBarraFlotante();
+}
+
+window.toggleAllChecks = function(m) { 
+    const checkboxes = document.querySelectorAll('.check-row'); 
+    checkboxes.forEach(chk => { 
+        chk.checked = m.checked; 
+        const id = parseInt(chk.value);
+        if (m.checked) idsSeleccionados.add(id); else idsSeleccionados.delete(id);
+        const row = chk.closest('tr');
+        if(row) row.className = m.checked ? 'fila-seleccionada' : '';
+    }); 
+    evaluarBarraFlotante();
+}
 
 window.limpiarSeleccion = function() {
     idsSeleccionados.clear();
     const chk = document.getElementById('check-all');
     if(chk) chk.checked = false;
-    aplicarFiltrosYOrden();
+    aplicarFiltrosYOrden(); // Recarga limpia
 }
 
-function evaluarBarra() { 
+function evaluarBarraFlotante() { 
     const b = document.getElementById('barra-flotante'); 
     if(idsSeleccionados.size > 0) { 
         document.getElementById('contador-seleccionados').innerText = `${idsSeleccionados.size}`; 
         b.classList.remove('oculto'); 
-    } else b.classList.add('oculto'); 
+    } else { 
+        b.classList.add('oculto'); 
+    }
 }
 
 window.aplicarBulk = async function(tipo) {
@@ -230,7 +262,7 @@ window.aplicarBulk = async function(tipo) {
 window.aplicarBulkBorrar = async function() {
     if(!confirm("¿Borrar seleccionados?")) return;
     await fetch('/api/troqueles/bulk/borrar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(idsSeleccionados) }) });
-    idsSeleccionados.clear(); cargarDatos();
+    idsSeleccionados.clear(); cargarDatos(); 
 }
 
 // ==========================================
@@ -270,13 +302,12 @@ window.exportarCSV = function() {
 // 7. EDITAR Y GUARDAR
 // ==========================================
 window.abrirVistaEditar = function(id_db) {
-    console.log("Editando ID:", id_db);
-    // Usamos == para que funcione con "10" (string) y 10 (int)
+    // Usamos comparación laxa (==) por si el id viene como string o número
     const t = listaTroquelesCache.find(x => x.id == id_db); 
     
     if(!t) {
-        console.error("No se encuentra ID:", id_db);
-        alert("Error cargando ficha. Intenta recargar la página.");
+        console.error("No encontrado:", id_db);
+        alert("Error cargando ficha");
         return;
     }
 
@@ -325,16 +356,14 @@ document.getElementById('form-troquel').addEventListener('submit', async (e) => 
 // 8. QR GODEX
 // ==========================================
 window.generarQR = function(id_troquel) {
+    // Buscamos por matrícula
     const t = listaTroquelesCache.find(x => x.id_troquel == id_troquel); 
     if(!t) return alert("Troquel no encontrado");
     
     document.getElementById('modal-qr').classList.remove('oculto');
-    // UBI Grande
     document.getElementById('qr-texto-ubi').innerText = t.ubicacion || "SIN UBI";
-    // ID pequeño
     document.getElementById('qr-texto-id').innerText = t.id_troquel;
-    // Descripción Multilínea (CSS se encarga de recortar si es demasiado largo)
-    document.getElementById('qr-texto-desc').innerText = t.nombre || "";
+    document.getElementById('qr-texto-desc').innerText = t.nombre;
     
     new QRious({ element: document.getElementById('qr-canvas'), value: t.id_troquel, size: 200, padding: 0, level: 'M' });
 }
