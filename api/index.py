@@ -22,13 +22,13 @@ except Exception as e:
 # 📋 MODELOS DE DATOS
 # ==========================================
 class TroquelForm(BaseModel):
-    id_troquel: str
+    # Ya no pedimos id_troquel manual, usaremos el ID numérico de la base de datos
     codigos_articulo: Optional[str] = ""  
     referencias_ot: Optional[str] = ""    
     nombre: str
-    ubicacion: str
-    categoria_id: Optional[int] = None # TIPO (Normal, Pequeño, Expulsor...)
-    familia_id: Optional[int] = None   # FAMILIA (Caja, Carpeta, Puzzles...)
+    ubicacion: str                     # La "estantería" (ej: 1, 2, A-01...)
+    categoria_id: Optional[int] = None # EL TIPO (Normal, Pequeño...)
+    familia_id: Optional[int] = None   # LA FAMILIA (Caja, Carpeta...)
     tamano_troquel: Optional[str] = ""
     tamano_final: Optional[str] = ""
     observaciones: Optional[str] = ""
@@ -57,17 +57,18 @@ async def listar_familias():
 
 @app.get("/api/troqueles")
 async def listar_troqueles():
-    # Traemos todo + nombres de tablas relacionadas
+    # Ordenamos por ID numérico (creación)
     return supabase.table("troqueles")\
         .select("*, categorias(nombre), familias(nombre)")\
         .neq("estado_activo", "En Papelera")\
-        .order("id_troquel")\
+        .order("id")\
         .execute().data
 
 @app.get("/api/historial")
 async def listar_historial():
+    # En el historial mostramos el nombre y la ubicación
     return supabase.table("historial")\
-        .select("*, troqueles(id_troquel, nombre)")\
+        .select("*, troqueles(nombre, ubicacion)")\
         .order("fecha_hora", desc=True)\
         .execute().data
 
@@ -86,6 +87,7 @@ async def crear_familia(dato: NuevaEntidad):
 async def crear_troquel(troquel: TroquelForm):
     datos = troquel.dict()
     datos["estado_activo"] = "Activo"
+    # No enviamos ID, dejamos que Supabase genere el correlativo (1, 2, 3...)
     return supabase.table("troqueles").insert(datos).execute()
 
 @app.put("/api/troqueles/{id_db}")
@@ -112,14 +114,12 @@ async def bulk_borrar(data: BulkBorrar):
     return supabase.table("troqueles").update({"estado_activo": "En Papelera"}).in_("id", data.ids).execute()
 
 # ==========================================
-# 🧠 CEREBRO IMPORTADOR INTELIGENTE
+# 🧠 IMPORTADOR INTELIGENTE (LOGICA NUEVA)
 # ==========================================
 def limpiar_header(h): 
-    # Normaliza nombres de columnas para evitar errores por tildes o mayúsculas
     return h.strip().upper().replace('.', '').replace('Nº', 'NUMERO').replace('Ó', 'O').replace('Í', 'I')
 
 def get_col(row_dict, candidatos):
-    # Busca en el diccionario de la fila usando varias claves posibles
     row_norm = {limpiar_header(k): v for k, v in row_dict.items() if k}
     for c in candidatos:
         c_norm = limpiar_header(c)
@@ -128,12 +128,10 @@ def get_col(row_dict, candidatos):
     return ""
 
 def obtener_id_tipo(nombre_tipo):
-    """Busca ID de Categoría (Tipo) o la crea si no existe"""
     if not nombre_tipo: return None
     nombre = nombre_tipo.upper().strip()
     res = supabase.table("categorias").select("id").eq("nombre", nombre).execute()
     if res.data: return res.data[0]['id']
-    # Crear si no existe
     new = supabase.table("categorias").insert({"nombre": nombre}).execute()
     return new.data[0]['id'] if new.data else None
 
@@ -141,75 +139,63 @@ def obtener_id_tipo(nombre_tipo):
 async def importar_csv(file: UploadFile = File(...), tipo_seleccionado: str = Form(...)):
     try:
         content = await file.read()
-        
-        # 1. Intentar decodificar (UTF-8 o Latin-1 para Excel España)
         try: text = content.decode('utf-8-sig')
         except: text = content.decode('latin-1')
         
-        # 2. Detectar separador (; o ,)
         line1 = text.split('\n')[0]
         sep = ';' if line1.count(';') > line1.count(',') else ','
-        
         f = io.StringIO(text)
         reader = csv.DictReader(f, delimiter=sep)
         
-        # 3. Obtener ID del Tipo seleccionado (ej: "TROQUELES PEQUEÑOS")
+        # 1. Obtenemos el ID del TIPO seleccionado (ej: "PEQUEÑOS")
         cat_id = obtener_id_tipo(tipo_seleccionado)
         
         filas_para_insertar = []
         
         for row in reader:
-            # LÓGICA DE ORO: ID = UBICACIÓN
-            # Buscamos la columna ubicación
-            id_t = get_col(row, ["UBICACIÓN", "UBICACION", "ESTANTERIA", "POSICION"])
+            # 2. La Ubicación es sagrada. Buscamos esa columna.
+            ubi = get_col(row, ["UBICACIÓN", "UBICACION", "ESTANTERIA", "POSICION"])
+            if not ubi: 
+                # Si no hay columna ubicación, a lo mejor es el código antiguo
+                ubi = get_col(row, ["CODIGO TROQUE", "CODIGO", "ID"])
             
-            # Si no hay ubicación, intentamos con código troquel como plan B
-            if not id_t: id_t = get_col(row, ["CODIGO TROQUE", "CODIGO", "ID"])
-            
-            # Si sigue sin haber ID, saltamos la línea (fila vacía)
-            if not id_t: continue
+            if not ubi: continue # Si no hay ubicación, no sirve.
 
-            # Recopilar Artículos (A veces están en "CODIGO TROQUE" en los CSV nuevos)
+            # 3. Recopilar Artículos (Campo grande)
             c_arts = get_col(row, ["CÓDIGO Artículo", "CODIGO ARTICULO", "REF"])
             c_extra = get_col(row, ["CODIGO TROQUE"])
             
-            # Si "CODIGO TROQUE" existe y no es igual a la Ubicación (ID), es un dato útil (artículo o ref)
             arts_final = c_arts
-            if c_extra and c_extra != id_t:
+            # Si hay un código extra y es distinto a la ubicación, lo guardamos como artículo también
+            if c_extra and c_extra != ubi and c_extra not in c_arts:
                 if arts_final: arts_final = f"{c_extra} - {arts_final}"
                 else: arts_final = c_extra
 
             nuevo_registro = {
-                "id_troquel": id_t,          # El ID es la Ubicación
+                # NO ENVIAMOS 'id'. Dejamos que Supabase cree el correlativo (1, 2, 3...)
                 "nombre": get_col(row, ["DESCRIPCIÓN", "DESCRIPCION", "NOMBRE"]),
                 "codigos_articulo": arts_final,
                 "referencias_ot": get_col(row, ["Número OT", "NUMERO OT", "OT"]),
-                "ubicacion": id_t,           # La ubicación física es el mismo ID
-                "categoria_id": cat_id,      # Asignamos el TIPO seleccionado en la web
-                "familia_id": None,          # La FAMILIA se asignará después (Bulk)
+                "ubicacion": ubi,            # Aquí va el "1", "2", "A5"...
+                "categoria_id": cat_id,      # Aquí va el ID de "PEQUEÑOS"
+                "familia_id": None,          # Pendiente de asignar en web
                 "observaciones": get_col(row, ["OBSERVACIONES", "NOTAS"]),
                 "estado_activo": "Activo"
             }
             filas_para_insertar.append(nuevo_registro)
             
-        # 4. Inserción masiva segura (bloques de 100)
+        # 4. Insertar (Solo Insertar, para generar nuevos IDs correlativos)
         chunk_size = 100
         for i in range(0, len(filas_para_insertar), chunk_size):
             chunk = filas_para_insertar[i:i+chunk_size]
-            try:
-                # Upsert: Si existe el ID (Ubicación), actualiza. Si no, crea.
-                supabase.table("troqueles").upsert(chunk, on_conflict="id_troquel").execute()
-            except Exception as e_chunk:
-                print(f"Error en bloque {i}: {e_chunk}")
-                # Fallback: intentar 1 a 1 si falla el bloque
-                for item in chunk:
-                    try: supabase.table("troqueles").upsert(item, on_conflict="id_troquel").execute()
-                    except: pass
+            try: 
+                supabase.table("troqueles").insert(chunk).execute()
+            except Exception as e:
+                print(f"Error insertando bloque {i}: {e}")
 
         return {"status": "ok", "total_importados": len(filas_para_insertar)}
 
     except Exception as e:
-        print(f"Error importación: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/health")
