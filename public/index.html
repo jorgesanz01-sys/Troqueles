@@ -25,26 +25,34 @@
                     <span>➕</span> Nuevo Troquel
                 </button>
                 <button class="menu-item" onclick="cambiarVista('vista-historial', this); cargarHistorial();">
-                    <span>🕒</span> Historial / Logs
+                    <span>🕒</span> Auditoría / Logs
                 </button>
                 <div class="menu-divisor"></div>
                 <button class="menu-item" onclick="iniciarEscaneo()">
                     <span>📷</span> Escanear QR
                 </button>
             </nav>
+            
+            <div style="margin-top: auto; padding: 20px; font-size: 11px; opacity: 0.5; text-align: center;">
+                Gestión de Troqueles v2.0
+            </div>
         </aside>
 
         <main class="main-content">
             
             <section id="vista-lista" class="vista activa">
                 <div class="header-modulo">
-                    <h1>Inventario de Troqueles</h1>
+                    <div>
+                        <h1>Directorio de Troqueles</h1>
+                        <p style="margin: 5px 0 0 0; color: #64748b; font-size: 13px;">Gestión integral de moldes, cuchillas y ubicaciones.</p>
+                    </div>
+                    
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <button class="btn-secundario" onclick="exportarCSV()">📥 Excel</button>
                         
-                        <div style="display: flex; align-items: center; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding-left: 10px;">
-                            <span style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-right: 5px;">IMPORTAR EN:</span>
-                            <select id="select-tipo-importacion" style="border: none; background: transparent; font-family: 'Inter'; font-size: 13px; color: #1e293b; font-weight: 600; outline: none; cursor: pointer; max-width: 150px;">
+                        <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding-left: 10px;">
+                            <span style="font-size: 10px; color: #64748b; font-weight: 800; margin-right: 5px; letter-spacing: 0.5px;">IMPORTAR EN:</span>
+                            <select id="select-tipo-importacion" style="border: none; background: transparent; font-family: 'Inter'; font-size: 12px; color: #1e293b; font-weight: 700; outline: none; cursor: pointer; max-width: 140px;">
                                 <option value="TROQUELES NORMALES">Normales</option>
                                 <option value="TROQUELES PEQUEÑOS">Pequeños</option>
                                 <option value="CON EXPULSOR">Con Expulsor</option>
@@ -52,7 +60,7 @@
                                 <option value="OTROS">Otros...</option>
                             </select>
                             <input type="file" id="input-csv-import" accept=".csv" style="display: none;" onchange="subirCSV()">
-                            <button class="btn-secundario" style="border: none; border-left: 1px solid #e2e8f0; border-radius: 0 8px 8px 0; margin-left: 5px; background-color: #f8fafc;" onclick="document.getElementById('input-csv-import').click()">
+                            <button class="btn-secundario" style="border: none; border-left: 1px solid #cbd5e1; border-radius: 0 5px 5px 0; background-color: white; padding: 8px 12px;" onclick="document.getElementById('input-csv-import').click()">
                                 📤 Subir
                             </button>
                         </div>
@@ -66,17 +74,17 @@
                 <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center;">
                     
                     <div style="position: relative; min-width: 250px;">
-                        <span style="position: absolute; left: 12px; top: 12px; pointer-events: none;">📂</span>
-                        <select id="filtro-familia" onchange="filtrarPorFamilia(this)" style="width: 100%; padding: 12px 10px 12px 35px; border-radius: 8px; border: 1px solid #e2e8f0; outline: none; font-weight: 600; color: #475569; appearance: none; background: white; cursor: pointer;">
+                        <span style="position: absolute; left: 12px; top: 12px; pointer-events: none; opacity: 0.5;">📂</span>
+                        <select id="filtro-familia" onchange="filtrarPorFamilia(this)" style="width: 100%; padding: 12px 10px 12px 35px; border-radius: 6px; border: 2px solid #e2e8f0; outline: none; font-weight: 600; color: #475569; appearance: none; background: white; cursor: pointer;">
                             <option value="TODAS">Todas las Familias</option>
                             </select>
                         <span style="position: absolute; right: 12px; top: 14px; font-size: 10px; color: #94a3b8; pointer-events: none;">▼</span>
                     </div>
 
                     <div class="caja-buscador" style="flex-grow: 1;">
-                        <span class="icono-lupa">🔍</span>
-                        <input type="text" id="buscador" placeholder="Buscar por artículo, descripción, ubicación...">
-                        <button id="btn-limpiar" class="btn-limpiar oculto" onclick="limpiarBuscador()">✕</button>
+                        <span class="icono-lupa" style="position: absolute; left: 12px; color: #94a3b8;">🔍</span>
+                        <input type="text" id="buscador" placeholder="Buscar por código, descripción, artículos...">
+                        <button id="btn-limpiar" class="btn-limpiar oculto" onclick="limpiarBuscador()" style="position: absolute; right: 10px; border: none; background: #e2e8f0; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; cursor: pointer;">✕</button>
                     </div>
                 </div>
 
@@ -87,17 +95,17 @@
                                 <th style="width: 40px; text-align: center;">
                                     <input type="checkbox" id="check-all" onclick="toggleAllChecks(this)">
                                 </th>
-                                <th onclick="ordenarPor('id')" class="sortable">ID Int. ↕️</th>
-                                <th onclick="ordenarPor('ubicacion')" class="sortable">Ubicación ↕️</th>
-                                <th onclick="ordenarPor('tipo')" class="sortable">Tipo ↕️</th>
+                                <th onclick="ordenarPor('id_troquel')" class="sortable">Ubicación/QR ↕️</th>
                                 <th onclick="ordenarPor('nombre')" class="sortable">Descripción ↕️</th>
                                 <th onclick="ordenarPor('familia')" class="sortable">Familia ↕️</th>
+                                <th onclick="ordenarPor('tipo')" class="sortable">Tipo ↕️</th>
                                 <th onclick="ordenarPor('codigos_articulo')" class="sortable">Artículos ↕️</th>
+                                <th onclick="ordenarPor('referencias_ot')" class="sortable">OT ↕️</th>
                                 <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="lista-troqueles">
-                            <tr><td colspan="8" class="text-center" style="padding:40px;">Cargando base de datos...</td></tr>
+                            <tr><td colspan="8" class="text-center" style="padding:40px; color: #94a3b8;">Cargando base de datos...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -105,8 +113,8 @@
 
             <section id="vista-formulario" class="vista oculto">
                 <div class="header-modulo">
-                    <h1 id="titulo-formulario">Alta de Nuevo Troquel</h1>
-                    <button class="btn-secundario" onclick="document.querySelector('.menu-item').click()">Volver</button>
+                    <h1>Ficha Técnica de Troquel</h1>
+                    <button class="btn-secundario" onclick="document.querySelector('.menu-item').click()">Cancelar / Volver</button>
                 </div>
                 
                 <div class="panel-formulario">
@@ -114,65 +122,67 @@
                         <input type="hidden" id="input-id-db">
                         <div class="form-grid">
                             
-                            <div class="form-group full-width" style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                            <div class="form-group full-width" style="background: #f1f5f9; padding: 20px; border-radius: 6px; border: 2px solid #cbd5e1; position: relative;">
+                                <span style="position: absolute; top: -10px; left: 20px; background: #f1f5f9; padding: 0 10px; font-size: 12px; font-weight: 800; color: var(--bg-sidebar);">DATOS DE UBICACIÓN</span>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                                     <div>
-                                        <label style="color: var(--primary);">Tipo de Troquel (Almacén) *</label>
+                                        <label>Tipo de Troquel (Almacén) *</label>
                                         <div style="display: flex; gap: 8px;">
                                             <select id="input-categoria" required style="flex-grow: 1;"></select>
-                                            <button type="button" class="btn-secundario btn-sm" onclick="crearEntidad('categorias')" title="Crear Tipo">+</button>
+                                            <button type="button" class="btn-secundario btn-sm" onclick="crearEntidad('categorias')">+</button>
                                         </div>
                                     </div>
                                     <div>
-                                        <label style="color: var(--primary);">Ubicación (Número/Estantería) *</label>
-                                        <input type="text" id="input-ubicacion" placeholder="Ej. 1, 50, A-1..." required style="border-color: var(--primary); font-weight: 800; font-size: 16px;">
+                                        <label>Ubicación (Número/QR) *</label>
+                                        <input type="text" id="input-ubicacion" placeholder="Ej. 1, 50, A-1..." required style="border-color: var(--primary); font-weight: 800;">
                                     </div>
                                 </div>
+                                <input type="hidden" id="input-id">
                             </div>
 
                             <div class="form-group">
-                                <label>Familia de Producto (Desplegable)</label>
+                                <label>Familia de Producto</label>
                                 <div style="display: flex; gap: 8px;">
                                     <select id="input-familia" style="flex-grow: 1;"></select>
-                                    <button type="button" class="btn-secundario btn-sm" onclick="crearEntidad('familias')" title="Crear Familia">+</button>
+                                    <button type="button" class="btn-secundario btn-sm" onclick="crearEntidad('familias')">+</button>
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label>Referencias OT</label>
-                                <input type="text" id="input-ot">
+                                <input type="text" id="input-ot" placeholder="Ej: OT-2024-001">
                             </div>
 
                             <div class="form-group full-width">
                                 <label>Descripción del Troquel *</label>
-                                <input type="text" id="input-nombre" required>
+                                <input type="text" id="input-nombre" required placeholder="Nombre descriptivo completo">
                             </div>
 
                             <div class="form-group full-width">
-                                <label>Códigos de Artículo (Campo Grande)</label>
-                                <textarea id="input-articulos" rows="3" placeholder="Ej: 108657, 108658..."></textarea>
+                                <label>Códigos de Artículo (Separados por guiones o comas)</label>
+                                <textarea id="input-articulos" rows="3" placeholder="Ej: 108657 - 108658..."></textarea>
                             </div>
 
                             <div class="form-group">
-                                <label>Medidas Troquel</label>
-                                <input type="text" id="input-tamano-troquel">
+                                <label>Medidas Madera</label>
+                                <input type="text" id="input-tamano-troquel" placeholder="Ancho x Alto">
                             </div>
                             <div class="form-group">
-                                <label>Medidas Finales</label>
-                                <input type="text" id="input-tamano-final">
+                                <label>Medidas Corte Final</label>
+                                <input type="text" id="input-tamano-final" placeholder="Ancho x Alto">
                             </div>
 
                             <div class="form-group full-width">
                                 <label>Enlace al Plano (URL)</label>
-                                <input type="url" id="input-archivo">
+                                <input type="url" id="input-archivo" placeholder="https://drive.google.com/...">
                             </div>
                             <div class="form-group full-width">
-                                <label>Observaciones</label>
-                                <textarea id="input-observaciones" rows="2"></textarea>
+                                <label>Observaciones / Mantenimiento</label>
+                                <textarea id="input-observaciones" rows="2" placeholder="Estado de las cuchillas, gomas..."></textarea>
                             </div>
                         </div>
                         
-                        <div class="modal-botones">
+                        <div class="modal-botones" style="margin-top: 30px;">
                             <button type="button" class="btn-secundario" onclick="document.querySelector('.menu-item').click()">Cancelar</button>
                             <button type="submit" class="btn-accion">💾 Guardar Ficha</button>
                         </div>
@@ -181,10 +191,10 @@
             </section>
 
             <section id="vista-historial" class="vista oculto">
-                <div class="header-modulo"><h1>Auditoría</h1></div>
+                <div class="header-modulo"><h1>Auditoría de Movimientos</h1></div>
                 <div class="contenedor-tabla">
                     <table class="tabla-pro">
-                        <thead><tr><th>Fecha</th><th>Troquel</th><th>Acción</th></tr></thead>
+                        <thead><tr><th>Fecha</th><th>Troquel</th><th>Acción Registrada</th></tr></thead>
                         <tbody id="lista-historial"></tbody>
                     </table>
                 </div>
@@ -194,15 +204,15 @@
 
     <div id="barra-flotante" class="barra-acciones-bulk oculto">
         <span id="contador-seleccionados" style="font-weight: 600;">0 seleccionados</span>
-        <div style="height: 20px; width: 1px; background: #475569; margin: 0 10px;"></div>
+        <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.3); margin: 0 10px;"></div>
         
-        <select id="bulk-categoria" class="select-bulk"><option value="">Asignar Tipo...</option></select>
-        <button class="btn-accion btn-sm" style="background: white; color: black; margin-right: 10px;" onclick="aplicarBulk('categoria')">Aplicar</button>
+        <select id="bulk-categoria" class="select-bulk" style="color: black;"><option value="">Asignar Tipo...</option></select>
+        <button class="btn-accion btn-sm" style="background: white; color: var(--bg-sidebar); margin-right: 10px;" onclick="aplicarBulk('categoria')">Aplicar</button>
         
-        <select id="bulk-familia" class="select-bulk"><option value="">Asignar Familia...</option></select>
-        <button class="btn-accion btn-sm" style="background: white; color: black;" onclick="aplicarBulk('familia')">Aplicar</button>
+        <select id="bulk-familia" class="select-bulk" style="color: black;"><option value="">Asignar Familia...</option></select>
+        <button class="btn-accion btn-sm" style="background: white; color: var(--bg-sidebar);" onclick="aplicarBulk('familia')">Aplicar</button>
         
-        <button class="btn-icono peligro btn-sm" style="background: #fef2f2; border:none; margin-left: 10px;" onclick="aplicarBulkBorrar()">🗑️ Borrar</button>
+        <button class="btn-icono peligro btn-sm" style="background: #ef4444; border:none; color: white; margin-left: 10px;" onclick="aplicarBulkBorrar()">🗑️ Borrar</button>
     </div>
 
     <div id="contenedor-camara" class="modal oculto">

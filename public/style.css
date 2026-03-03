@@ -1,25 +1,34 @@
 /* =======================================================
-   VARIABLES DE TEMA (DISEÑO INDUSTRIAL MODERNO)
+   TEMA: INDUSTRIAL DIE-CUTTING PRO (MADERA & ACERO)
    ======================================================= */
 :root {
-    --bg-app: #f1f5f9; 
-    --bg-sidebar: #0f172a; 
-    --bg-surface: #ffffff;
-    --text-main: #1e293b;
+    /* Paleta Base */
+    --bg-app: #f1f5f9;           /* Gris técnico muy claro */
+    --bg-sidebar: #1e293b;       /* Azul acero oscuro (Base) */
+    
+    /* Materiales */
+    --wood-texture: linear-gradient(135deg, #3d2b1f 0%, #2a1b12 100%); /* Madera oscura */
+    --wood-accent: #d97706;      /* Barniz Naranja/Dorado */
+    --steel-light: #f8fafc;      /* Acero brillante */
+    --steel-dark: #cbd5e1;       /* Acero mate */
+    --blade-edge: #94a3b8;       /* Filo de cuchilla */
+
+    /* Colores Funcionales */
+    --primary: #0f766e;          /* Verde técnico oscuro */
+    --primary-hover: #115e59;
+    --danger: #ef4444;           /* Rojo seguridad */
+    --success: #10b981;          /* Verde OK */
+    
+    /* Tipografía */
+    --text-main: #334155;        /* Gris plomo */
     --text-muted: #64748b;
-    --text-light: #f8fafc;
-    --primary: #2563eb; 
-    --primary-hover: #1d4ed8;
-    --success: #059669;
-    --danger: #ef4444;
-    --border: #e2e8f0;
-    --border-dark: #1e293b;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
-    --radius-lg: 16px;
-    --radius-md: 12px;
-    --radius-sm: 8px;
+    --text-light: #e2e8f0;
+
+    /* Estructural */
+    --radius-lg: 4px;            /* Bordes más rectos (Industrial) */
+    --radius-sm: 2px;
+    --shadow-hard: 2px 2px 0px rgba(0,0,0,0.15); /* Sombra dura "troquelada" */
+    --shadow-soft: 0 4px 6px -1px rgba(0,0,0,0.1);
 }
 
 body {
@@ -28,246 +37,237 @@ body {
     padding: 0;
     background-color: var(--bg-app);
     color: var(--text-main);
-    -webkit-font-smoothing: antialiased;
+    height: 100vh;
+    overflow: hidden;
+    /* Trama de fondo sutil (Papel milimetrado) */
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
 }
 
 /* =======================================================
-   ESTRUCTURA PRINCIPAL (LAYOUT ERP)
+   LAYOUT PRINCIPAL
    ======================================================= */
 .erp-layout {
     display: flex;
-    height: 100vh; 
-    overflow: hidden; 
+    height: 100%;
 }
 
-/* BARRA LATERAL */
+/* --- BARRA LATERAL (EL TABLERO) --- */
 .sidebar {
-    width: 260px;
-    background-color: var(--bg-sidebar);
+    width: 270px;
+    background: var(--wood-texture); /* Fondo madera */
     color: var(--text-light);
     display: flex;
     flex-direction: column;
-    flex-shrink: 0; 
+    flex-shrink: 0;
+    border-right: 4px solid var(--wood-accent); /* Canto de madera */
+    box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+    z-index: 20;
 }
 
 .sidebar-logo {
     padding: 25px;
+    background: rgba(0,0,0,0.3); /* Barniz oscuro */
+    border-bottom: 1px solid rgba(255,255,255,0.1);
     display: flex;
     align-items: center;
     gap: 15px;
-    border-bottom: 1px solid var(--border-dark);
 }
 
 .sidebar-logo h2 {
     margin: 0;
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: 0.5px;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #fce7f3; /* Blanco sucio */
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 .sidebar-menu {
-    padding: 20px 10px;
+    padding: 20px 15px;
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
+/* BOTONES MENÚ (Aspecto herramienta) */
 .menu-item {
-    background: transparent;
-    color: #94a3b8;
-    border: none;
-    padding: 15px 20px;
+    background: rgba(255,255,255,0.03);
+    color: #cbd5e1;
+    border: 1px solid transparent;
+    padding: 12px 18px;
     text-align: left;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.15s ease;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .menu-item:hover {
-    background-color: var(--border-dark);
+    background: rgba(255,255,255,0.1);
     color: white;
+    transform: translateX(2px);
 }
 
+/* ESTADO ACTIVO: "Grabado" en la madera */
 .menu-item.activo {
-    background-color: var(--primary);
-    color: white;
+    background: linear-gradient(90deg, rgba(217, 119, 6, 0.2) 0%, transparent 100%);
+    color: var(--wood-accent);
+    border-left: 4px solid var(--wood-accent);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
 }
 
 .menu-divisor {
     height: 1px;
-    background-color: var(--border-dark);
+    background: rgba(255,255,255,0.1);
     margin: 15px 10px;
 }
 
-/* ZONA DE TRABAJO */
+/* --- ZONA DE TRABAJO --- */
 .main-content {
     flex-grow: 1;
     padding: 30px 40px;
-    overflow-y: auto; 
+    overflow-y: auto;
 }
 
+/* CABECERAS (Placa metálica) */
 .header-modulo {
+    background: white;
+    padding: 20px 30px;
+    border-radius: var(--radius-lg);
+    border: 1px solid #cbd5e1;
+    border-left: 5px solid var(--primary); /* Marca técnica */
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 25px;
+    box-shadow: var(--shadow-soft);
 }
 
 .header-modulo h1 {
     margin: 0;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 800;
+    color: var(--text-main);
+    text-transform: uppercase;
     letter-spacing: -0.5px;
 }
 
-.vista {
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.oculto {
-    display: none !important;
-}
-
 /* =======================================================
-   BUSCADOR Y FILTROS CHIPS
+   CONTROLES Y FILTROS
    ======================================================= */
-.caja-buscador {
-    position: relative;
-    width: 400px;
-    display: flex;
-    align-items: center;
-}
-
-.icono-lupa {
-    position: absolute;
-    left: 15px;
-    color: var(--text-muted);
-}
-
-#buscador {
-    width: 100%;
-    padding: 12px 35px 12px 40px; 
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 15px;
-    outline: none;
-    box-sizing: border-box;
-    transition: all 0.2s;
-}
-
-#buscador:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-}
-
-.btn-limpiar {
-    position: absolute;
-    right: 10px;
-    background: var(--border-dark);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    font-size: 10px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-}
-
-.btn-limpiar:hover {
-    background: var(--danger);
-}
-
+/* CHIPS (Botones físicos) */
 .filtros-chips {
     display: flex;
     gap: 10px;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
 }
 
 .chip {
-    padding: 8px 18px;
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 99px;
+    padding: 8px 20px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-bottom: 3px solid #cbd5e1; /* Efecto 3D */
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase;
     cursor: pointer;
-    font-weight: 600;
-    font-size: 14px;
-    color: var(--text-muted);
-    transition: all 0.2s;
-    box-shadow: var(--shadow-sm);
+    transition: all 0.1s;
 }
 
 .chip:hover {
-    border-color: var(--primary);
+    transform: translateY(1px);
+    border-bottom-width: 2px;
     color: var(--primary);
+    background: white;
 }
 
 .chip.activo {
-    background: var(--text-main);
-    color: white;
-    border-color: var(--text-main);
+    background: var(--bg-sidebar);
+    color: var(--wood-accent);
+    border-color: #0f172a;
+    border-bottom-color: #0f172a;
+    transform: translateY(2px);
+    border-bottom-width: 1px;
 }
 
+/* BUSCADOR Y DROPDOWNS */
+.caja-buscador {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+input[type="text"], 
+input[type="url"],
+select, 
+textarea {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: var(--radius-lg);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--text-main);
+    background: #fff;
+    transition: all 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.select-bulk {
+    border: none !important;
+    background: rgba(255,255,255,0.1) !important;
+    color: white !important;
+}
+.select-bulk option { color: black; }
+
 /* =======================================================
-   TABLAS DE DATOS
+   TABLAS (Planos Técnicos)
    ======================================================= */
 .contenedor-tabla {
-    background: var(--bg-surface);
+    background: white;
+    border: 1px solid #cbd5e1;
     border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
-    overflow-x: auto;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
 }
 
 .tabla-pro {
     width: 100%;
     border-collapse: collapse;
-    text-align: left;
-    min-width: 1000px;
 }
 
 .tabla-pro th {
-    padding: 16px;
-    background: #f8fafc;
-    border-bottom: 2px solid var(--border);
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-muted);
+    background: #f1f5f9;
+    padding: 15px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 800;
     text-transform: uppercase;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.tabla-pro th.sortable {
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.tabla-pro th.sortable:hover {
-    background: #e2e8f0;
-    color: var(--text-main);
+    color: #64748b;
+    border-bottom: 2px solid #cbd5e1;
+    letter-spacing: 0.5px;
 }
 
 .tabla-pro td {
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f5f9;
     font-size: 14px;
+    color: var(--text-main);
     vertical-align: middle;
 }
 
@@ -275,336 +275,193 @@ body {
     background-color: #f8fafc;
 }
 
-.fw-bold { font-weight: 600; }
-.text-primary { color: var(--primary); font-family: monospace; font-size: 15px; }
-.text-center { text-align: center; }
+.fila-seleccionada td {
+    background-color: #f0fdfa !important; /* Verde muy suave */
+    border-bottom: 1px solid #ccfbf1 !important;
+}
+
+/* Etiquetas visuales */
+.text-primary { 
+    color: var(--primary); 
+    font-family: 'Courier New', monospace; 
+    font-weight: 900;
+    font-size: 15px;
+}
 
 .etiqueta-familia {
-    background: #e0e7ff;
-    color: #4338ca;
-    padding: 5px 10px;
-    border-radius: 6px;
-    font-size: 12px;
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #ffedd5;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-}
-
-.btn-pdf {
     display: inline-block;
-    background: #fee2e2;
-    color: #b91c1c;
-    padding: 6px 12px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 12px;
-    font-weight: 700;
-    transition: 0.2s;
-}
-
-.btn-pdf:hover {
-    background: #fecaca;
 }
 
 .obs-pildora {
-    display: inline-block;
-    padding: 4px 8px;
-    border-radius: 4px;
+    font-family: monospace;
     font-size: 12px;
-    border: 1px solid transparent;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 180px;
-    cursor: help;
-}
-
-.fila-seleccionada td {
-    background-color: #eff6ff !important;
-    border-bottom-color: #bfdbfe !important;
-}
-
-input[type="checkbox"] {
-    transform: scale(1.2);
-    cursor: pointer;
-    accent-color: var(--primary);
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #475569;
+    border: 1px solid #e2e8f0;
 }
 
 /* =======================================================
-   FORMULARIOS
+   FORMULARIOS (Ficha Técnica)
    ======================================================= */
 .panel-formulario {
-    background: var(--bg-surface);
-    padding: 35px;
+    background: white;
+    padding: 40px;
     border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
+    border: 1px solid #cbd5e1;
+    border-top: 5px solid var(--wood-accent); /* Detalle madera superior */
+    box-shadow: var(--shadow-soft);
     max-width: 900px;
-    box-shadow: var(--shadow-sm);
+    margin: 0 auto;
 }
 
 .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 24px;
+    gap: 25px;
 }
 
-.form-group.full-width {
-    grid-column: span 2;
-}
+.full-width { grid-column: span 2; }
 
 .form-group label {
     display: block;
-    font-weight: 600;
-    font-size: 13px;
-    margin-bottom: 8px;
-    color: var(--text-muted);
-}
-
-.form-group input, 
-.form-group select, 
-.form-group textarea {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    box-sizing: border-box;
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    transition: all 0.2s;
-    background: #f8fafc;
-}
-
-.form-group input:focus, 
-.form-group select:focus, 
-.form-group textarea:focus {
-    border-color: var(--primary);
-    background: white;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
 }
 
 /* =======================================================
-   BOTONES Y ACCIONES
+   BOTONES (Estilo Maquinaria)
    ======================================================= */
 .btn-accion {
-    padding: 12px 24px;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
     background: var(--primary);
     color: white;
-    transition: all 0.2s;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #0f514c; /* Sombra dura */
+    transition: all 0.1s;
 }
 
-.btn-accion:hover {
-    background: var(--primary-hover);
-    transform: translateY(-1px);
+.btn-accion:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #0f514c;
 }
 
 .btn-secundario {
-    padding: 12px 20px;
-    border: 1px solid var(--border);
     background: white;
-    color: var(--text-main);
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    transition: all 0.2s;
-}
-
-.btn-secundario:hover {
-    background: #f1f5f9;
-}
-
-.btn-sm {
+    border: 1px solid #cbd5e1;
+    color: #475569;
     padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 700;
     font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 2px 0 #cbd5e1;
+    transition: all 0.1s;
+}
+
+.btn-secundario:active {
+    transform: translateY(2px);
+    box-shadow: none;
 }
 
 .btn-icono {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px;
+    background: white;
+    border: 1px solid #cbd5e1;
+    padding: 6px;
+    border-radius: 4px;
     cursor: pointer;
-    margin: 0 4px;
-    transition: all 0.2s;
+    box-shadow: 0 2px 0 #cbd5e1;
+    transition: all 0.1s;
+    margin: 0 2px;
 }
 
-.btn-icono:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-}
-
-.btn-icono.peligro:hover {
-    background: #fef2f2;
-    border-color: var(--danger);
+.btn-icono:active {
+    transform: translateY(2px);
+    box-shadow: none;
 }
 
 /* =======================================================
-   BARRA FLOTANTE
+   MODALES Y FLOTANTES
    ======================================================= */
+.oculto { display: none !important; }
+
+.modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.85); /* Oscuro técnico */
+    backdrop-filter: blur(2px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-contenido {
+    background: #f8fafc;
+    padding: 30px;
+    border-radius: 6px;
+    border: 2px solid #475569;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    width: 90%;
+    max-width: 450px;
+}
+
+/* Barra de Acciones Masivas */
 .barra-acciones-bulk {
     position: fixed;
     bottom: 30px;
     left: 50%;
     transform: translateX(-50%);
     background: var(--bg-sidebar);
-    color: white;
-    padding: 15px 30px;
-    border-radius: 50px;
+    padding: 12px 25px;
+    border-radius: 8px; /* Rectangular con bordes suaves */
     display: flex;
     align-items: center;
     gap: 15px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-    z-index: 100;
-    animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-    from { bottom: -50px; opacity: 0; }
-    to { bottom: 30px; opacity: 1; }
-}
-
-.select-bulk {
-    padding: 8px 12px;
-    border-radius: 6px;
-    border: none;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    outline: none;
-}
-
-/* =======================================================
-   MODALES FLOTANTES 
-   ======================================================= */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    color: white;
+    border: 2px solid var(--wood-accent); /* Borde madera */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     z-index: 1000;
 }
 
-.modal-contenido {
-    background: var(--bg-surface);
-    padding: 30px;
-    border-radius: var(--radius-lg);
-    width: 90%;
-    max-width: 400px;
-    box-shadow: var(--shadow-lg);
-}
-
-.modal-botones {
-    display: flex;
-    justify-content: flex-end;
-    gap: 15px;
-    margin-top: 20px;
-}
-
 /* =======================================================
-   DISEÑO ETIQUETA EN PANTALLA (PREVIEW 50x23)
+   ETIQUETA GODEX (Preview 50x23)
    ======================================================= */
 .etiqueta-preview {
-    display: flex;
-    align-items: center;
-    border: 1px solid #ccc;
-    padding: 1mm;
-    width: 50mm;
-    height: 23mm;
-    margin: 0 auto;
-    background: white;
-    box-sizing: border-box;
-    overflow: hidden;
-    text-align: left;
+    width: 50mm; height: 23mm;
+    border: 1px solid #000;
+    display: flex; align-items: center;
+    background: white; padding: 1mm;
+    margin: 0 auto; box-sizing: border-box;
 }
+.etiqueta-info { width: calc(100% - 18mm); margin-left: 2mm; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+.etiq-ubi { font-weight:900; font-size:9pt; text-transform:uppercase; line-height: 1.1; }
+.etiq-id { font-family:'Courier New', monospace; font-size:8pt; font-weight:700; color:#333; }
+.etiq-desc { font-size:6pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;}
 
-/* Estructura flexible para la información a la derecha del QR */
-.etiqueta-info {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; 
-    margin-left: 2mm;
-    height: 100%;
-    width: calc(100% - 19mm); /* Restamos el ancho del QR (17mm + margen) */
-    overflow: hidden;
-}
-
-/* LÍNEA 1: UBICACIÓN (ARRIBA) */
-.etiq-ubi { 
-    font-weight: 800; 
-    font-size: 8pt; 
-    margin-bottom: 1px;
-    color: black;
-    white-space: nowrap;
-    text-transform: uppercase;
-}
-
-/* LÍNEA 2: CÓDIGO (CENTRO) */
-.etiq-id { 
-    font-weight: 900; 
-    font-size: 11pt; /* Código grande para leer fácil */
-    font-family: monospace; 
-    color: black;
-    margin-bottom: 2px;
-    white-space: nowrap;
-}
-
-/* LÍNEA 3: DESCRIPCIÓN (ABAJO) */
-.etiq-desc { 
-    font-weight: 500; 
-    font-size: 7pt; 
-    color: black;
-    line-height: 1;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* Si es muy larga, permite 2 líneas */
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    word-break: break-word;
-}
-
-/* =======================================================
-   REGLAS PARA IMPRESORA TÉRMICA GODEX (50x23mm REAL)
-   ======================================================= */
+/* IMPRESIÓN */
 @media print {
     body * { visibility: hidden; }
-    
-    #zona-impresion, #zona-impresion * { 
-        visibility: visible; 
-    }
-    
-    @page {
-        size: 50mm 23mm;
-        margin: 0; 
-    }
-    
-    #zona-impresion {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 50mm;
-        height: 23mm;
-        border: none;
-        padding: 1mm; 
-        margin: 0;
-        /* Asegurar que se renderiza desde arriba a la izquierda */
-        position: fixed;
-    }
-    
-    #qr-canvas {
-        width: 17mm !important;
-        height: 17mm !important;
-        flex-shrink: 0;
-    }
-    
-    .no-print { 
-        display: none !important; 
-    }
+    #zona-impresion, #zona-impresion * { visibility: visible; }
+    #zona-impresion { position: fixed; top: 0; left: 0; border: none; margin: 0; }
+    @page { size: 50mm 23mm; margin: 0; }
+    .no-print { display: none !important; }
 }
