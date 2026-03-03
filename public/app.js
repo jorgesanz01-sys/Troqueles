@@ -13,35 +13,28 @@ let idsSeleccionados = new Set();
 // 1. NAVEGACIÓN ENTRE VISTAS
 // ==========================================
 window.cambiarVista = function(idVista, btnElement) { 
-    // Ocultar todas las vistas
     const vistas = document.querySelectorAll('.vista');
     vistas.forEach(v => {
         v.classList.add('oculto');
     });
     
-    // Mostrar la vista seleccionada
     const vistaDestino = document.getElementById(idVista);
     vistaDestino.classList.remove('oculto'); 
     
-    // Quitar la clase activo de todos los botones del menú
     const botonesMenu = document.querySelectorAll('.menu-item');
     botonesMenu.forEach(b => {
         b.classList.remove('activo');
     });
     
-    // Poner la clase activo al botón pulsado
     if (btnElement) {
         btnElement.classList.add('activo'); 
     }
 }
 
 window.abrirVistaCrear = function(btnElement) { 
-    // Limpiar formulario completo
     document.getElementById('form-troquel').reset(); 
     document.getElementById('input-id-db').value = ""; 
     document.getElementById('titulo-formulario').innerText = "Alta de Nuevo Troquel"; 
-    
-    // Cambiar a la vista del formulario
     cambiarVista('vista-formulario', btnElement); 
 }
 
@@ -50,7 +43,6 @@ window.abrirVistaCrear = function(btnElement) {
 // ==========================================
 async function cargarDatos() {
     try {
-        // Cargar Categorías
         const resCat = await fetch('/api/categorias'); 
         const categorias = await resCat.json();
         
@@ -58,23 +50,19 @@ async function cargarDatos() {
         const selectBulk = document.getElementById('bulk-categoria'); 
         const chips = document.getElementById('contenedor-chips');
         
-        // Limpiar opciones previas
         select.innerHTML = '<option value="">Seleccionar...</option>'; 
         selectBulk.innerHTML = '<option value="">Cambiar familia a...</option>'; 
         chips.innerHTML = '<button class="chip activo" onclick="filtrarPorChip(\'TODOS\', this)">Todas</button>';
         
-        // Rellenar categorías
         categorias.forEach(cat => { 
             select.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`; 
             selectBulk.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`; 
             chips.innerHTML += `<button class="chip" onclick="filtrarPorChip('${cat.nombre}', this)">${cat.nombre}</button>`; 
         });
 
-        // Cargar Troqueles
         const resTroq = await fetch('/api/troqueles'); 
         listaTroquelesCache = await resTroq.json(); 
         
-        // Aplicar filtros iniciales y pintar tabla
         aplicarFiltrosYOrden();
         
     } catch (error) { 
@@ -93,17 +81,14 @@ window.crearCategoriaAlVuelo = async function() {
     }
     
     try { 
-        // Guardar nueva categoría en base de datos
         await fetch('/api/categorias', { 
             method: 'POST', 
             headers: {'Content-Type': 'application/json'}, 
             body: JSON.stringify({ nombre: nueva.trim() }) 
         }); 
         
-        // Recargar los datos para actualizar los desplegables
         await cargarDatos(); 
         
-        // Buscar la categoría recién creada y dejarla seleccionada en el formulario
         const opciones = Array.from(document.getElementById('input-categoria').options); 
         const opcionNueva = opciones.find(o => o.text === nueva.trim().toUpperCase()); 
         
@@ -121,7 +106,6 @@ window.crearCategoriaAlVuelo = async function() {
 const buscador = document.getElementById('buscador'); 
 const btnLimpiar = document.getElementById('btn-limpiar');
 
-// Escuchar cambios en el buscador
 buscador.addEventListener('input', () => { 
     if (buscador.value === '') {
         btnLimpiar.classList.add('oculto');
@@ -162,7 +146,6 @@ window.filtrarPorChip = function(familia, btnElement) {
 function aplicarFiltrosYOrden() {
     const texto = buscador.value.toLowerCase();
     
-    // 1. Aplicar Filtrado
     let procesados = listaTroquelesCache.filter(t => {
         const catNom = t.categorias?.nombre || '';
         const pasaFam = (familiaActiva === 'TODOS') || (catNom === familiaActiva);
@@ -178,7 +161,6 @@ function aplicarFiltrosYOrden() {
         return pasaFam && pasaTxt;
     });
 
-    // 2. Aplicar Ordenación
     procesados.sort((a, b) => {
         let valA = "";
         let valB = "";
@@ -196,10 +178,7 @@ function aplicarFiltrosYOrden() {
         return 0;
     });
 
-    // Guardar para posible exportación Excel
     datosExportables = procesados; 
-    
-    // Llamar a renderizar
     renderizarTabla(procesados);
 }
 
@@ -283,7 +262,6 @@ window.toggleCheck = function(checkbox, id) {
 
 window.toggleAllChecks = function(mainCheckbox) { 
     const checkboxes = document.querySelectorAll('.check-row'); 
-    
     checkboxes.forEach(chk => { 
         chk.checked = mainCheckbox.checked; 
         if (mainCheckbox.checked) {
@@ -292,7 +270,6 @@ window.toggleAllChecks = function(mainCheckbox) {
             idsSeleccionados.delete(parseInt(chk.value)); 
         }
     }); 
-    
     aplicarFiltrosYOrden(); 
 }
 
@@ -310,7 +287,6 @@ function evaluarBarraFlotante() {
 
 window.aplicarBulkCategoria = async function() { 
     const catId = document.getElementById('bulk-categoria').value; 
-    
     if (!catId) {
         return alert("Selecciona una familia."); 
     }
@@ -502,7 +478,7 @@ window.cargarHistorial = async function() {
 }
 
 // ==========================================
-// 10. GENERACIÓN QR CON UBICACIÓN INCRUSTADA
+// 10. GENERACIÓN QR (DISEÑO 3 LÍNEAS GODEX)
 // ==========================================
 window.generarQR = function(id_troquel) { 
     // 1. Encontrar los datos del troquel en el cache local
@@ -514,66 +490,25 @@ window.generarQR = function(id_troquel) {
     // Mostrar el modal
     document.getElementById('modal-qr').classList.remove('oculto'); 
     
-    // 2. Rellenar los textos de la derecha de la etiqueta
+    // 2. Rellenar los 3 campos de texto en orden
+    // LÍNEA 1: Ubicación
+    document.getElementById('qr-texto-ubi').innerText = t.ubicacion ? t.ubicacion.toUpperCase() : "SIN UBICACIÓN";
+    
+    // LÍNEA 2: Código del QR (ID)
     document.getElementById('qr-texto-id').innerText = t.id_troquel; 
     
-    if (t.codigos_articulo) {
-        document.getElementById('qr-texto-arts').innerText = t.codigos_articulo;
-    } else {
-        document.getElementById('qr-texto-arts').innerText = '';
-    }
-    
-    if (t.nombre) {
-        document.getElementById('qr-texto-desc').innerText = t.nombre;
-    } else {
-        document.getElementById('qr-texto-desc').innerText = '';
-    }
+    // LÍNEA 3: Descripción
+    document.getElementById('qr-texto-desc').innerText = t.nombre || '';
 
-    // 3. Configuración y Generación del QR Base
+    // 3. Generación del QR Base (Limpio y legible, nivel medio)
     const canvas = document.getElementById('qr-canvas');
-    const size = 250; // Resolución alta interna para que no pixele
-    
-    // Nivel 'H' es crucial: Permite un 30% de destrucción/superposición de errores
     new QRious({ 
         element: canvas, 
         value: id_troquel, 
-        size: size,    
+        size: 200,    
         padding: 0,   
-        level: 'H' 
+        level: 'M' // Nivel Medio: Suficiente corrección, puntos más grandes
     }); 
-
-    // 4. Dibujar la ubicación en el centro exacto del QR
-    if (t.ubicacion) {
-        const ctx = canvas.getContext('2d');
-        const ubicacionTexto = t.ubicacion.toUpperCase();
-        
-        // Calcular el tamaño de la caja blanca (máximo el 35% del ancho del QR)
-        const boxSize = size * 0.35; 
-        const posX = (size - boxSize) / 2;
-        const posY = (size - boxSize) / 2;
-
-        // Pintar el fondo blanco
-        ctx.fillStyle = 'white';
-        ctx.fillRect(posX, posY, boxSize, boxSize);
-
-        // Configurar pincel para el texto en negro
-        ctx.fillStyle = 'black';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // Ajuste dinámico de fuente: Si el texto es muy largo, se hace más pequeño
-        let fontSize = 35;
-        ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-        
-        // Bajar tamaño si sobrepasa la caja
-        while (ctx.measureText(ubicacionTexto).width > boxSize - 10 && fontSize > 10) {
-            fontSize--;
-            ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-        }
-
-        // Estampar el texto exactamente en el medio de la caja
-        ctx.fillText(ubicacionTexto, size / 2, size / 2);
-    }
 }
 
 // ==========================================

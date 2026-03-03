@@ -279,19 +279,9 @@ body {
     background-color: #f8fafc;
 }
 
-.fw-bold { 
-    font-weight: 600; 
-}
-
-.text-primary { 
-    color: var(--primary); 
-    font-family: monospace; 
-    font-size: 15px; 
-}
-
-.text-center { 
-    text-align: center; 
-}
+.fw-bold { font-weight: 600; }
+.text-primary { color: var(--primary); font-family: monospace; font-size: 15px; }
+.text-center { text-align: center; }
 
 .etiqueta-familia {
     background: #e0e7ff;
@@ -531,55 +521,56 @@ input[type="checkbox"] {
     display: flex;
     align-items: center;
     border: 1px solid #ccc;
-    padding: 1mm 2mm;
+    padding: 1mm;
     width: 50mm;
     height: 23mm;
     margin: 0 auto;
     background: white;
     box-sizing: border-box;
     overflow: hidden;
+    text-align: left;
 }
 
+/* Estructura flexible para la información a la derecha del QR */
 .etiqueta-info {
     display: flex;
     flex-direction: column;
-    justify-content: center; 
-    align-items: center;     
-    text-align: center;
+    justify-content: space-between; /* Distribuye espacio entre las 3 líneas */
     margin-left: 2mm;
-    width: calc(100% - 21mm);
     height: 100%;
+    width: calc(100% - 21mm); /* Restamos el ancho del QR */
+    overflow: hidden;
 }
 
+/* LÍNEA 1: UBICACIÓN (ARRIBA) */
+.etiq-ubi { 
+    font-weight: 800; 
+    font-size: 8pt; 
+    color: black;
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+
+/* LÍNEA 2: CÓDIGO (CENTRO) */
 .etiq-id { 
     font-weight: 900; 
-    font-size: 10pt; 
+    font-size: 11pt; /* Bien grande */
     font-family: monospace; 
-    line-height: 1.1; 
-    word-break: break-all; 
     color: black;
+    white-space: nowrap;
 }
 
-.etiq-arts { 
-    font-weight: 600; 
-    font-size: 7pt; 
-    margin-top: 2px; 
-    color: black;
-    white-space: nowrap; 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    max-width: 100%;
-}
-
+/* LÍNEA 3: DESCRIPCIÓN (ABAJO) */
 .etiq-desc { 
-    font-weight: 400; 
+    font-weight: 500; 
     font-size: 6pt; 
-    margin-top: 2px; 
-    white-space: nowrap; 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    max-width: 100%;
     color: black;
+    line-height: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Si es muy larga, permite 2 líneas */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
 }
 
 /* =======================================================
@@ -604,13 +595,14 @@ input[type="checkbox"] {
         width: 50mm;
         height: 23mm;
         border: none;
-        padding: 1mm 2mm; 
+        padding: 1mm; 
         margin: 0;
     }
     
     #qr-canvas {
         width: 19mm !important;
         height: 19mm !important;
+        flex-shrink: 0;
     }
     
     .no-print { 
