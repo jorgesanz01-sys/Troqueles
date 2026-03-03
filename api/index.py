@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from supabase import create_client, Client
+import io
+import csv
 
 app = FastAPI()
 
@@ -13,7 +15,7 @@ SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ==========================================
-# MODELOS DE DATOS (ESTRUCTURA)
+# MODELOS DE DATOS
 # ==========================================
 class TroquelForm(BaseModel):
     id_troquel: str
@@ -63,7 +65,7 @@ async def listar_historial():
     return response.data
 
 # ==========================================
-# RUTAS DE ESCRITURA INDIVIDUAL (POST/PUT)
+# RUTAS DE ESCRITURA (POST/PUT)
 # ==========================================
 @app.post("/api/categorias")
 async def crear_categoria(cat: NuevaCategoria):
@@ -89,7 +91,7 @@ async def mover_a_papelera(id_db: int):
     return {"status": "success"}
 
 # ==========================================
-# RUTAS DE ACCIONES MASIVAS (BULK)
+# RUTAS DE ACCIONES MASIVAS
 # ==========================================
 @app.put("/api/troqueles/bulk/categoria")
 async def bulk_update_categoria(data: BulkCategoria):
@@ -102,8 +104,55 @@ async def bulk_borrar(data: BulkBorrar):
     return {"status": "success"}
 
 # ==========================================
-# HEALTH CHECK
+# NUEVA RUTA: IMPORTAR CSV VIEJO
 # ==========================================
+@app.post("/api/importar_csv")
+async def importar_csv(file: UploadFile = File(...)):
+    try:
+        # Leer el contenido del archivo subido
+        contenido = await file.read()
+        texto_csv = contenido.decode('utf-8')
+        
+        # Usar la librería CSV de Python para parsear correctamente
+        f = io.StringIO(texto_csv)
+        reader = csv.DictReader(f)
+        
+        lista_para_insertar = []
+        
+        for row in reader:
+            # Mapeamos las columnas de tu Excel Viejo a la Base de Datos Nueva
+            # Tu Excel tiene: UBICACIÓN, DESCRIPCIÓN, CÓDIGO Artículo, Número OT
+            
+            # El campo UBICACIÓN del Excel viejo (1, 2, 3...) es lo que usamos como ID del troquel
+            id_viejo = row.get('UBICACIÓN', '').strip()
+            
+            # Si no tiene ID (fila vacía), la saltamos
+            if not id_viejo: 
+                continue 
+            
+            nuevo_troquel = {
+                "id_troquel": id_viejo,  # El número viejo pasa a ser el QR
+                "nombre": row.get('DESCRIPCIÓN', '').strip(),
+                "codigos_articulo": row.get('CÓDIGO Artículo', '').strip(),
+                "referencias_ot": row.get('Número OT', '').strip(),
+                "ubicacion": "IMPORTADO", # Ponemos esto para que sepas que hay que colocarlo
+                "estado_activo": "Activo"
+            }
+            lista_para_insertar.append(nuevo_troquel)
+            
+        # Insertar en bloques de 100 para no saturar la base de datos
+        chunk_size = 100
+        for i in range(0, len(lista_para_insertar), chunk_size):
+            chunk = lista_para_insertar[i:i + chunk_size]
+            # upsert=True significa que si ya existe el ID, lo actualiza
+            supabase.table("troqueles").upsert(chunk, on_conflict="id_troquel").execute()
+            
+        return {"status": "success", "total": len(lista_para_insertar)}
+        
+    except Exception as e:
+        print("Error importando:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "sistema": "ERP Packaging"}

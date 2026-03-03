@@ -41,6 +41,9 @@
                     <h1>Directorio de Troqueles</h1>
                     <div style="display: flex; gap: 15px; align-items: center;">
                         <button class="btn-secundario" onclick="exportarCSV()">📥 Exportar Excel</button>
+                        
+                        <input type="file" id="input-csv-viejo" accept=".csv" style="display: none;" onchange="subirCSVViejo()">
+                        <button class="btn-secundario" style="background-color: #e2e8f0; border-color: #cbd5e1;" onclick="document.getElementById('input-csv-viejo').click()">📤 Importar Viejo</button>
                         <div class="caja-buscador">
                             <span class="icono-lupa">🔍</span>
                             <input type="text" id="buscador" placeholder="Buscar artículo, QR, descripción...">
@@ -124,7 +127,7 @@
                                 <input type="text" id="input-ubicacion" placeholder="Estantería, Pasillo..." required>
                             </div>
                             
-                            <div class="form-group">
+                            <div class="form-group full-width">
                                 <label>Enlace al Plano (Google Drive / PDF)</label>
                                 <input type="url" id="input-archivo" placeholder="https://...">
                             </div>
@@ -199,7 +202,10 @@
                 <canvas id="qr-canvas"></canvas>
                 
                 <div class="etiqueta-info">
-                    <div id="qr-texto-ubi" class="etiq-ubi"></div>   <div id="qr-texto-id" class="etiq-id"></div>     <div id="qr-texto-desc" class="etiq-desc"></div> </div>
+                    <div id="qr-texto-ubi" class="etiq-ubi"></div>
+                    <div id="qr-texto-id" class="etiq-id"></div>
+                    <div id="qr-texto-desc" class="etiq-desc"></div>
+                </div>
             </div>
 
             <div class="modal-botones no-print" style="justify-content: center; margin-top: 25px;">

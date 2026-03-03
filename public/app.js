@@ -399,7 +399,38 @@ window.exportarCSV = function() {
 }
 
 // ==========================================
-// 8. CRUD (FORMULARIO)
+// 8. IMPORTAR CSV VIEJO (NUEVA FUNCIÓN)
+// ==========================================
+window.subirCSVViejo = async function() {
+    const input = document.getElementById('input-csv-viejo');
+    if (!input.files[0]) return;
+
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+
+    if (!confirm("¿Seguro que quieres importar este archivo? Se añadirán los troqueles a la base de datos.")) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/importar_csv', { 
+            method: 'POST', 
+            body: formData 
+        });
+        
+        if (res.ok) {
+            alert("¡Importación completada con éxito!");
+            cargarDatos();
+        } else {
+            alert("Hubo un error al procesar el archivo. Revisa que sea el CSV correcto.");
+        }
+    } catch (error) { 
+        alert("Error de conexión al subir el archivo."); 
+    }
+}
+
+// ==========================================
+// 9. CRUD (FORMULARIO)
 // ==========================================
 window.abrirVistaEditar = function(id_db) {
     const t = listaTroquelesCache.find(x => x.id === id_db); 
@@ -481,7 +512,7 @@ if (formTroquel) {
 }
 
 // ==========================================
-// 9. HISTORIAL Y AUDITORÍA
+// 10. HISTORIAL Y AUDITORÍA
 // ==========================================
 window.cargarHistorial = async function() {
     try {
@@ -521,7 +552,7 @@ window.cargarHistorial = async function() {
 }
 
 // ==========================================
-// 10. GENERACIÓN QR CON UBICACIÓN INCRUSTADA
+// 11. GENERACIÓN QR CON UBICACIÓN INCRUSTADA
 // ==========================================
 window.generarQR = function(id_troquel) { 
     // 1. Encontrar los datos del troquel en el cache local
@@ -535,7 +566,7 @@ window.generarQR = function(id_troquel) {
     
     // 2. Rellenar los 3 campos de texto en orden (UBI - ID - DESC)
     const ubiEl = document.getElementById('qr-texto-ubi');
-    const idEl = document.getElementById('qr-texto-id'); // Este es para el Código, aunque se llame ID
+    const idEl = document.getElementById('qr-texto-id'); 
     const descEl = document.getElementById('qr-texto-desc');
 
     // LÍNEA 1: UBICACIÓN (ARRIBA)
@@ -545,9 +576,6 @@ window.generarQR = function(id_troquel) {
     
     // LÍNEA 2: CÓDIGO (CENTRO) - Prioridad: Artículos > ID
     if (idEl) {
-        // Mostramos el ID del troquel como dato principal, o los artículos si prefieres
-        // Según tu último comentario, parece que quieres el código visible.
-        // Usaremos el ID del troquel (QR Físico) como principal identificador visual
         idEl.innerText = t.id_troquel; 
     }
     
@@ -570,7 +598,7 @@ window.generarQR = function(id_troquel) {
 }
 
 // ==========================================
-// 11. ESCÁNER DE CÁMARA (SMARTPHONE)
+// 12. ESCÁNER DE CÁMARA (SMARTPHONE)
 // ==========================================
 window.iniciarEscaneo = function() { 
     document.getElementById('contenedor-camara').classList.remove('oculto'); 
