@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List, Any
+from typing import Optional, List
 from supabase import create_client, Client
 import io
 import csv
@@ -8,7 +8,7 @@ import csv
 app = FastAPI()
 
 # ==========================================
-# 🔐 CREDENCIALES SUPABASE
+# 🔐 CREDENCIALES
 # ==========================================
 SUPABASE_URL = "https://pkaqgtelkdhxlyjodzbq.supabase.co"
 SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
@@ -22,18 +22,17 @@ except Exception as e:
 # 📋 MODELOS
 # ==========================================
 class TroquelForm(BaseModel):
-    # Nota: No pedimos ID porque es SERIAL (Auto) en base de datos
-    nombre: str
-    ubicacion: str
+    id_troquel: str                    # LA MATRÍCULA (Fija)
+    ubicacion: str                     # LA ESTANTERÍA (Variable)
     codigos_articulo: Optional[str] = ""
     referencias_ot: Optional[str] = ""
-    categoria_id: Optional[int] = None # Tipo
-    familia_id: Optional[int] = None   # Familia
+    nombre: str
+    categoria_id: Optional[int] = None # TIPO
+    familia_id: Optional[int] = None   # FAMILIA
     tamano_troquel: Optional[str] = ""
     tamano_final: Optional[str] = ""
     observaciones: Optional[str] = ""
     enlace_archivo: Optional[str] = ""
-    id_troquel: Optional[str] = "" # Campo legacy por compatibilidad
 
 class NuevaEntidad(BaseModel):
     nombre: str
@@ -56,16 +55,16 @@ async def get_fams(): return supabase.table("familias").select("*").order("nombr
 
 @app.get("/api/troqueles")
 async def get_troqs():
-    # Ordenamos por ID (correlativo interno)
+    # Ordenamos por el ID del troquel (Matrícula) para que sea fácil de buscar visualmente
     return supabase.table("troqueles")\
         .select("*, categorias(nombre), familias(nombre)")\
         .neq("estado_activo", "En Papelera")\
-        .order("id", desc=False)\
+        .order("id_troquel")\
         .execute().data
 
 @app.get("/api/historial")
 async def get_hist():
-    return supabase.table("historial").select("*, troqueles(nombre, ubicacion)").order("fecha_hora", desc=True).execute().data
+    return supabase.table("historial").select("*, troqueles(id_troquel, nombre)").order("fecha_hora", desc=True).execute().data
 
 # ==========================================
 # 💾 RUTAS POST/PUT
@@ -79,8 +78,6 @@ async def add_fam(d: NuevaEntidad): return supabase.table("familias").insert({"n
 @app.post("/api/troqueles")
 async def add_troquel(t: TroquelForm):
     d = t.dict()
-    # Si id_troquel viene vacío, usamos la ubicación como referencia visual
-    if not d.get("id_troquel"): d["id_troquel"] = d["ubicacion"]
     d["estado_activo"] = "Activo"
     return supabase.table("troqueles").insert(d).execute()
 
@@ -105,17 +102,14 @@ async def bulk_fam(d: BulkUpdate): return supabase.table("troqueles").update({"f
 async def bulk_del(d: BulkBorrar): return supabase.table("troqueles").update({"estado_activo": "En Papelera"}).in_("id", d.ids).execute()
 
 # ==========================================
-# 🧠 CEREBRO IMPORTADOR (VERSION FINAL)
+# 🧠 CEREBRO IMPORTADOR (MATRÍCULA vs UBICACIÓN)
 # ==========================================
 def limpiar_txt(txt):
     if not txt: return ""
     return str(txt).strip().upper().replace('.', '').replace('Nº', 'NUMERO')
 
 def buscar_dato(fila, posibles_nombres):
-    """Busca en el dict de la fila (CSV) alguna de las claves posibles."""
-    # Normalizamos las claves del CSV
     fila_norm = {limpiar_txt(k): v for k, v in fila.items()}
-    
     for posible in posibles_nombres:
         clave = limpiar_txt(posible)
         if clave in fila_norm and fila_norm[clave]:
@@ -135,78 +129,76 @@ async def importar_csv(file: UploadFile = File(...), tipo_seleccionado: str = Fo
     try:
         content = await file.read()
         
-        # 1. Detectar codificación (Prueba y error)
+        # 1. Decodificar
         texto = ""
         try: texto = content.decode('utf-8-sig')
         except: 
             try: texto = content.decode('latin-1')
             except: texto = content.decode('cp1252', errors='ignore')
 
-        # 2. Detectar separador inteligente
+        # 2. Separador
         linea1 = texto.split('\n')[0]
-        if linea1.count(';') > linea1.count(','): sep = ';'
-        elif linea1.count('\t') > 0: sep = '\t'
-        else: sep = ','
+        sep = ';' if linea1.count(';') > linea1.count(',') else ','
         
         f = io.StringIO(texto)
         reader = csv.DictReader(f, delimiter=sep)
         
-        # 3. Preparar datos fijos
         cat_id = get_or_create_categoria(tipo_seleccionado)
         filas_db = []
         
         for row in reader:
-            # A. UBICACIÓN (Obligatoria o deducida)
-            ubi = buscar_dato(row, ["UBICACIÓN", "UBICACION", "POSICION", "ESTANTERIA"])
-            # Si no hay ubicación, miramos si hay un código antiguo que sirva
-            if not ubi: ubi = buscar_dato(row, ["CODIGO TROQUE", "CODIGO", "ID"])
+            # A. BUSCAMOS MATRÍCULA (ID FIJO)
+            # Prioridad: 'CODIGO TROQUE'
+            matricula = buscar_dato(row, ["CODIGO TROQUE", "CODIGO_TROQUE", "CODIGO", "ID"])
             
-            if not ubi: continue # Si no hay ni ubicación ni código, saltamos
+            # B. BUSCAMOS UBICACIÓN (ESTANTERIA)
+            ubicacion = buscar_dato(row, ["UBICACIÓN", "UBICACION", "ESTANTERIA", "POSICION"])
+            
+            # CASO ESPECIAL: ARCHIVOS VIEJOS
+            # Si no hay matrícula pero hay ubicación, asumimos que en el sistema viejo ID = Ubicación
+            if not matricula and ubicacion:
+                matricula = ubicacion
+            
+            # Si después de esto no tenemos matrícula, esa fila no vale
+            if not matricula: continue
+            
+            # Si tenemos matrícula pero no ubicación, ponemos "PENDIENTE"
+            if not ubicacion: ubicacion = "PENDIENTE"
 
-            # B. NOMBRE / DESCRIPCION
-            nombre = buscar_dato(row, ["DESCRIPCIÓN", "DESCRIPCION", "NOMBRE", "ARTICULO"])
-            if not nombre: nombre = "SIN DESCRIPCIÓN"
-
-            # C. ARTÍCULOS Y OTROS CÓDIGOS
+            # C. OTROS DATOS
+            nombre = buscar_dato(row, ["DESCRIPCIÓN", "DESCRIPCION", "NOMBRE", "ARTICULO"]) or "SIN NOMBRE"
             arts = buscar_dato(row, ["CÓDIGO Artículo", "CODIGO ARTICULO", "REF"])
-            cod_extra = buscar_dato(row, ["CODIGO TROQUE", "CODIGO"])
-            
-            # Si el "código extra" no es la ubicación, lo guardamos como referencia
-            if cod_extra and cod_extra != ubi:
-                if arts: arts = f"{cod_extra} - {arts}"
-                else: arts = cod_extra
+            ot = buscar_dato(row, ["Número OT", "NUMERO OT", "OT"])
+            obs = buscar_dato(row, ["OBSERVACIONES", "NOTAS"])
 
-            # CREAMOS EL OBJETO (Sin ID, es automático)
             nuevo = {
+                "id_troquel": matricula,     # EJ: 1341 (No cambia)
+                "ubicacion": ubicacion,      # EJ: 13 (Puede cambiar)
                 "nombre": nombre,
-                "ubicacion": ubi,            # Ej: "1", "A-50"
-                "id_troquel": ubi,           # Guardamos la ubicación también aquí por compatibilidad visual
                 "codigos_articulo": arts,
-                "referencias_ot": buscar_dato(row, ["Número OT", "NUMERO OT", "OT"]),
-                "categoria_id": cat_id,      # El tipo seleccionado en la web
-                "observaciones": buscar_dato(row, ["OBSERVACIONES", "NOTAS"]),
+                "referencias_ot": ot,
+                "categoria_id": cat_id,
+                "familia_id": None,
+                "observaciones": obs,
                 "estado_activo": "Activo"
             }
             filas_db.append(nuevo)
             
-        # 4. Inserción Masiva (INSERT puro para no fallar por duplicados de clave)
-        # Se generarán nuevos IDs correlativos internos (100, 101...)
+        # 4. Insertar (Upsert por id_troquel para actualizar si ya existe)
         chunk = 50
         for i in range(0, len(filas_db), chunk):
             lote = filas_db[i:i+chunk]
             try:
-                supabase.table("troqueles").insert(lote).execute()
+                supabase.table("troqueles").upsert(lote, on_conflict="id_troquel").execute()
             except Exception as e:
-                print(f"Error insertando lote {i}: {e}")
-                # Reintento uno a uno si falla el lote
+                # Si falla bloque, uno a uno
                 for item in lote:
-                    try: supabase.table("troqueles").insert(item).execute()
+                    try: supabase.table("troqueles").upsert(item, on_conflict="id_troquel").execute()
                     except: pass
 
         return {"status": "ok", "total": len(filas_db)}
 
     except Exception as e:
-        print(f"Error Fatal Importación: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/health")
