@@ -521,7 +521,7 @@ input[type="checkbox"] {
     display: flex;
     align-items: center;
     border: 1px solid #ccc;
-    padding: 1mm;
+    padding: 1mm 2mm;
     width: 50mm;
     height: 23mm;
     margin: 0 auto;
@@ -531,43 +531,41 @@ input[type="checkbox"] {
     text-align: left;
 }
 
-/* Estructura flexible para la información a la derecha del QR */
 .etiqueta-info {
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Distribuye espacio entre las 3 líneas */
+    justify-content: space-between; 
     margin-left: 2mm;
     height: 100%;
-    width: calc(100% - 21mm); /* Restamos el ancho del QR */
+    width: calc(100% - 21mm); 
     overflow: hidden;
 }
 
-/* LÍNEA 1: UBICACIÓN (ARRIBA) */
 .etiq-ubi { 
     font-weight: 800; 
     font-size: 8pt; 
+    margin-bottom: 1px;
     color: black;
     white-space: nowrap;
     text-transform: uppercase;
 }
 
-/* LÍNEA 2: CÓDIGO (CENTRO) */
 .etiq-id { 
     font-weight: 900; 
-    font-size: 11pt; /* Bien grande */
+    font-size: 11pt; 
     font-family: monospace; 
     color: black;
+    margin-bottom: 2px;
     white-space: nowrap;
 }
 
-/* LÍNEA 3: DESCRIPCIÓN (ABAJO) */
 .etiq-desc { 
     font-weight: 500; 
-    font-size: 6pt; 
+    font-size: 7pt; 
     color: black;
     line-height: 1;
     display: -webkit-box;
-    -webkit-line-clamp: 2; /* Si es muy larga, permite 2 líneas */
+    -webkit-line-clamp: 2; 
     -webkit-box-orient: vertical;
     overflow: hidden;
     word-break: break-word;
@@ -577,26 +575,45 @@ input[type="checkbox"] {
    REGLAS PARA IMPRESORA TÉRMICA GODEX (50x23mm REAL)
    ======================================================= */
 @media print {
-    body * { visibility: hidden; }
-    
-    #zona-impresion, #zona-impresion * { 
-        visibility: visible; 
+    /* 1. Ocultar TODO por defecto */
+    body {
+        visibility: hidden;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* 2. Mostrar SOLO la etiqueta */
+    #zona-impresion, #zona-impresion * {
+        visibility: visible;
     }
     
+    /* 3. Definir tamaño de papel exacto */
     @page {
         size: 50mm 23mm;
-        margin: 0; 
+        margin: 0mm; 
     }
     
+    /* 4. Posicionar la etiqueta FIJA en la esquina superior izquierda */
     #zona-impresion {
-        position: absolute;
+        position: fixed;
         left: 0;
         top: 0;
-        width: 50mm;
-        height: 23mm;
-        border: none;
-        padding: 1mm; 
-        margin: 0;
+        width: 50mm !important;
+        height: 23mm !important;
+        
+        /* Asegurar que se vea el fondo blanco y no transparencia */
+        background: white !important;
+        border: none !important;
+        padding: 1mm 2mm !important;
+        margin: 0 !important;
+        
+        /* Estilos de layout */
+        display: flex !important;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        box-sizing: border-box;
+        z-index: 9999;
     }
     
     #qr-canvas {
@@ -605,7 +622,5 @@ input[type="checkbox"] {
         flex-shrink: 0;
     }
     
-    .no-print { 
-        display: none !important; 
-    }
+    .no-print { display: none !important; }
 }
