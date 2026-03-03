@@ -44,6 +44,7 @@
                         
                         <input type="file" id="input-csv-viejo" accept=".csv" style="display: none;" onchange="subirCSVViejo()">
                         <button class="btn-secundario" style="background-color: #e2e8f0; border-color: #cbd5e1;" onclick="document.getElementById('input-csv-viejo').click()">📤 Importar Viejo</button>
+                        
                         <div class="caja-buscador">
                             <span class="icono-lupa">🔍</span>
                             <input type="text" id="buscador" placeholder="Buscar artículo, QR, descripción...">
@@ -200,7 +201,6 @@
             
             <div id="zona-impresion" class="etiqueta-preview">
                 <canvas id="qr-canvas"></canvas>
-                
                 <div class="etiqueta-info">
                     <div id="qr-texto-ubi" class="etiq-ubi"></div>
                     <div id="qr-texto-id" class="etiq-id"></div>

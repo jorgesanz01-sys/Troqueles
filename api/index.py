@@ -123,7 +123,7 @@ async def importar_csv(file: UploadFile = File(...)):
             # Mapeamos las columnas de tu Excel Viejo a la Base de Datos Nueva
             # Tu Excel tiene: UBICACIÓN, DESCRIPCIÓN, CÓDIGO Artículo, Número OT
             
-            # El campo UBICACIÓN del Excel viejo (1, 2, 3...) es lo que usamos como ID del troquel
+            # Limpieza básica de la ID antigua
             id_viejo = row.get('UBICACIÓN', '').strip()
             
             # Si no tiene ID (fila vacía), la saltamos
@@ -131,16 +131,16 @@ async def importar_csv(file: UploadFile = File(...)):
                 continue 
             
             nuevo_troquel = {
-                "id_troquel": id_viejo,  # El número viejo pasa a ser el QR
+                "id_troquel": id_viejo,  # El número viejo (1, 2, 3...) pasa a ser el QR
                 "nombre": row.get('DESCRIPCIÓN', '').strip(),
                 "codigos_articulo": row.get('CÓDIGO Artículo', '').strip(),
                 "referencias_ot": row.get('Número OT', '').strip(),
-                "ubicacion": "IMPORTADO", # Ponemos esto para que sepas que hay que colocarlo
+                "ubicacion": "PENDIENTE", # Lo marcamos para revisar luego
                 "estado_activo": "Activo"
             }
             lista_para_insertar.append(nuevo_troquel)
             
-        # Insertar en bloques de 100 para no saturar la base de datos
+        # Insertar en bloques de 100 para no saturar
         chunk_size = 100
         for i in range(0, len(lista_para_insertar), chunk_size):
             chunk = lista_para_insertar[i:i + chunk_size]
