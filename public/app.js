@@ -20,17 +20,17 @@ let idsSeleccionados = new Set(); // Para acciones masivas
 // 2. SISTEMA DE NAVEGACIÓN (VISTAS)
 // ==========================================
 window.cambiarVista = function(idVista, btnElement) { 
-    // Ocultar todas las secciones
+    // 1. Ocultar todas las secciones
     const vistas = document.querySelectorAll('.vista');
     vistas.forEach(v => v.classList.add('oculto'));
     
-    // Mostrar la deseada
+    // 2. Mostrar la deseada
     const vistaDestino = document.getElementById(idVista);
     if (vistaDestino) {
         vistaDestino.classList.remove('oculto'); 
     }
     
-    // Gestionar estado de botones del menú
+    // 3. Gestionar estado de los botones del menú
     const botonesMenu = document.querySelectorAll('.menu-item');
     botonesMenu.forEach(b => b.classList.remove('activo'));
     
