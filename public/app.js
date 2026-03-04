@@ -392,7 +392,43 @@ const App = {
     
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.limpiarSeleccion(); App.cargarTodo(); },
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(); } },
-    
+    verHistorialTroquel: async (id, matricula, nombre) => {
+        // Ponemos títulos
+        document.getElementById('hist-titulo-mat').innerText = matricula;
+        document.getElementById('hist-titulo-nom').innerText = nombre;
+        document.getElementById('tabla-historial-unico').innerHTML = '<tr><td colspan="3" style="text-align:center;">Cargando...</td></tr>';
+        document.getElementById('modal-historial-unico').classList.remove('oculto');
+
+        try {
+            // Pedimos historial filtrado por ID
+            const res = await fetch(`/api/historial?troquel_id=${id}`);
+            if (res.ok) {
+                const data = await res.json();
+                const tbody = document.getElementById('tabla-historial-unico');
+                
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Sin movimientos registrados.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.map(h => {
+                    let color = '#333';
+                    if(h.accion.includes('SALIDA')) color = '#e11d48'; // Rojo
+                    if(h.accion.includes('RETORNO') || h.accion.includes('ENTRADA')) color = '#16a34a'; // Verde
+                    
+                    return `
+                    <tr>
+                        <td>${new Date(h.fecha_hora).toLocaleString()}</td>
+                        <td style="color:${color}; font-weight:bold;">${h.accion}</td>
+                        <td>${h.ubicacion_anterior || '-'} ➝ ${h.ubicacion_nueva || '-'}</td>
+                    </tr>`;
+                }).join('');
+            }
+        } catch (e) { 
+            console.error(e); 
+            document.getElementById('tabla-historial-unico').innerHTML = '<tr><td colspan="3">Error de carga</td></tr>';
+        }
+    },
     generarQR: (id, ubi, nom) => { document.getElementById('modal-qr').classList.remove('oculto'); document.getElementById('qr-texto-ubi').innerText = ubi; document.getElementById('qr-texto-id').innerText = id; document.getElementById('qr-texto-desc').innerText = nom; new QRious({ element: document.getElementById('qr-canvas'), value: id, size: 200, padding: 0, level: 'M' }); },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
     cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
