@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V18 (HISTORIAL PANTALLA COMPLETA)
+// ERP PACKAGING - LÓGICA V18 (FICHA COMPLETA E HISTORIAL UNIFICADO)
 // =============================================================
 
 const App = {
@@ -168,7 +168,7 @@ const App = {
         }
     },
 
-    // --- NUEVO: HISTORIAL INDIVIDUAL A PANTALLA COMPLETA ---
+    // --- MEJORA: HISTORIAL INDIVIDUAL IGUAL QUE EL GENERAL ---
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico');
         const tbody = document.getElementById('tabla-historial-unico');
@@ -176,7 +176,6 @@ const App = {
         document.getElementById('hist-titulo-mat').innerText = mat;
         document.getElementById('hist-titulo-nom').innerText = nom;
         
-        // Colspan="4" porque ahora mostramos 4 columnas
         tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 40px; font-size: 18px;">Cargando historial de movimientos... ⏳</td></tr>';
         
         modal.classList.remove('oculto');
@@ -189,15 +188,14 @@ const App = {
                     tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 40px; font-size: 18px;">No hay movimientos registrados para este troquel.</td></tr>';
                 } else {
                     tbody.innerHTML = data.map(h => {
-                        // Extraemos la descripción del backend o usamos la que pasamos a la función
                         const descripcion = h.troqueles && h.troqueles.nombre ? h.troqueles.nombre : nom;
-                        
+                        // Formato idéntico al historial general
                         return `
                         <tr>
                             <td style="font-weight:600;">${new Date(h.fecha_hora).toLocaleString()}</td>
                             <td>${descripcion}</td>
                             <td style="font-weight:bold; color:${h.accion.includes('SALIDA') ? '#dc2626' : '#16a34a'}">${h.accion}</td>
-                            <td>${h.ubicacion_anterior||'-'} ➝ <strong>${h.ubicacion_nueva||'-'}</strong></td>
+                            <td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td>
                         </tr>
                         `;
                     }).join('');
@@ -208,23 +206,33 @@ const App = {
         }
     },
 
-    // VISTA FICHA
+    // --- MEJORA: VISTA FICHA DETALLADA ---
     verFicha: (id) => {
         const t = App.datos.find(x => x.id === id); if (!t) return;
+        
+        // Rellenamos todos los campos nuevos
         document.getElementById('ver-matricula').innerText = t.id_troquel || "-";
         document.getElementById('ver-ubicacion').innerText = t.ubicacion || "-";
         document.getElementById('ver-nombre').innerText = t.nombre || "-";
         document.getElementById('ver-tipo').innerHTML = App.mapaCat[t.categoria_id] || '-';
         document.getElementById('ver-familia').innerHTML = App.mapaFam[t.familia_id] || '-';
+        
+        // Nuevos campos
+        document.getElementById('ver-medidas-madera').innerText = t.tamano_troquel || "-";
+        document.getElementById('ver-medidas-corte').innerText = t.tamano_final || "-";
+        document.getElementById('ver-ot').innerText = t.referencias_ot || "-";
+        document.getElementById('ver-arts').innerText = t.codigos_articulo || "-";
+        document.getElementById('ver-obs').innerText = t.observaciones || "-";
+
         document.getElementById('ver-id-oculto').value = t.id;
 
         const gal = document.getElementById('ver-galeria'); gal.innerHTML = "";
         if (t.archivos && t.archivos.length > 0) {
             t.archivos.forEach(arch => {
                 const icon = arch.tipo === 'pdf' ? '📄' : `<img src="${arch.url}" style="height:50px;">`;
-                gal.innerHTML += `<a href="${arch.url}" target="_blank" style="margin-right:10px; text-decoration:none;">${icon}<br><small>${arch.nombre.substring(0,10)}</small></a>`;
+                gal.innerHTML += `<a href="${arch.url}" target="_blank" style="margin-right:10px; text-decoration:none; display:inline-block; text-align:center;">${icon}<br><small>${arch.nombre.substring(0,10)}</small></a>`;
             });
-        } else gal.innerHTML = "<span style='color:#999'>Sin archivos</span>";
+        } else gal.innerHTML = "<span style='color:#999'>Sin archivos adjuntos</span>";
         
         let btnPrint = document.getElementById('btn-print-ficha');
         if(!btnPrint) {
