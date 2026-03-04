@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V17 (OPERARIO + HISTORIAL INDIVIDUAL)
+// ERP PACKAGING - LÓGICA V18 (ESTADÍSTICAS AÑADIDAS)
 // =============================================================
 
 const App = {
@@ -12,7 +12,7 @@ const App = {
 
     // 1. INICIO
     init: async () => {
-        console.log("Iniciando ERP V17...");
+        console.log("Iniciando ERP V18...");
         await App.cargarSelects();
         await App.cargarTodo();
 
@@ -77,7 +77,7 @@ const App = {
         } catch (e) { console.error(e); }
     },
 
-    // 3. TABLA PC (CON BOTÓN HISTORIAL 🕒)
+    // 3. TABLAS Y RENDERIZADO
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body'); if (!tbody) return;
         const txt = document.getElementById('buscador').value.toLowerCase();
@@ -89,7 +89,7 @@ const App = {
             const okTip = App.filtroTipo === 'TODOS' || nCat === App.filtroTipo;
             const okFam = fam === 'TODAS' || t.familia_id == fam;
             const okEst = est === 'TODOS' || (t.estado || 'EN ALMACEN') === est;
-            const okTxt = (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt);
+            const okTxt = (t.nombre+t.id_troquel+(t.ubicacion||"")).toLowerCase().includes(txt);
             return okTip && okFam && okEst && okTxt;
         });
 
@@ -121,7 +121,7 @@ const App = {
                 <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
                 <button class="btn-icono" onclick="App.editar(${t.id})" title="Editar">✏️</button>
                 <button class="btn-icono" onclick="App.generarQR('${t.id_troquel}', '${t.ubicacion}', '${t.nombre.replace(/'/g,"")}')">🖨️</button>
-                <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red">🗑️</button>
+                <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red" title="A la papelera">🗑️</button>
             `;
             if(App.enPapelera) btns = `<button class="btn-accion" style="background:#22c55e; padding:2px 5px;" onclick="App.restaurar(${t.id})">♻️</button>`;
 
@@ -134,7 +134,41 @@ const App = {
         }).join('');
     },
 
-    // 4. NUEVA FUNCIÓN: VER HISTORIAL INDIVIDUAL
+    // --- NUEVO: ESTADÍSTICAS ---
+    cargarEstadisticas: async (meses) => {
+        const tbody = document.getElementById('tabla-estadisticas');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando cálculos... ⏳</td></tr>';
+        
+        try {
+            const res = await fetch(`/api/estadisticas/inactivos?meses=${meses}`);
+            const data = await res.json();
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">¡Genial! No tienes troqueles obsoletos en este periodo.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(t => {
+                const fecha = t.ultima_fecha ? new Date(t.ultima_fecha).toLocaleDateString() : 'Nunca usado';
+                return `
+                    <tr>
+                        <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td>
+                        <td>${t.nombre}</td>
+                        <td>${t.estado || 'EN ALMACÉN'}</td>
+                        <td style="color:#b91c1c; font-weight:bold;">${fecha}</td>
+                        <td>
+                            <button class="btn-accion" style="background:#64748b;" onclick="App.descatalogar(${t.id})">⛔ Descatalogar</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red">Error al cargar las estadísticas</td></tr>';
+        }
+    },
+
+    // HISTORIAL INDIVIDUAL
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico');
         const tbody = document.getElementById('tabla-historial-unico');
@@ -150,7 +184,7 @@ const App = {
             if (res.ok) {
                 const data = await res.json();
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" class="text-center">Sin movimientos.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center">Sin movimientos registrados.</td></tr>';
                 } else {
                     tbody.innerHTML = data.map(h => `
                         <tr>
@@ -164,7 +198,7 @@ const App = {
         } catch (e) { tbody.innerHTML = '<tr><td colspan="3">Error carga</td></tr>'; }
     },
 
-    // 5. VISTA FICHA
+    // VISTA FICHA
     verFicha: (id) => {
         const t = App.datos.find(x => x.id === id); if (!t) return;
         document.getElementById('ver-matricula').innerText = t.id_troquel || "-";
@@ -202,7 +236,7 @@ const App = {
         App.editar(id);
     },
 
-    // 6. MODO OPERARIO
+    // MODO OPERARIO
     activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
     desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
     
@@ -257,7 +291,7 @@ const App = {
         } catch(e) { alert("Error foto"); }
     },
 
-    // 7. ESCÁNER
+    // ESCÁNER
     toggleScanner: (show=true, modo='LOTE') => {
         const el = document.getElementById('modal-scanner');
         App.modoScanner = modo;
@@ -307,7 +341,7 @@ const App = {
     borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
     procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
 
-    // 8. UTILS
+    // UTILS
     crearFamilia: async () => { const n = prompt("Familia:"); if(n) { await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     crearTipo: async () => { const n = prompt("Tipo:"); if(n) { await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     subirArchivos: async (input) => { 
@@ -324,16 +358,28 @@ const App = {
         App.archivosActuales.forEach((a,i) => div.innerHTML += `<div>${a.nombre} <span onclick="App.quitarArchivo(${i})" style="color:red;cursor:pointer">✕</span></div>`); 
     },
     quitarArchivo: (i) => { App.archivosActuales.splice(i,1); App.renderListaArchivos(); },
-    nav: (v) => { document.querySelectorAll('.vista').forEach(x=>x.classList.add('oculto')); document.getElementById(v).classList.remove('oculto'); if(v==='vista-lista') document.getElementById('sidebar').classList.remove('oculto'); },
-    buscarMovil: (txt) => { const d = document.getElementById('resultados-movil'); d.innerHTML = ""; if(txt.length<2)return; const h = App.datos.filter(t => (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt.toLowerCase())); d.innerHTML = h.slice(0,10).map(t => `<div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); },
+    
+    // NAVEGACIÓN
+    nav: (v, btnElement) => { 
+        document.querySelectorAll('.vista').forEach(x=>x.classList.add('oculto')); 
+        document.getElementById(v).classList.remove('oculto'); 
+        
+        // Efecto visual en el menú lateral
+        if(btnElement) {
+            document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
+            btnElement.classList.add('activo');
+        }
+
+        if(v==='vista-lista') document.getElementById('sidebar').classList.remove('oculto'); 
+    },
+    
+    buscarMovil: (txt) => { const d = document.getElementById('resultados-movil'); d.innerHTML = ""; if(txt.length<2)return; const h = App.datos.filter(t => (t.nombre+t.id_troquel+(t.ubicacion||"")).toLowerCase().includes(txt.toLowerCase())); d.innerHTML = h.slice(0,10).map(t => `<div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); },
     nuevoTroquel: () => { document.getElementById('titulo-form').innerText="Nuevo"; document.querySelector('form').reset(); document.getElementById('f-id-db').value=""; App.archivosActuales=[]; App.renderListaArchivos(); if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); App.nav('vista-formulario'); },
     
-    // AQUÍ ESTÁ LA MAGIA: Una función editar segura a prueba de errores
     editar: (id) => { 
         const t = App.datos.find(x=>x.id===id); if(!t)return;
         document.getElementById('titulo-form').innerText="Editar";
         
-        // Función ayudante que asigna el valor sólo si el elemento existe en el HTML
         const setVal = (elId, val) => { const el = document.getElementById(elId); if(el) el.value = val; };
         
         setVal('f-id-db', t.id);
@@ -358,8 +404,6 @@ const App = {
     
     guardarFicha: async (e) => {
         e.preventDefault(); const id = document.getElementById('f-id-db').value;
-        
-        // Función ayudante para sacar datos de forma segura
         const getVal = (elId) => { const el = document.getElementById(elId); return el ? el.value : ""; };
         
         const d = { 
@@ -388,8 +432,34 @@ const App = {
     toggleAll: (c) => { document.querySelectorAll('#tabla-body input[type="checkbox"]').forEach(k=>{ k.checked=c.checked; c.checked ? App.seleccionados.add(parseInt(k.value)) : App.seleccionados.delete(parseInt(k.value)); }); App.updatePanel(); },
     updatePanel: () => { const p=document.getElementById('panel-acciones'); if(App.seleccionados.size>0) { p.classList.remove('oculto'); document.getElementById('contador-sel').innerText=App.seleccionados.size; } else p.classList.add('oculto'); },
     limpiarSeleccion: () => { App.seleccionados.clear(); document.getElementById('check-all').checked=false; App.updatePanel(); App.renderTabla(); },
-    descatalogar: async (id) => { if(confirm("¿Baja?")) { const t=App.datos.find(x=>x.id===id); t.estado="DESCATALOGADO"; await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(t) }); App.cargarTodo(); } },
-    borrar: async (id) => { if(confirm("¿Papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
+    
+    // --- EDICIÓN PARA QUE RECARGUE ESTADÍSTICAS SI SE DESCATALOGA DESDE AHÍ ---
+    descatalogar: async (id) => { 
+        if(confirm("¿Estás seguro de que deseas marcar este troquel como DESCATALOGADO?")) { 
+            const t = App.datos.find(x => x.id === id); 
+            // Si no está en datos, lo buscamos en el backend (por si se hace desde la vista estadísticas)
+            let dataToSend = t;
+            if(!t) {
+                // Fetch de emergencia
+                const r = await fetch(`/api/troqueles`);
+                const full = await r.json();
+                dataToSend = full.find(x => x.id === id);
+            }
+            if(dataToSend) {
+                dataToSend.estado = "DESCATALOGADO"; 
+                await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dataToSend) }); 
+                await App.cargarTodo(); 
+                
+                // Si la vista de estadísticas está activa, la refrescamos
+                if(!document.getElementById('vista-estadisticas').classList.contains('oculto')) {
+                    const meses = document.getElementById('select-inactividad').value;
+                    App.cargarEstadisticas(meses);
+                }
+            }
+        } 
+    },
+    
+    borrar: async (id) => { if(confirm("¿Mover a la papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
     restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.cargarTodo(true); },
     verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.limpiarSeleccion(); App.cargarTodo(); },
@@ -397,6 +467,7 @@ const App = {
     generarQR: (id, ubi, nom) => { document.getElementById('modal-qr').classList.remove('oculto'); document.getElementById('qr-texto-ubi').innerText = ubi; document.getElementById('qr-texto-id').innerText = id; document.getElementById('qr-texto-desc').innerText = nom; new QRious({ element: document.getElementById('qr-canvas'), value: id, size: 200, padding: 0, level: 'M' }); },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
     cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
+    procesarImportacion: async (input) => { const file = input.files[0]; if(!file)return; const reader = new FileReader(); reader.onload=async(e)=>{ const filas=e.target.result.split('\n').slice(1); const troqueles=filas.map(f=>{const [mat,ubi,nom]=f.split(','); if(!mat)return null; return {id_troquel:mat.trim(),ubicacion:ubi.trim(),nombre:nom.trim()};}).filter(x=>x); await fetch('/api/troqueles/importar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(troqueles)}); App.cargarTodo(); alert("Importación completada"); }; reader.readAsText(file); },
     exportarCSV: () => { let c="Mat,Ubi,Nom,Est\n"; App.datos.forEach(t=>c+=`${t.id_troquel},${t.ubicacion},${t.nombre},${t.estado}\n`); const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURI(c); a.download='inv.csv'; a.click(); }
 };
 

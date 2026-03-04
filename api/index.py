@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Any, Dict
 from supabase import create_client, Client
 import uuid
+from datetime import datetime, timedelta # NUEVO: Herramientas para calcular fechas
 
 app = FastAPI()
 
@@ -73,6 +74,40 @@ def siguiente_numero(categoria_id: int):
         except: pass
     return {"siguiente": max_num + 1}
 
+# --- NUEVO: ESTADÍSTICAS OBSOLETOS ---
+@app.get("/api/estadisticas/inactivos")
+def troqueles_inactivos(meses: int = 12):
+    # Calculamos la fecha límite (hace X meses)
+    fecha_limite = (datetime.utcnow() - timedelta(days=30*meses)).isoformat()
+    
+    # 1. Traemos troqueles activos y el historial completo
+    troqueles = supabase.table("troqueles").select("*").eq("estado_activo", "Activo").execute().data
+    historial = supabase.table("historial").select("troquel_id, fecha_hora").order("fecha_hora", desc=True).execute().data
+    
+    # 2. Agrupamos cuál fue el último movimiento de cada troquel
+    ultimos_mov = {}
+    for h in historial:
+        tid = h['troquel_id']
+        if tid not in ultimos_mov:
+            ultimos_mov[tid] = h['fecha_hora'] # Como está ordenado desc, el primero es el más reciente
+            
+    inactivos = []
+    for t in troqueles:
+        if t.get('estado') == 'DESCATALOGADO':
+            continue # Si ya está descatalogado, no nos interesa mostrarlo aquí
+            
+        tid = t['id']
+        ultima_fecha = ultimos_mov.get(tid, "")
+        
+        # 3. Filtramos: Si no tiene movimientos, o su último movimiento es más antiguo que el límite
+        if not ultima_fecha or ultima_fecha < fecha_limite:
+            t['ultima_fecha'] = ultima_fecha
+            inactivos.append(t)
+            
+    # Ordenamos poniendo los que llevan más tiempo (o no tienen fecha) arriba
+    inactivos.sort(key=lambda x: x['ultima_fecha'] if x['ultima_fecha'] else "")
+    return inactivos
+
 # --- POST/PUT ---
 @app.post("/api/categorias")
 def crear_cat(d: EntidadAux):
@@ -107,11 +142,9 @@ def crear_troquel(t: TroquelData):
 @app.post("/api/troqueles/importar")
 def importar_masivo(lista: List[TroquelData]):
     datos = [t.dict() for t in lista]
-    # Forzamos estado activo
     for d in datos:
         d["estado_activo"] = "Activo"
         if not d["ubicacion"]: d["ubicacion"] = d["id_troquel"]
-        
     return supabase.table("troqueles").insert(datos).execute()
 
 @app.put("/api/troqueles/{id_db}")
