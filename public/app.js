@@ -5,90 +5,113 @@ const App = {
     escaneadosLote: new Map(), enPapelera: false,
 
     init: async () => {
-        console.log("Iniciando V13...");
-        try {
-            await App.cargarSelects();
-            await App.cargarTodo();
-        } catch (e) {
-            console.error("Error fatal en inicio:", e);
-            alert("Error conectando con el servidor. Revisa la consola.");
-        }
+        console.log("Iniciando ERP V14 (Fix Filtros)...");
+        await App.cargarSelects(); 
+        await App.cargarTodo();
     },
 
-    cargarSelects: async () => {
-        try {
-            // Cargar listas. Si fallan, usamos arrays vacíos para no romper la web.
-            const [cats, fams] = await Promise.all([
-                fetch('/api/categorias').then(r => r.ok ? r.json() : []), 
-                fetch('/api/familias').then(r => r.ok ? r.json() : [])
-            ]);
-            
-            console.log("Categorias cargadas:", cats.length);
-            console.log("Familias cargadas:", fams.length);
-
-            App.mapaCat = {}; App.mapaFam = {};
-            cats.forEach(c => App.mapaCat[c.id] = c.nombre);
-            fams.forEach(f => App.mapaFam[f.id] = f.nombre);
-
-            // Chips
-            const divChips = document.getElementById('chips-tipos');
-            if(divChips) {
-                divChips.innerHTML = `<button class="chip activo" onclick="App.setFiltroTipo('TODOS', this)">TODOS</button>`;
-                cats.forEach(c => divChips.innerHTML += `<button class="chip" onclick="App.setFiltroTipo('${c.nombre}', this)">${c.nombre}</button>`);
-            }
-
-            // Selects
-            const llenar = (id, data) => {
-                const el = document.getElementById(id);
-                if(el) {
-                    const prev = el.value;
-                    el.innerHTML = id.includes('fam') ? '<option value="">Sin Familia</option>' : '<option value="">Seleccionar...</option>';
-                    data.forEach(d => el.innerHTML += `<option value="${d.id}">${d.nombre}</option>`);
-                    if(prev) el.value = prev;
-                }
-            };
-            llenar('f-cat', cats); llenar('bulk-tipo', cats);
-            llenar('f-fam', fams); llenar('bulk-familia', fams); llenar('filtro-familia', fams);
-
-        } catch(e) { console.error("Error en selects:", e); }
-    },
-
+    // --- CARGA DE DATOS ---
     cargarTodo: async (papelera = false) => {
         try {
             App.enPapelera = papelera;
             const res = await fetch(`/api/troqueles?ver_papelera=${papelera}`);
             if(res.ok) {
                 App.datos = await res.json();
-                console.log("Datos recibidos:", App.datos.length);
-                if (App.datos.length === 0) console.warn("¡ATENCIÓN! La API devolvió 0 datos.");
-                
                 App.renderTabla();
-                document.getElementById('titulo-lista').innerText = papelera ? "🗑️ PAPELERA" : "Inventario Activo";
                 
+                // Actualizar textos e interfaz
+                document.getElementById('titulo-lista').innerText = papelera ? "🗑️ PAPELERA" : "Inventario Activo";
                 const btn = document.getElementById('btn-restaurar-papelera');
                 const panel = document.getElementById('panel-acciones');
-                if (btn) btn.classList.toggle('oculto', !papelera);
-                if (panel && papelera) panel.classList.add('oculto');
-            } else {
-                console.error("Error API:", await res.text());
+                
+                if(papelera) { 
+                    if(btn) btn.classList.remove('oculto'); 
+                    if(panel) panel.classList.add('oculto'); 
+                } else { 
+                    if(btn) btn.classList.add('oculto'); 
+                }
             }
-        } catch (e) { console.error("Error carga:", e); }
+        } catch (e) { console.error(e); }
     },
 
+    // --- CARGA DE SELECTS (CORREGIDO "TODAS") ---
+    cargarSelects: async () => {
+        try {
+            const [cats, fams] = await Promise.all([
+                fetch('/api/categorias').then(r=>r.json()), 
+                fetch('/api/familias').then(r=>r.json())
+            ]);
+            
+            // Mapas
+            App.mapaCat = {}; App.mapaFam = {};
+            cats.forEach(c => App.mapaCat[c.id] = c.nombre);
+            fams.forEach(f => App.mapaFam[f.id] = f.nombre);
+
+            // Chips Tipos
+            const divChips = document.getElementById('chips-tipos');
+            if(divChips) {
+                divChips.innerHTML = `<button class="chip activo" onclick="App.setFiltroTipo('TODOS', this)">TODOS</button>`;
+                cats.forEach(c => divChips.innerHTML += `<button class="chip" onclick="App.setFiltroTipo('${c.nombre}', this)">${c.nombre}</button>`);
+            }
+
+            // FUNCIÓN DE LLENADO INTELIGENTE
+            const llenar = (id, data) => {
+                const el = document.getElementById(id);
+                if(!el) return;
+
+                const prev = el.value; // Guardar selección actual
+                
+                // AQUI ESTA EL CAMBIO: Definir la primera opción según el ID del select
+                let primeraOpcion = '<option value="">Seleccionar...</option>';
+                
+                if (id === 'filtro-familia') {
+                    // El filtro principal DEBE tener "TODAS"
+                    primeraOpcion = '<option value="TODAS">Todas las Familias</option>';
+                } else if (id === 'f-fam') {
+                    // El formulario puede tener "Sin Familia"
+                    primeraOpcion = '<option value="">Sin Familia</option>';
+                } else if (id === 'bulk-familia') {
+                    primeraOpcion = '<option value="">Asignar Familia...</option>';
+                }
+
+                // Escribimos el HTML
+                el.innerHTML = primeraOpcion;
+                data.forEach(d => el.innerHTML += `<option value="${d.id}">${d.nombre}</option>`);
+                
+                // Restauramos valor si es posible
+                if(prev) el.value = prev;
+            };
+
+            llenar('f-cat', cats); 
+            llenar('bulk-tipo', cats);
+            llenar('f-fam', fams); 
+            llenar('bulk-familia', fams); 
+            llenar('filtro-familia', fams); // Este ahora tendrá "Todas las Familias"
+
+        } catch(e) { console.error("Error selects:", e); }
+    },
+
+    // --- RENDER TABLA ---
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body');
         if(!tbody) return;
-        
+
         const txt = document.getElementById('buscador').value.toLowerCase();
         const fam = document.getElementById('filtro-familia').value;
         const est = document.getElementById('filtro-estado').value;
 
         let filtrados = App.datos.filter(t => {
             const nCat = App.mapaCat[t.categoria_id] || '';
+            
             const okTipo = App.filtroTipo === 'TODOS' || nCat === App.filtroTipo;
+            
+            // LOGICA FILTRO FAMILIA:
+            // Si el select vale "TODAS", pasa todo. Si no, comparamos IDs.
             const okFam = fam === 'TODAS' || t.familia_id == fam;
+            
             const okEst = est === 'TODOS' || (t.estado || 'EN ALMACEN') === est;
             const okTxt = (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt);
+            
             return okTipo && okFam && okEst && okTxt;
         });
 
@@ -105,26 +128,29 @@ const App = {
         });
 
         if(filtrados.length===0) { 
-            tbody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center">No hay datos para mostrar.</td></tr>'; 
+            tbody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center">Sin datos</td></tr>'; 
             return; 
         }
 
         tbody.innerHTML = filtrados.map(t => {
             const chk = App.seleccionados.has(t.id) ? 'checked' : '';
-            const nDocs = (t.archivos && Array.isArray(t.archivos)) ? t.archivos.length : 0;
-            const docBadge = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
             
-            // Colores Estado
-            let bgEst = '#dcfce7'; let colEst = '#166534';
-            if(t.estado==='EN PRODUCCION') { bgEst='#fee2e2'; colEst='#991b1b'; }
-            if(t.estado==='DESCATALOGADO') { bgEst='#f3f4f6'; colEst='#6b7280'; }
-            const badgeEst = `<span style="background:${bgEst}; color:${colEst}; padding:2px 6px; border-radius:10px; font-size:10px; font-weight:700;">${t.estado||'ALMACÉN'}</span>`;
+            // Badge Docs
+            const nDocs = (t.archivos && Array.isArray(t.archivos)) ? t.archivos.length : 0;
+            const docBadge = nDocs > 0 ? `<span class="obs-pildora" style="background:#e0f2fe; color:#0369a1;">📎 ${nDocs}</span>` : '-';
+            
+            // Estado
+            let stHtml = `<span style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:10px; font-size:10px; font-weight:700;">ALMACÉN</span>`;
+            if(t.estado==='EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:10px; font-size:10px; font-weight:700;">PROD.</span>`;
+            if(t.estado==='DESCATALOGADO') stHtml = `<span style="background:#f3f4f6; color:#6b7280; padding:2px 6px; border-radius:10px; font-size:10px; font-weight:700;">BAJA</span>`;
 
-            // Familia (Nombre o ID en rojo)
+            // Nombres Seguros
             let famStr = App.mapaFam[t.familia_id];
             if(!famStr && t.familia_id) famStr = `<span style="color:red; font-weight:bold;">ID:${t.familia_id}</span>`;
+            
+            let tipoStr = App.mapaCat[t.categoria_id];
+            if(!tipoStr && t.categoria_id) tipoStr = `<span style="color:red; font-weight:bold;">ID:${t.categoria_id}</span>`;
 
-            // Botones
             let accs = `
                 <button class="btn-icono" onclick="App.editar(${t.id})" title="Editar">✏️</button>
                 <button class="btn-icono" onclick="App.generarQR('${t.id_troquel}', '${t.ubicacion}', '${t.nombre.replace(/'/g,"")}')">🖨️</button>
@@ -136,10 +162,11 @@ const App = {
             <tr style="${t.estado==='DESCATALOGADO'?'opacity:0.6':''}">
                 <td style="text-align:center;"><input type="checkbox" value="${t.id}" ${chk} onchange="App.select(this, ${t.id})"></td>
                 <td style="text-align:center;">${docBadge}</td>
-                <td style="text-align:center;">${badgeEst}</td>
+                <td style="text-align:center;">${stHtml}</td>
                 <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td>
                 <td>${t.ubicacion}</td>
                 <td>${t.nombre}</td>
+                <td><small>${tipoStr || '-'}</small></td>
                 <td><small>${famStr || '-'}</small></td>
                 <td>${accs}</td>
             </tr>`;
@@ -150,28 +177,36 @@ const App = {
     crearFamilia: async () => {
         const n = prompt("Nueva Familia:"); if(!n) return;
         const res = await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ nombre: n }) });
-        if(res.ok) { const d = await res.json(); await App.cargarSelects(); if(d.data && d.data[0]) document.getElementById('f-fam').value = d.data[0].id; alert("Creada"); }
+        if(res.ok) { 
+            const d = await res.json(); 
+            await App.cargarSelects(); 
+            if(d.data && d.data[0]) document.getElementById('f-fam').value = d.data[0].id; 
+            alert("Familia creada"); 
+        }
     },
     crearTipo: async () => {
         const n = prompt("Nuevo Tipo:"); if(!n) return;
         const res = await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ nombre: n }) });
-        if(res.ok) { const d = await res.json(); await App.cargarSelects(); if(d.data && d.data[0]) document.getElementById('f-cat').value = d.data[0].id; alert("Creado"); }
+        if(res.ok) { 
+            const d = await res.json(); 
+            await App.cargarSelects(); 
+            if(d.data && d.data[0]) document.getElementById('f-cat').value = d.data[0].id; 
+            alert("Creado"); 
+        }
     },
 
-    // --- UPLOAD MULTIPLE ---
+    // --- MULTI ARCHIVOS ---
     subirArchivos: async (input) => {
         if(!input.files.length) return;
-        const btn = input.parentElement; btn.innerText = "⏳ ...";
+        const btn = input.parentElement; const txt = btn.innerText; btn.innerText = "⏳ ...";
         for (let i = 0; i < input.files.length; i++) {
             const fd = new FormData(); fd.append('file', input.files[i]);
             try { const res = await fetch('/api/subir_foto', { method: 'POST', body: fd }); if(res.ok) { const d = await res.json(); App.archivosActuales.push({ url: d.url, nombre: input.files[i].name, tipo: d.tipo }); } } catch(e){}
         }
-        App.renderListaArchivos(); btn.innerText = "➕ Subir"; input.value = "";
+        App.renderListaArchivos(); btn.innerText = txt; input.value = "";
     },
     renderListaArchivos: () => {
-        const div = document.getElementById('lista-archivos'); 
-        if(!div) return;
-        div.innerHTML = "";
+        const div = document.getElementById('lista-archivos'); div.innerHTML = "";
         App.archivosActuales.forEach((arch, idx) => {
             const icon = arch.tipo === 'pdf' ? '📄' : `<img src="${arch.url}" style="height:30px;">`;
             div.innerHTML += `<div style="display:flex; align-items:center; gap:5px; background:white; padding:5px; border:1px solid #ddd; font-size:11px;"><a href="${arch.url}" target="_blank">${icon}</a><span>${arch.nombre.substring(0,10)}</span><span onclick="App.quitarArchivo(${idx})" style="color:red; cursor:pointer;">✕</span></div>`;
@@ -184,6 +219,7 @@ const App = {
     volverDesdeForm: () => { if(App.modoMovil) App.activarModoMovil(); else App.nav('vista-lista'); },
     activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
     desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
+    buscarMovil: (txt) => { const d = document.getElementById('resultados-movil'); d.innerHTML = ""; if(txt.length<2) return; const h = App.datos.filter(t => (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt.toLowerCase())); d.innerHTML = h.slice(0,10).map(t => `<div class="card-movil" onclick="App.editar(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); },
     
     nuevoTroquel: () => { document.getElementById('titulo-form').innerText = "Nuevo"; document.querySelector('form').reset(); document.getElementById('f-id-db').value = ""; App.archivosActuales=[]; App.renderListaArchivos(); if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); App.nav('vista-formulario'); },
     editar: (id) => { const t = App.datos.find(x => x.id===id); if(!t) return; document.getElementById('titulo-form').innerText = "Editar"; document.getElementById('f-id-db').value = t.id; document.getElementById('f-matricula').value = t.id_troquel; document.getElementById('f-ubicacion').value = t.ubicacion; document.getElementById('f-nombre').value = t.nombre; document.getElementById('f-cat').value = t.categoria_id||""; document.getElementById('f-fam').value = t.familia_id||""; document.getElementById('f-medidas-madera').value = t.tamano_troquel||""; document.getElementById('f-medidas-corte').value = t.tamano_final||""; document.getElementById('f-arts').value = t.codigos_articulo||""; document.getElementById('f-ot').value = t.referencias_ot||""; document.getElementById('f-obs').value = t.observaciones||""; App.archivosActuales = (t.archivos && Array.isArray(t.archivos)) ? t.archivos : []; App.renderListaArchivos(); if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); App.nav('vista-formulario'); },
@@ -207,7 +243,6 @@ const App = {
     
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.limpiarSeleccion(); App.cargarTodo(); },
     asignarMasivo: async (campo) => { let selectId = campo === 'familia' ? 'bulk-familia' : 'bulk-tipo'; let val = document.getElementById(selectId).value; if(!val || App.seleccionados.size === 0) return alert("Selecciona valor"); if(!confirm(`¿Aplicar?`)) return; await fetch(`/api/troqueles/bulk/${campo}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(val) }) }); App.limpiarSeleccion(); App.cargarTodo(App.enPapelera); },
-    
     generarQR: (id, ubi, nom) => { document.getElementById('modal-qr').classList.remove('oculto'); document.getElementById('qr-texto-ubi').innerText = ubi || "SIN UBI"; document.getElementById('qr-texto-id').innerText = id; document.getElementById('qr-texto-desc').innerText = nom; new QRious({ element: document.getElementById('qr-canvas'), value: id, size: 200, padding: 0, level: 'M' }); },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
     cargarHistorial: async () => { const res = await fetch('/api/historial'); const data = await res.json(); document.getElementById('tabla-historial').innerHTML = data.map(h => `<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
@@ -216,8 +251,7 @@ const App = {
     toggleScanner: (show=true) => { const el = document.getElementById('modal-scanner'); if(show) { el.classList.remove('oculto'); App.escaneadosLote.clear(); App.renderListaEscaneados(); App.scanner = new Html5Qrcode("reader"); let last = null; let t0 = 0; App.scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, (txt) => { if(txt === last && (Date.now() - t0 < 3000)) return; const t = App.datos.find(x => x.id_troquel === txt); if(t) { if(!App.escaneadosLote.has(t.id)) { App.escaneadosLote.set(t.id, t); App.renderListaEscaneados(); if(navigator.vibrate) navigator.vibrate(200); } last = txt; t0 = Date.now(); } }); } else { el.classList.add('oculto'); if(App.scanner) App.scanner.stop(); } },
     renderListaEscaneados: () => { const div = document.getElementById('lista-escaneados'); div.innerHTML = ""; document.getElementById('count-scans').innerText = App.escaneadosLote.size; App.escaneadosLote.forEach((t, id) => { div.innerHTML += `<div class="chip activo" style="background:white; color:black;"><b>${t.id_troquel}</b><span onclick="App.borrarDeLote(${id})" style="color:red; cursor:pointer; margin-left:5px;">✕</span></div>`; }); },
     borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
-    procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
-    buscarMovil: (txt) => { const d = document.getElementById('resultados-movil'); d.innerHTML = ""; if(txt.length<2) return; const h = App.datos.filter(t => (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt.toLowerCase())); d.innerHTML = h.slice(0,10).map(t => `<div class="card-movil" onclick="App.editar(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario" style="width:100%; margin-top:5px;">Ver</button></div>`).join(''); }
+    procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); }
 };
 
 window.onload = App.init;
