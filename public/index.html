@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ERP V15 | Vista Segura</title>
+    <title>ERP V16 | Completo</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -12,9 +12,9 @@
 <body>
     <div class="erp-layout">
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-logo"><span>🏭</span><h2>ERP V15</h2></div>
+            <div class="sidebar-logo"><span>🏭</span><h2>ERP V16</h2></div>
             <nav class="sidebar-menu">
-                <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario</button>
+                <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
                 <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
                 <div class="menu-divisor"></div>
                 <button class="menu-item" onclick="App.nuevoTroquel()">➕ Nuevo Troquel</button>
@@ -26,11 +26,12 @@
         </aside>
 
         <main class="main-content">
+            
             <section id="vista-lista" class="vista">
                 <div class="header-modulo">
                     <h1 id="titulo-lista">Inventario</h1>
                     <div style="display:flex; gap:10px;">
-                        <button id="btn-restaurar-papelera" class="btn-accion oculto" style="background:#22c55e;" onclick="App.salirPapelera()">🔙 Salir Papelera</button>
+                        <button id="btn-restaurar-papelera" class="btn-accion oculto" style="background:#22c55e;" onclick="App.salirPapelera()">🔙 Salir de Papelera</button>
                         <button class="btn-secundario" onclick="App.exportarCSV()">📥 Excel</button>
                     </div>
                 </div>
@@ -58,6 +59,8 @@
                     <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
                     <select id="bulk-familia" class="select-bulk"><option value="">Asignar Familia...</option></select>
                     <button class="btn-secundario" onclick="App.asignarMasivo('familia')">OK</button>
+                    <select id="bulk-tipo" class="select-bulk"><option value="">Asignar Tipo...</option></select>
+                    <button class="btn-secundario" onclick="App.asignarMasivo('categoria')">OK</button>
                     <button class="btn-secundario" onclick="App.limpiarSeleccion()">Cancelar</button>
                 </div>
 
@@ -100,7 +103,7 @@
                             <div><label>Ubicación</label><input type="text" id="f-ubicacion" required style="font-weight:900;"></div>
 
                             <div class="full-width" style="padding:15px; border:2px dashed #cbd5e1; background:#f8fafc;">
-                                <label style="display:block; margin-bottom:10px; font-weight:bold;">📎 Archivos (Fotos/PDF)</label>
+                                <label style="display:block; margin-bottom:10px; font-weight:bold;">📎 Documentación (Fotos / PDF)</label>
                                 <div id="lista-archivos" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;"></div>
                                 <label class="btn-secundario" style="cursor:pointer; display:inline-block;">
                                     ➕ Subir Archivo
@@ -122,7 +125,10 @@
                             <div class="full-width"><label>Artículos</label><textarea id="f-arts" rows="2"></textarea></div>
                             <div class="full-width"><label>Observaciones</label><textarea id="f-obs" rows="2"></textarea></div>
                         </div>
-                        <div style="margin-top:20px; text-align:right;"><button type="submit" class="btn-accion">💾 GUARDAR</button></div>
+                        <div style="margin-top:20px; text-align:right;">
+                            <button type="button" class="btn-secundario" onclick="App.volverDesdeForm()">Cancelar</button>
+                            <button type="submit" class="btn-accion" style="padding:12px 30px;">💾 GUARDAR</button>
+                        </div>
                     </form>
                 </div>
             </section>
@@ -133,66 +139,89 @@
                     <button class="btn-secundario" onclick="App.desactivarModoMovil()">Ver PC</button>
                 </div>
                 <div class="grid-movil">
-                    <button class="btn-gigante scan" onclick="App.toggleScanner(true)">📷 ESCANEAR</button>
-                    <button class="btn-gigante nuevo" onclick="App.nuevoTroquel()">➕ NUEVO</button>
-                    <button class="btn-gigante buscar" onclick="document.getElementById('buscador-movil').focus()">🔍 BUSCAR</button>
+                    <button class="btn-gigante" style="background:#0f766e;" onclick="App.toggleScanner(true, 'UNICO')">
+                        <span style="font-size:30px;">🔎</span><br>CONSULTAR QR
+                    </button>
+                    <button class="btn-gigante scan" onclick="App.toggleScanner(true, 'LOTE')">
+                        <span style="font-size:30px;">📦</span><br>MOVER LOTE
+                    </button>
+                    <button class="btn-gigante nuevo" onclick="App.nuevoTroquel()">
+                        <span style="font-size:30px;">➕</span><br>NUEVO
+                    </button>
                 </div>
                 <div style="margin-top:20px;">
-                    <input type="text" id="buscador-movil" placeholder="Buscar..." style="width:100%; padding:15px; font-size:18px;" oninput="App.buscarMovil(this.value)">
+                    <input type="text" id="buscador-movil" placeholder="Escribe para buscar..." style="width:100%; padding:15px; font-size:18px;" oninput="App.buscarMovil(this.value)">
                     <div id="resultados-movil" style="margin-top:10px; display:flex; flex-direction:column; gap:10px;"></div>
                 </div>
             </section>
 
+            <section id="vista-movil-detalle" class="vista oculto" style="padding:10px; background:#f8fafc; min-height:100vh;">
+                <button class="btn-secundario" onclick="App.volverMenuMovil()" style="width:100%; margin-bottom:15px; padding:15px;">⬅️ Volver</button>
+                
+                <div style="background:white; border:2px solid #0f766e; border-radius:8px; padding:20px; text-align:center; margin-bottom:20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                    <div style="font-size:12px; color:#64748b; font-weight:bold;">Matrícula</div>
+                    <div id="movil-id" style="font-size:40px; font-weight:900; color:#0f766e;">-</div>
+                    <div style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+                        <div style="font-size:12px; color:#64748b;">Ubicación</div>
+                        <div id="movil-ubi" style="font-size:24px; font-weight:800;">-</div>
+                    </div>
+                    <div id="movil-nombre" style="margin-top:10px; font-weight:600;">-</div>
+                    <div id="movil-estado" style="margin-top:10px;"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                    <button class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:10px;" onclick="App.movilCambiarUbi()">📍 Cambiar Ubi</button>
+                    <label class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:10px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                        📷 Foto
+                        <input type="file" accept="image/*" capture="environment" onchange="App.movilSubirFoto(this)" style="display:none;">
+                    </label>
+                    <button class="btn-gigante" style="background:#e11d48; color:white; padding:15px;" onclick="App.movilCambiarEstado('SALIDA')">🏭 A FABRICA</button>
+                    <button class="btn-gigante" style="background:#16a34a; color:white; padding:15px;" onclick="App.movilCambiarEstado('RETORNO')">✅ A ALMACÉN</button>
+                </div>
+                <input type="hidden" id="movil-id-db">
+            </section>
+
             <div id="modal-ficha" class="modal oculto">
                 <div class="modal-contenido" style="max-width:800px; width:95%;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #e2e8f0; padding-bottom:15px; margin-bottom:15px;">
-                        <h2 style="margin:0; color:#0f766e;">Ficha Técnica</h2>
-                        <button onclick="document.getElementById('modal-ficha').classList.add('oculto')" style="border:none; background:transparent; font-size:24px; cursor:pointer;">&times;</button>
+                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid #ddd; padding-bottom:10px;">
+                        <h2 style="margin:0;">Ficha de Consulta</h2>
+                        <button onclick="document.getElementById('modal-ficha').classList.add('oculto')" style="border:none; font-size:20px; cursor:pointer;">&times;</button>
                     </div>
-                    
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:15px;">
                         <div>
-                            <div class="dato-ficha">
-                                <label>Matrícula</label>
-                                <div id="ver-matricula" style="font-size:24px; font-weight:900; color:#0f766e;">-</div>
+                            <label style="font-weight:bold; color:#64748b; font-size:12px;">Matrícula</label>
+                            <div id="ver-matricula" style="font-size:22px; font-weight:900; color:#0f766e;"></div>
+                            
+                            <label style="font-weight:bold; color:#64748b; font-size:12px; margin-top:10px; display:block;">Ubicación</label>
+                            <div id="ver-ubicacion" style="font-size:18px; font-weight:800;"></div>
+                            
+                            <label style="font-weight:bold; color:#64748b; font-size:12px; margin-top:10px; display:block;">Descripción</label>
+                            <div id="ver-nombre"></div>
+                            
+                            <div style="margin-top:10px;">
+                                Tipo: <span id="ver-tipo" style="font-weight:bold;"></span> | 
+                                Familia: <span id="ver-familia" style="font-weight:bold;"></span>
                             </div>
-                            <div class="dato-ficha">
-                                <label>Ubicación</label>
-                                <div id="ver-ubicacion" style="font-size:18px; font-weight:800;">-</div>
-                            </div>
-                            <div class="dato-ficha">
-                                <label>Descripción</label>
-                                <div id="ver-nombre" style="font-weight:bold;">-</div>
-                            </div>
-                            <div style="display:flex; gap:15px;">
-                                <div class="dato-ficha" style="flex:1;"><label>Tipo</label><div id="ver-tipo">-</div></div>
-                                <div class="dato-ficha" style="flex:1;"><label>Familia</label><div id="ver-familia">-</div></div>
-                            </div>
-                            <div class="dato-ficha">
-                                <label>Artículos</label>
-                                <div id="ver-arts" class="obs-pildora" style="display:inline-block;">-</div>
-                            </div>
-                            <div class="dato-ficha">
-                                <label>Observaciones</label>
-                                <div id="ver-obs" style="font-style:italic; color:#64748b;">-</div>
-                            </div>
+                            
+                            <label style="font-weight:bold; color:#64748b; font-size:12px; margin-top:10px; display:block;">Observaciones</label>
+                            <div id="ver-obs" style="font-style:italic;"></div>
                         </div>
-
-                        <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
-                            <h4 style="margin-top:0;">📂 Archivos Adjuntos</h4>
+                        <div style="background:#f8fafc; padding:10px; border-radius:6px;">
+                            <h4 style="margin-top:0;">Archivos</h4>
                             <div id="ver-galeria" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
                         </div>
                     </div>
-
-                    <div style="margin-top:20px; padding-top:15px; border-top:1px solid #e2e8f0; text-align:right;">
-                        <input type="hidden" id="ver-id-oculto">
-                        <button class="btn-secundario" onclick="document.getElementById('modal-ficha').classList.add('oculto')">Cerrar</button>
+                    <input type="hidden" id="ver-id-oculto">
+                    <div style="text-align:right; margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
                         <button class="btn-accion" onclick="App.editarDesdeFicha()">✏️ Editar Datos</button>
                     </div>
                 </div>
             </div>
-            <div id="modal-aux" class="modal oculto"><div class="modal-contenido"><h2>Gestión</h2><p>Añade opciones.</p><div style="display:flex; gap:10px; margin-top:20px;"><button class="btn-accion" onclick="App.crearFamilia()">➕ Nueva Familia</button><button class="btn-accion" onclick="App.crearTipo()">➕ Nuevo Tipo</button></div><div style="margin-top:20px; text-align:right;"><button class="btn-secundario" onclick="document.getElementById('modal-aux').classList.add('oculto')">Cerrar</button></div></div></div>
-            <div id="modal-scanner" class="modal oculto" style="background:black;"><div class="modal-contenido" style="background:#1e293b; color:white; width:100%; height:100%; max-width:none; border:none; display:flex; flex-direction:column;"><div style="padding:10px; display:flex; justify-content:space-between;"><h3>📸 Escáner</h3><button class="btn-secundario" onclick="App.toggleScanner(false)" style="background:transparent; color:white; border:1px solid white;">✕ Cerrar</button></div><div id="reader" style="flex:1; background:black;"></div><div style="background:#0f172a; padding:10px; height:35%;"><div style="display:flex; justify-content:space-between;"><span>Leídos: <strong id="count-scans">0</strong></span><span style="font-size:10px;">Bloqueo 3s activo</span></div><div id="lista-escaneados" style="display:flex; flex-wrap:wrap; gap:10px; overflow-y:auto; height:80%;"></div></div><div style="padding:15px; display:flex; gap:10px; justify-content:center; background:#0f172a;"><button class="btn-accion" style="background:#e11d48; width:50%; padding:15px;" onclick="App.procesarEscaneo('SALIDA')">A PRODUCCIÓN</button><button class="btn-accion" style="background:#16a34a; width:50%; padding:15px;" onclick="App.procesarEscaneo('RETORNO')">DEVOLVER</button></div></div></div>
+
+            <div id="modal-aux" class="modal oculto"><div class="modal-contenido"><h2>Gestión</h2><div style="display:flex; gap:10px; margin-top:20px;"><button class="btn-accion" onclick="App.crearFamilia()">➕ Nueva Familia</button><button class="btn-accion" onclick="App.crearTipo()">➕ Nuevo Tipo</button></div><div style="margin-top:20px; text-align:right;"><button class="btn-secundario" onclick="document.getElementById('modal-aux').classList.add('oculto')">Cerrar</button></div></div></div>
+            
+            <div id="modal-scanner" class="modal oculto" style="background:black;"><div class="modal-contenido" style="background:#1e293b; color:white; width:100%; height:100%; max-width:none; border:none; display:flex; flex-direction:column;"><div style="padding:10px; display:flex; justify-content:space-between;"><h3 id="titulo-scanner">📸 Escáner</h3><button class="btn-secundario" onclick="App.toggleScanner(false)" style="background:transparent; color:white; border:1px solid white;">✕ Cerrar</button></div><div id="reader" style="flex:1; background:black;"></div><div id="panel-lote" style="height:35%; background:#0f172a; padding:10px; overflow-y:auto;"><div style="display:flex; justify-content:space-between;"><span>Leídos: <strong id="count-scans">0</strong></span></div><div id="lista-escaneados" style="display:flex; flex-wrap:wrap; gap:10px;"></div></div><div id="btns-lote" style="padding:15px; display:flex; gap:10px; justify-content:center; background:#0f172a;"><button class="btn-accion" style="background:#e11d48; width:50%; padding:15px;" onclick="App.procesarEscaneo('SALIDA')">A PRODUCCIÓN</button><button class="btn-accion" style="background:#16a34a; width:50%; padding:15px;" onclick="App.procesarEscaneo('RETORNO')">DEVOLVER</button></div></div></div>
+            
             <div id="modal-qr" class="modal oculto"><div class="modal-contenido text-center"><div id="zona-impresion" class="etiqueta-preview"><canvas id="qr-canvas"></canvas><div class="etiqueta-info"><div id="qr-texto-ubi" class="etiq-ubi"></div><div id="qr-texto-id" class="etiq-id"></div><div id="qr-texto-desc" class="etiq-desc"></div></div></div><div class="modal-botones no-print"><button class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cerrar</button><button class="btn-accion" onclick="window.print()">Imprimir</button></div></div></div>
             <section id="vista-historial" class="vista oculto"><div class="header-modulo"><h1>Historial</h1></div><div class="contenedor-tabla"><table class="tabla-pro"><thead><tr><th>Fecha</th><th>Troquel</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tabla-historial"></tbody></table></div></section>
         </main>
