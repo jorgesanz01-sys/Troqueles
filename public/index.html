@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ERP V21 | Godex Edition</title>
+    <title>ERP V24 | Importación Avanzada</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -12,7 +12,7 @@
 <body>
     <div class="erp-layout">
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-logo"><span>🏭</span><h2>ERP V21</h2></div>
+            <div class="sidebar-logo"><span>🏭</span><h2>ERP V24</h2></div>
             <nav class="sidebar-menu">
                 <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
                 <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
@@ -30,10 +30,16 @@
             <section id="vista-lista" class="vista">
                 <div class="header-modulo">
                     <h1 id="titulo-lista">Inventario</h1>
-                    <div style="display:flex; gap:10px;">
+                    <div style="display:flex; gap:10px; align-items:center;">
                         <button id="btn-restaurar-papelera" class="btn-accion oculto" style="background:#22c55e;" onclick="App.salirPapelera()">🔙 Salir Papelera</button>
+                        
+                        <select id="select-import-tipo" style="padding:10px; border-radius:5px; border:2px solid #0f766e; color:#0f766e; font-weight:bold; outline:none; cursor:pointer;">
+                            <option value="">Tipo al importar (Opcional)...</option>
+                        </select>
+
                         <button class="btn-secundario" onclick="document.getElementById('input-csv').click()" style="border-color:#0f766e; color:#0f766e;">📤 Importar CSV</button>
                         <input type="file" id="input-csv" accept=".csv" style="display:none;" onchange="App.procesarImportacion(this)">
+                        
                         <button class="btn-secundario" onclick="App.exportarCSV()">📥 Excel CSV</button>
                     </div>
                 </div>

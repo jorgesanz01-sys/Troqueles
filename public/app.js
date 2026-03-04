@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V22 (QR INTELIGENTE E IMPORTACIÓN CON TIPO)
+// ERP PACKAGING - LÓGICA V24 (IMPORTACIÓN INTELIGENTE CON TIPO POR DEFECTO)
 // =============================================================
 
 const App = {
@@ -12,7 +12,7 @@ const App = {
 
     // 1. INICIO
     init: async () => {
-        console.log("Iniciando ERP V22...");
+        console.log("Iniciando ERP V24...");
         await App.cargarSelects();
         await App.cargarTodo();
 
@@ -69,9 +69,14 @@ const App = {
                     if(prev) el.value = prev;
                 }
             };
-            llenar('f-cat', cats, 'Tipo...'); llenar('bulk-tipo', cats, 'Asignar Tipo...');
-            llenar('f-fam', fams, 'Familia...'); llenar('bulk-familia', fams, 'Asignar Familia...');
+            llenar('f-cat', cats, 'Tipo...'); 
+            llenar('bulk-tipo', cats, 'Asignar Tipo...');
+            llenar('f-fam', fams, 'Familia...'); 
+            llenar('bulk-familia', fams, 'Asignar Familia...');
             llenar('filtro-familia', fams, ''); 
+            
+            // NUEVO: Rellenamos el desplegable de importación
+            llenar('select-import-tipo', cats, 'Tipo al importar (Opcional)...');
 
         } catch (e) { console.error(e); }
     },
@@ -280,7 +285,7 @@ const App = {
         } catch(e) { alert("Error foto"); }
     },
 
-    // ESCÁNER (AHORA BUSCA POR ID INTERNO DE BASE DE DATOS)
+    // ESCÁNER
     toggleScanner: (show=true, modo='LOTE') => {
         const el = document.getElementById('modal-scanner');
         App.modoScanner = modo;
@@ -304,11 +309,7 @@ const App = {
             let last = null; let t0 = 0;
             App.scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, (txt) => {
                 if(txt === last && (Date.now() - t0 < 3000)) return; 
-                
-                // V22: AHORA EL ESCÁNER LEE EL ID INTERNO REAL (txt será "45", "102"...)
-                // Comparamos convirtiendo t.id a string
                 const t = App.datos.find(x => x.id.toString() === txt);
-                
                 if(t) {
                     if (App.modoScanner === 'UNICO') {
                         App.toggleScanner(false);
@@ -428,7 +429,6 @@ const App = {
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
     cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
     
-    // --- MAGIA GODEX: IMPRIME EL ID INTERNO EN EL QR ---
     imprimirEtiquetasGodex: (items) => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
         let html = `
@@ -465,9 +465,7 @@ const App = {
         `;
         
         items.forEach(t => {
-            // V22: EL QR GUARDA t.id (El número interno de base de datos)
             const qr = new QRious({ value: t.id.toString(), size: 150, level: 'M' });
-            
             const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
             html += `
                 <div class="label">
@@ -510,7 +508,6 @@ const App = {
             else { elArts.style.display = "none"; }
         }
 
-        // V22: EL QR GUARDA t.id (El número interno)
         new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
         
         document.getElementById('btn-imprimir-qr-unico').onclick = () => {
@@ -518,11 +515,14 @@ const App = {
         };
     },
 
-    // --- CSV V22: IMPORTACIÓN INTELIGENTE (4 COLUMNAS) Y BLINDADA A ERRORES ---
-  // --- CSV V23: IMPORTACIÓN INTELIGENTE (AUTO-DETECCIÓN DE COLUMNAS) ---
+    // --- CSV V24: IMPORTACIÓN INTELIGENTE Y CON SELECTOR DE TIPO ---
     procesarImportacion: async (input) => { 
         const file = input.files[0]; 
         if(!file) return; 
+
+        // 1. LEER EL VALOR DEL DESPLEGABLE DE TIPO POR DEFECTO
+        const selectElement = document.getElementById('select-import-tipo');
+        const idTipoDefecto = (selectElement && selectElement.value) ? parseInt(selectElement.value) : null;
         
         const reader = new FileReader(); 
         reader.onload = async(e) => { 
@@ -530,25 +530,20 @@ const App = {
                 const filas = e.target.result.split(/\r?\n/); 
                 if(filas.length < 2) { alert("El archivo está vacío o no tiene datos."); return; }
                 
-                // 1. LEER LA CABECERA PARA DETECTAR EL ORDEN DE LAS COLUMNAS
                 const cabeceraStr = filas[0];
                 const separador = cabeceraStr.includes(';') ? ';' : ',';
-                // Limpiamos los títulos (mayúsculas y sin comillas) para buscar fácilmente
                 const cabecera = cabeceraStr.split(separador).map(c => c.trim().toUpperCase().replace(/['"]/g,''));
                 
-                // 2. MAPEO INTELIGENTE: Buscamos en qué posición está cada dato
                 let colMat = cabecera.findIndex(c => c.includes('MATRICULA') || c.includes('ID') || c.includes('CÓDIGO') || c.includes('CODIGO'));
                 let colUbi = cabecera.findIndex(c => c.includes('UBI') || c.includes('LOCALIZACION'));
                 let colNom = cabecera.findIndex(c => c.includes('DESC') || c.includes('NOMBRE'));
                 let colTipo = cabecera.findIndex(c => c.includes('TIPO') || c.includes('CATEGORIA') || c.includes('FAMILIA'));
 
-                // Si por algún motivo el Excel no tiene cabeceras claras, usamos el orden por defecto (0, 1, 2, 3)
                 if (colMat === -1) colMat = 0;
                 if (colUbi === -1) colUbi = 1;
                 if (colNom === -1) colNom = 2;
                 if (colTipo === -1) colTipo = 3;
 
-                // Preparamos los tipos del sistema para asignarlos
                 const catNameToId = {};
                 Object.keys(App.mapaCat).forEach(id => {
                     catNameToId[App.mapaCat[id].toUpperCase()] = parseInt(id);
@@ -556,20 +551,21 @@ const App = {
 
                 const troqueles = [];
                 
-                // 3. LEER LOS DATOS USANDO LAS COLUMNAS DETECTADAS
                 for(let i=1; i<filas.length; i++) {
                     const f = filas[i];
                     if(!f.trim()) continue;
                     
                     const cols = f.split(separador);
                     
-                    // Extraemos los datos basándonos en la posición que descubrió nuestra inteligencia
                     const mat = cols[colMat] ? cols[colMat].replace(/['"]/g,'').trim() : null;
                     const ubi = cols[colUbi] ? cols[colUbi].replace(/['"]/g,'').trim() : null;
                     const nom = cols[colNom] ? cols[colNom].replace(/['"]/g,'').trim() : null;
                     const tipoStr = cols[colTipo] ? cols[colTipo].replace(/['"]/g,'').trim().toUpperCase() : null;
                     
-                    let catId = null;
+                    // 2. ASIGNACIÓN INTELIGENTE DEL TIPO
+                    let catId = idTipoDefecto; // Empezamos asignando el del desplegable (si lo hay)
+                    
+                    // Pero si la fila del Excel TIENE un tipo escrito y existe en el sistema, ese manda.
                     if(tipoStr && catNameToId[tipoStr]) {
                         catId = catNameToId[tipoStr];
                     }
@@ -595,6 +591,7 @@ const App = {
                 if(res.ok) { 
                     App.cargarTodo(); 
                     alert(`✅ ÉXITO: Se han importado ${troqueles.length} troqueles.\n\nEl sistema detectó y ordenó las columnas automáticamente.`); 
+                    if(selectElement) selectElement.value = ""; // Resetea el desplegable tras el éxito
                 } else {
                     const errorBack = await res.text();
                     console.error("Error BD:", errorBack);
@@ -609,7 +606,6 @@ const App = {
         reader.readAsText(file, 'UTF-8'); 
     },
     
-    // EXPORTACIÓN AHORA INCLUYE EL "TIPO"
     exportarCSV: () => { 
         let c = "Matricula;Ubicacion;Descripcion;Tipo;Estado\n"; 
         App.datos.forEach(t => {
@@ -619,7 +615,7 @@ const App = {
         }); 
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), c], {type: "text/csv;charset=utf-8"});
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
-        a.download = 'inventario_troqueles_v22.csv'; a.click(); 
+        a.download = 'inventario_troqueles.csv'; a.click(); 
     }
 };
 
