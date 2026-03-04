@@ -519,6 +519,7 @@ const App = {
     },
 
     // --- CSV V22: IMPORTACIÓN INTELIGENTE (4 COLUMNAS) Y BLINDADA A ERRORES ---
+  // --- CSV V23: IMPORTACIÓN INTELIGENTE (AUTO-DETECCIÓN DE COLUMNAS) ---
     procesarImportacion: async (input) => { 
         const file = input.files[0]; 
         if(!file) return; 
@@ -529,10 +530,25 @@ const App = {
                 const filas = e.target.result.split(/\r?\n/); 
                 if(filas.length < 2) { alert("El archivo está vacío o no tiene datos."); return; }
                 
-                const cabecera = filas[0];
-                const separador = cabecera.includes(';') ? ';' : ',';
+                // 1. LEER LA CABECERA PARA DETECTAR EL ORDEN DE LAS COLUMNAS
+                const cabeceraStr = filas[0];
+                const separador = cabeceraStr.includes(';') ? ';' : ',';
+                // Limpiamos los títulos (mayúsculas y sin comillas) para buscar fácilmente
+                const cabecera = cabeceraStr.split(separador).map(c => c.trim().toUpperCase().replace(/['"]/g,''));
                 
-                // Mapa inverso para encontrar el ID del "Tipo" a partir de su texto
+                // 2. MAPEO INTELIGENTE: Buscamos en qué posición está cada dato
+                let colMat = cabecera.findIndex(c => c.includes('MATRICULA') || c.includes('ID') || c.includes('CÓDIGO') || c.includes('CODIGO'));
+                let colUbi = cabecera.findIndex(c => c.includes('UBI') || c.includes('LOCALIZACION'));
+                let colNom = cabecera.findIndex(c => c.includes('DESC') || c.includes('NOMBRE'));
+                let colTipo = cabecera.findIndex(c => c.includes('TIPO') || c.includes('CATEGORIA') || c.includes('FAMILIA'));
+
+                // Si por algún motivo el Excel no tiene cabeceras claras, usamos el orden por defecto (0, 1, 2, 3)
+                if (colMat === -1) colMat = 0;
+                if (colUbi === -1) colUbi = 1;
+                if (colNom === -1) colNom = 2;
+                if (colTipo === -1) colTipo = 3;
+
+                // Preparamos los tipos del sistema para asignarlos
                 const catNameToId = {};
                 Object.keys(App.mapaCat).forEach(id => {
                     catNameToId[App.mapaCat[id].toUpperCase()] = parseInt(id);
@@ -540,16 +556,18 @@ const App = {
 
                 const troqueles = [];
                 
-                // Bucle desde 1 para saltar la fila de títulos
+                // 3. LEER LOS DATOS USANDO LAS COLUMNAS DETECTADAS
                 for(let i=1; i<filas.length; i++) {
                     const f = filas[i];
                     if(!f.trim()) continue;
                     
                     const cols = f.split(separador);
-                    const mat = cols[0] ? cols[0].replace(/['"]/g,'').trim() : null;
-                    const ubi = cols[1] ? cols[1].replace(/['"]/g,'').trim() : null;
-                    const nom = cols[2] ? cols[2].replace(/['"]/g,'').trim() : null;
-                    const tipoStr = cols[3] ? cols[3].replace(/['"]/g,'').trim().toUpperCase() : null;
+                    
+                    // Extraemos los datos basándonos en la posición que descubrió nuestra inteligencia
+                    const mat = cols[colMat] ? cols[colMat].replace(/['"]/g,'').trim() : null;
+                    const ubi = cols[colUbi] ? cols[colUbi].replace(/['"]/g,'').trim() : null;
+                    const nom = cols[colNom] ? cols[colNom].replace(/['"]/g,'').trim() : null;
+                    const tipoStr = cols[colTipo] ? cols[colTipo].replace(/['"]/g,'').trim().toUpperCase() : null;
                     
                     let catId = null;
                     if(tipoStr && catNameToId[tipoStr]) {
@@ -576,11 +594,11 @@ const App = {
                 
                 if(res.ok) { 
                     App.cargarTodo(); 
-                    alert(`✅ ÉXITO: Se han importado ${troqueles.length} troqueles. (Recuerda que si había tipos que no existen en el sistema, se han importado sin tipo).`); 
+                    alert(`✅ ÉXITO: Se han importado ${troqueles.length} troqueles.\n\nEl sistema detectó y ordenó las columnas automáticamente.`); 
                 } else {
                     const errorBack = await res.text();
                     console.error("Error BD:", errorBack);
-                    alert(`❌ ERROR EN BASE DE DATOS:\nEs posible que la columna 'id_troquel' en Supabase esté marcada como 'Unique' (Única) y estés intentando meter duplicados.\n\nVe a Supabase > Table Editor > troqueles y quita el tick de 'Is Unique' de esa columna.`);
+                    alert(`❌ ERROR EN BASE DE DATOS:\nEs posible que la columna 'id_troquel' en Supabase esté marcada como 'Unique'.\n\nMensaje técnico: ${errorBack.substring(0, 100)}`);
                 }
             } catch (err) { 
                 console.error("Fallo general:", err);
