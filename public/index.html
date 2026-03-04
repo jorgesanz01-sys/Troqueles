@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ERP V18 | Completo</title>
+    <title>ERP V19 | Completo</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -12,7 +12,7 @@
 <body>
     <div class="erp-layout">
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-logo"><span>🏭</span><h2>ERP V18</h2></div>
+            <div class="sidebar-logo"><span>🏭</span><h2>ERP V19</h2></div>
             <nav class="sidebar-menu">
                 <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
                 <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
@@ -34,7 +34,7 @@
                         <button id="btn-restaurar-papelera" class="btn-accion oculto" style="background:#22c55e;" onclick="App.salirPapelera()">🔙 Salir Papelera</button>
                         <button class="btn-secundario" onclick="document.getElementById('input-csv').click()" style="border-color:#0f766e; color:#0f766e;">📤 Importar CSV</button>
                         <input type="file" id="input-csv" accept=".csv" style="display:none;" onchange="App.procesarImportacion(this)">
-                        <button class="btn-secundario" onclick="App.exportarCSV()">📥 Excel</button>
+                        <button class="btn-secundario" onclick="App.exportarCSV()">📥 Excel CSV</button>
                     </div>
                 </div>
 
@@ -56,6 +56,9 @@
 
                 <div id="panel-acciones" class="panel-acciones oculto">
                     <strong style="color:#0369a1;"><span id="contador-sel">0</span> sel.</strong>
+                    
+                    <button class="btn-secundario" style="background: white; border: 2px solid #0f766e; color:#0f766e; font-weight:bold;" onclick="App.imprimirLoteQRs()">🖨️ QRs</button>
+
                     <button class="btn-accion" style="background:#e11d48;" onclick="App.moverLote('SALIDA')">🏭 A Prod.</button>
                     <button class="btn-accion" style="background:#16a34a;" onclick="App.moverLote('RETORNO')">✅ Devolver</button>
                     <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
@@ -162,17 +165,15 @@
 
             <section id="vista-movil" class="vista oculto" style="padding:10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h1 style="margin:0;">Zona Operario</h1>
-                    <button class="btn-secundario" onclick="App.desactivarModoMovil()">Ver PC</button>
+                    <h1 style="margin:0; font-size:28px;">🦺 Operario</h1> 
                 </div>
-                <div class="grid-movil">
+                <div class="grid-movil" style="grid-template-columns: 1fr 1fr;">
                     <button class="btn-gigante" style="background:#0f766e;" onclick="App.toggleScanner(true, 'UNICO')">🔎 CONSULTAR QR</button>
                     <button class="btn-gigante scan" onclick="App.toggleScanner(true, 'LOTE')">📦 MOVER LOTE</button>
-                    <button class="btn-gigante nuevo" onclick="App.nuevoTroquel()">➕ NUEVO</button>
                 </div>
-                <div style="margin-top:20px;">
-                    <input type="text" id="buscador-movil" placeholder="Buscar..." style="width:100%; padding:15px; font-size:18px;" oninput="App.buscarMovil(this.value)">
-                    <div id="resultados-movil" style="margin-top:10px; display:flex; flex-direction:column; gap:10px;"></div>
+                <div style="margin-top:30px;">
+                    <input type="text" id="buscador-movil" placeholder="Buscar por Nombre, Matrícula o Ubicación..." style="width:100%; padding:15px; font-size:18px; border-radius:8px; border:2px solid #cbd5e1;" oninput="App.buscarMovil(this.value)">
+                    <div id="resultados-movil" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;"></div>
                 </div>
             </section>
 
