@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ERP V19 | Completo</title>
+    <title>ERP V20 | Godex Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -12,7 +12,7 @@
 <body>
     <div class="erp-layout">
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-logo"><span>🏭</span><h2>ERP V19</h2></div>
+            <div class="sidebar-logo"><span>🏭</span><h2>ERP V20</h2></div>
             <nav class="sidebar-menu">
                 <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
                 <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
@@ -57,7 +57,7 @@
                 <div id="panel-acciones" class="panel-acciones oculto">
                     <strong style="color:#0369a1;"><span id="contador-sel">0</span> sel.</strong>
                     
-                    <button class="btn-secundario" style="background: white; border: 2px solid #0f766e; color:#0f766e; font-weight:bold;" onclick="App.imprimirLoteQRs()">🖨️ QRs</button>
+                    <button class="btn-secundario" style="background:white; border:2px solid #14b8a6; color:#0f766e; font-weight:bold;" onclick="App.imprimirLoteQRs()">🖨️ Imprimir QRs (Godex)</button>
 
                     <button class="btn-accion" style="background:#e11d48;" onclick="App.moverLote('SALIDA')">🏭 A Prod.</button>
                     <button class="btn-accion" style="background:#16a34a;" onclick="App.moverLote('RETORNO')">✅ Devolver</button>
@@ -149,12 +149,10 @@
                             <div class="full-width"><label>Descripción *</label><input type="text" id="f-nombre" required></div>
                             <div><label>Familia</label><div style="display:flex; gap:5px;"><select id="f-fam" style="flex:1;"></select><button type="button" class="btn-secundario" onclick="App.crearFamilia()">+</button></div></div>
                             <div><label>OT</label><input type="text" id="f-ot"></div>
-                            
                             <div class="full-width" style="display:flex; gap:10px;">
                                 <div style="flex:1;"><label>Medidas Madera</label><input type="text" id="f-medidas-madera" style="width:100%;"></div>
                                 <div style="flex:1;"><label>Medidas Corte</label><input type="text" id="f-medidas-corte" style="width:100%;"></div>
                             </div>
-
                             <div class="full-width"><label>Artículos</label><textarea id="f-arts" rows="2"></textarea></div>
                             <div class="full-width"><label>Observaciones</label><textarea id="f-obs" rows="2"></textarea></div>
                         </div>
@@ -209,40 +207,21 @@
                     <div style="display:grid; grid-template-columns: 2fr 1fr; gap:25px; margin-top:20px;">
                         <div>
                             <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-                                <div>
-                                    <label style="color:#64748b; font-size:12px;">MATRÍCULA</label>
-                                    <h2 id="ver-matricula" style="color:#0f766e; margin:0;"></h2>
-                                </div>
-                                <div>
-                                    <label style="color:#64748b; font-size:12px;">UBICACIÓN</label>
-                                    <h3 id="ver-ubicacion" style="margin:0;"></h3>
-                                </div>
+                                <div><label style="color:#64748b; font-size:12px;">MATRÍCULA</label><h2 id="ver-matricula" style="color:#0f766e; margin:0;"></h2></div>
+                                <div><label style="color:#64748b; font-size:12px;">UBICACIÓN</label><h3 id="ver-ubicacion" style="margin:0;"></h3></div>
                             </div>
-                            
                             <label style="color:#64748b; font-size:12px;">DESCRIPCIÓN</label>
                             <p id="ver-nombre" style="font-weight:bold; font-size:18px; margin: 0 0 15px 0; border-bottom:1px dashed #cbd5e1; padding-bottom:10px;"></p>
-                            
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom: 15px;">
                                 <div style="background:#f8fafc; padding:10px; border-radius:6px;"><b>Tipo:</b> <span id="ver-tipo"></span></div>
                                 <div style="background:#f8fafc; padding:10px; border-radius:6px;"><b>Familia:</b> <span id="ver-familia"></span></div>
                                 <div style="background:#f8fafc; padding:10px; border-radius:6px;"><b>M. Madera:</b> <span id="ver-medidas-madera"></span></div>
                                 <div style="background:#f8fafc; padding:10px; border-radius:6px;"><b>M. Corte:</b> <span id="ver-medidas-corte"></span></div>
                             </div>
-
-                            <div style="margin-bottom: 10px;">
-                                <label style="color:#64748b; font-size:12px;">ORDEN DE TRABAJO (OT)</label>
-                                <div id="ver-ot" style="font-weight:bold; background:#f1f5f9; padding:8px; border-radius:4px;"></div>
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label style="color:#64748b; font-size:12px;">CÓDIGOS DE ARTÍCULO</label>
-                                <div id="ver-arts" style="background:#f1f5f9; padding:8px; border-radius:4px; min-height:40px;"></div>
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label style="color:#64748b; font-size:12px;">OBSERVACIONES</label>
-                                <div id="ver-obs" style="background:#fef3c7; border-left:4px solid #f59e0b; padding:8px; border-radius:4px; min-height:40px;"></div>
-                            </div>
+                            <div style="margin-bottom: 10px;"><label style="color:#64748b; font-size:12px;">ORDEN DE TRABAJO (OT)</label><div id="ver-ot" style="font-weight:bold; background:#f1f5f9; padding:8px; border-radius:4px;"></div></div>
+                            <div style="margin-bottom: 10px;"><label style="color:#64748b; font-size:12px;">CÓDIGOS DE ARTÍCULO</label><div id="ver-arts" style="background:#f1f5f9; padding:8px; border-radius:4px; min-height:40px;"></div></div>
+                            <div style="margin-bottom: 10px;"><label style="color:#64748b; font-size:12px;">OBSERVACIONES</label><div id="ver-obs" style="background:#fef3c7; border-left:4px solid #f59e0b; padding:8px; border-radius:4px; min-height:40px;"></div></div>
                         </div>
-                        
                         <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
                             <h4 style="margin-top:0; border-bottom:1px solid #cbd5e1; padding-bottom:10px;">Archivos Adjuntos</h4>
                             <div id="ver-galeria" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
@@ -257,27 +236,17 @@
             
             <div id="modal-historial-unico" class="modal oculto" style="background: rgba(0,0,0,0.85);">
                 <div class="modal-contenido" style="width: 100vw; height: 100vh; max-width: none; margin: 0; border-radius: 0; display: flex; flex-direction: column;">
-                    
                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid #ddd; padding-bottom:15px;">
                         <h2 style="margin:0; font-size: 28px; color: #0f172a;">📜 Historial de Movimientos</h2>
                         <button class="btn-secundario" style="font-size:18px; padding: 10px 20px;" onclick="document.getElementById('modal-historial-unico').classList.add('oculto')">✕ Cerrar Pantalla</button>
                     </div>
-                    
                     <div style="background:#f1f5f9; padding:20px; margin:20px 0; border-radius:8px; display:flex; gap:20px; align-items: center;">
                         <strong id="hist-titulo-mat" style="color:#0f766e; font-size:32px; border-right:2px solid #cbd5e1; padding-right:20px;"></strong>
                         <span id="hist-titulo-nom" style="font-size:22px; color: #334155; font-weight:600;"></span>
                     </div>
-
                     <div style="flex: 1; overflow-y:auto; border: 1px solid #cbd5e1; border-radius: 8px; background: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"> 
                         <table class="tabla-pro" style="font-size:16px; width: 100%;"> 
-                            <thead>
-                                <tr style="background:#e2e8f0;">
-                                    <th style="padding:15px;">Fecha</th>
-                                    <th style="padding:15px;">Troquel</th>
-                                    <th style="padding:15px;">Acción</th>
-                                    <th style="padding:15px;">Detalle</th>
-                                </tr>
-                            </thead>
+                            <thead><tr style="background:#e2e8f0;"><th style="padding:15px;">Fecha</th><th style="padding:15px;">Troquel</th><th style="padding:15px;">Acción</th><th style="padding:15px;">Detalle</th></tr></thead>
                             <tbody id="tabla-historial-unico"></tbody>
                         </table>
                     </div>
@@ -288,7 +257,23 @@
             
             <div id="modal-scanner" class="modal oculto" style="background:black;"><div class="modal-contenido" style="background:#1e293b; color:white; width:100%; height:100%; max-width:none; border:none; display:flex; flex-direction:column;"><div style="padding:10px; display:flex; justify-content:space-between;"><h3 id="titulo-scanner">📸 Escáner</h3><button class="btn-secundario" onclick="App.toggleScanner(false)" style="background:transparent; color:white; border:1px solid white;">✕ Cerrar</button></div><div id="reader" style="flex:1; background:black;"></div><div id="panel-lote" style="height:35%; background:#0f172a; padding:10px; overflow-y:auto;"><div style="display:flex; justify-content:space-between;"><span>Leídos: <strong id="count-scans">0</strong></span></div><div id="lista-escaneados" style="display:flex; flex-wrap:wrap; gap:10px;"></div></div><div id="btns-lote" style="padding:15px; display:flex; gap:10px; justify-content:center; background:#0f172a;"><button class="btn-accion" style="background:#e11d48; width:50%; padding:15px;" onclick="App.procesarEscaneo('SALIDA')">A PRODUCCIÓN</button><button class="btn-accion" style="background:#16a34a; width:50%; padding:15px;" onclick="App.procesarEscaneo('RETORNO')">DEVOLVER</button></div></div></div>
             
-            <div id="modal-qr" class="modal oculto"><div class="modal-contenido text-center"><div id="zona-impresion" class="etiqueta-preview"><canvas id="qr-canvas"></canvas><div class="etiqueta-info"><div id="qr-texto-ubi" class="etiq-ubi"></div><div id="qr-texto-id" class="etiq-id"></div><div id="qr-texto-desc" class="etiq-desc"></div></div></div><div class="modal-botones no-print"><button class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cerrar</button><button class="btn-accion" onclick="window.print()">Imprimir</button></div></div></div>
+            <div id="modal-qr" class="modal oculto">
+                <div class="modal-contenido text-center">
+                    <h3 style="margin-top:0;">Previsualización de Etiqueta</h3>
+                    <div id="zona-impresion" class="etiqueta-preview" style="margin:20px auto; border: 2px dashed #cbd5e1; padding: 15px; display:inline-block;">
+                        <canvas id="qr-canvas"></canvas>
+                        <div class="etiqueta-info">
+                            <div id="qr-texto-ubi" class="etiq-ubi" style="font-weight:bold; font-size:18px; color:#475569;"></div>
+                            <div id="qr-texto-id" class="etiq-id" style="font-weight:900; font-size:24px;"></div>
+                            <div id="qr-texto-desc" class="etiq-desc" style="font-size:14px; color:#64748b;"></div>
+                        </div>
+                    </div>
+                    <div class="modal-botones no-print" style="margin-top: 20px;">
+                        <button class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cancelar</button>
+                        <button class="btn-accion" id="btn-imprimir-qr-unico" style="background:#0f766e;">🖨️ Imprimir en Godex</button>
+                    </div>
+                </div>
+            </div>
             
             <section id="vista-historial" class="vista oculto"><div class="header-modulo"><h1>Historial General</h1></div><div class="contenedor-tabla"><table class="tabla-pro"><thead><tr><th>Fecha</th><th>Troquel</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tabla-historial"></tbody></table></div></section>
         </main>

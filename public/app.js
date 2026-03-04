@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V19 (IMPRESIÓN LOTE + CSV MEJORADO)
+// ERP PACKAGING - LÓGICA V20 (GODEX 50x23mm)
 // =============================================================
 
 const App = {
@@ -12,11 +12,10 @@ const App = {
 
     // 1. INICIO
     init: async () => {
-        console.log("Iniciando ERP V19...");
+        console.log("Iniciando ERP V20...");
         await App.cargarSelects();
         await App.cargarTodo();
 
-        // Detectar Modo Kiosco
         const params = new URLSearchParams(window.location.search);
         if (params.get('modo') === 'operario') {
             document.body.classList.add('kiosk-mode');
@@ -138,48 +137,27 @@ const App = {
     cargarEstadisticas: async (meses) => {
         const tbody = document.getElementById('tabla-estadisticas');
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando cálculos... ⏳</td></tr>';
-        
         try {
             const res = await fetch(`/api/estadisticas/inactivos?meses=${meses}`);
             const data = await res.json();
-            
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center">¡Genial! No tienes troqueles obsoletos en este periodo.</td></tr>';
-                return;
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">¡Genial! No tienes troqueles obsoletos en este periodo.</td></tr>'; return;
             }
-
             tbody.innerHTML = data.map(t => {
                 const fecha = t.ultima_fecha ? new Date(t.ultima_fecha).toLocaleDateString() : 'Nunca usado';
-                return `
-                    <tr>
-                        <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td>
-                        <td>${t.nombre}</td>
-                        <td>${t.estado || 'EN ALMACÉN'}</td>
-                        <td style="color:#b91c1c; font-weight:bold;">${fecha}</td>
-                        <td>
-                            <button class="btn-accion" style="background:#64748b;" onclick="App.descatalogar(${t.id})">⛔ Descatalogar</button>
-                        </td>
-                    </tr>
-                `;
+                return `<tr><td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td><td>${t.nombre}</td><td>${t.estado || 'EN ALMACÉN'}</td><td style="color:#b91c1c; font-weight:bold;">${fecha}</td><td><button class="btn-accion" style="background:#64748b;" onclick="App.descatalogar(${t.id})">⛔ Descatalogar</button></td></tr>`;
             }).join('');
-            
-        } catch (e) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red">Error al cargar las estadísticas</td></tr>';
-        }
+        } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red">Error al cargar las estadísticas</td></tr>'; }
     },
 
-    // HISTORIAL INDIVIDUAL A PANTALLA COMPLETA
+    // HISTORIAL INDIVIDUAL
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico');
         const tbody = document.getElementById('tabla-historial-unico');
-        
         document.getElementById('hist-titulo-mat').innerText = mat;
         document.getElementById('hist-titulo-nom').innerText = nom;
-        
         tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 40px; font-size: 18px;">Cargando historial de movimientos... ⏳</td></tr>';
-        
         modal.classList.remove('oculto');
-
         try {
             const res = await fetch(`/api/historial?troquel_id=${id}`);
             if (res.ok) {
@@ -189,38 +167,26 @@ const App = {
                 } else {
                     tbody.innerHTML = data.map(h => {
                         const descripcion = h.troqueles && h.troqueles.nombre ? h.troqueles.nombre : nom;
-                        return `
-                        <tr>
-                            <td style="font-weight:600;">${new Date(h.fecha_hora).toLocaleString()}</td>
-                            <td>${descripcion}</td>
-                            <td style="font-weight:bold; color:${h.accion.includes('SALIDA') ? '#dc2626' : '#16a34a'}">${h.accion}</td>
-                            <td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td>
-                        </tr>
-                        `;
+                        return `<tr><td style="font-weight:600;">${new Date(h.fecha_hora).toLocaleString()}</td><td>${descripcion}</td><td style="font-weight:bold; color:${h.accion.includes('SALIDA') ? '#dc2626' : '#16a34a'}">${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`;
                     }).join('');
                 }
             }
-        } catch (e) { 
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-red">Error al cargar la información.</td></tr>'; 
-        }
+        } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-red">Error al cargar la información.</td></tr>'; }
     },
 
     // VISTA FICHA DETALLADA
     verFicha: (id) => {
         const t = App.datos.find(x => x.id === id); if (!t) return;
-        
         document.getElementById('ver-matricula').innerText = t.id_troquel || "-";
         document.getElementById('ver-ubicacion').innerText = t.ubicacion || "-";
         document.getElementById('ver-nombre').innerText = t.nombre || "-";
         document.getElementById('ver-tipo').innerHTML = App.mapaCat[t.categoria_id] || '-';
         document.getElementById('ver-familia').innerHTML = App.mapaFam[t.familia_id] || '-';
-        
         document.getElementById('ver-medidas-madera').innerText = t.tamano_troquel || "-";
         document.getElementById('ver-medidas-corte').innerText = t.tamano_final || "-";
         document.getElementById('ver-ot').innerText = t.referencias_ot || "-";
         document.getElementById('ver-arts').innerText = t.codigos_articulo || "-";
         document.getElementById('ver-obs').innerText = t.observaciones || "-";
-
         document.getElementById('ver-id-oculto').value = t.id;
 
         const gal = document.getElementById('ver-galeria'); gal.innerHTML = "";
@@ -242,7 +208,6 @@ const App = {
             header.insertBefore(btnPrint, header.firstChild);
         }
         btnPrint.onclick = () => App.generarQR(t.id_troquel, t.ubicacion, t.nombre);
-
         document.getElementById('modal-ficha').classList.remove('oculto');
     },
     editarDesdeFicha: () => {
@@ -387,12 +352,10 @@ const App = {
     nav: (v, btnElement) => { 
         document.querySelectorAll('.vista').forEach(x=>x.classList.add('oculto')); 
         document.getElementById(v).classList.remove('oculto'); 
-        
         if(btnElement) {
             document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
             btnElement.classList.add('activo');
         }
-
         if(v==='vista-lista') document.getElementById('sidebar').classList.remove('oculto'); 
     },
     
@@ -402,45 +365,28 @@ const App = {
     editar: (id) => { 
         const t = App.datos.find(x=>x.id===id); if(!t)return;
         document.getElementById('titulo-form').innerText="Editar";
-        
         const setVal = (elId, val) => { const el = document.getElementById(elId); if(el) el.value = val; };
         
-        setVal('f-id-db', t.id);
-        setVal('f-matricula', t.id_troquel);
-        setVal('f-ubicacion', t.ubicacion);
-        setVal('f-nombre', t.nombre);
-        setVal('f-cat', t.categoria_id||"");
-        setVal('f-fam', t.familia_id||"");
-        setVal('f-medidas-madera', t.tamano_troquel||"");
-        setVal('f-medidas-corte', t.tamano_final||"");
-        setVal('f-arts', t.codigos_articulo||"");
-        setVal('f-ot', t.referencias_ot||"");
-        setVal('f-obs', t.observaciones||"");
+        setVal('f-id-db', t.id); setVal('f-matricula', t.id_troquel); setVal('f-ubicacion', t.ubicacion);
+        setVal('f-nombre', t.nombre); setVal('f-cat', t.categoria_id||""); setVal('f-fam', t.familia_id||"");
+        setVal('f-medidas-madera', t.tamano_troquel||""); setVal('f-medidas-corte', t.tamano_final||"");
+        setVal('f-arts', t.codigos_articulo||""); setVal('f-ot', t.referencias_ot||""); setVal('f-obs', t.observaciones||"");
 
         App.archivosActuales = (t.archivos && Array.isArray(t.archivos)) ? t.archivos : [];
         App.renderListaArchivos();
         if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); 
         App.nav('vista-formulario');
     },
-    
     volverDesdeForm: () => { if(App.modoMovil) App.activarModoMovil(); else App.nav('vista-lista'); },
-    
     guardarFicha: async (e) => {
         e.preventDefault(); const id = document.getElementById('f-id-db').value;
         const getVal = (elId) => { const el = document.getElementById(elId); return el ? el.value : ""; };
-        
         const d = { 
-            id_troquel: getVal('f-matricula'),
-            ubicacion: getVal('f-ubicacion'),
-            nombre: getVal('f-nombre'),
-            categoria_id: parseInt(getVal('f-cat'))||null,
-            familia_id: parseInt(getVal('f-fam'))||null,
-            tamano_troquel: getVal('f-medidas-madera'),
-            tamano_final: getVal('f-medidas-corte'),
-            codigos_articulo: getVal('f-arts'),
-            referencias_ot: getVal('f-ot'),
-            observaciones: getVal('f-obs'),
-            archivos: App.archivosActuales
+            id_troquel: getVal('f-matricula'), ubicacion: getVal('f-ubicacion'), nombre: getVal('f-nombre'),
+            categoria_id: parseInt(getVal('f-cat'))||null, familia_id: parseInt(getVal('f-fam'))||null,
+            tamano_troquel: getVal('f-medidas-madera'), tamano_final: getVal('f-medidas-corte'),
+            codigos_articulo: getVal('f-arts'), referencias_ot: getVal('f-ot'),
+            observaciones: getVal('f-obs'), archivos: App.archivosActuales
         };
         await fetch(id ? `/api/troqueles/${id}` : '/api/troqueles', { method: id?'PUT':'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) });
         await App.cargarTodo(); App.volverDesdeForm();
@@ -460,20 +406,12 @@ const App = {
         if(confirm("¿Estás seguro de que deseas marcar este troquel como DESCATALOGADO?")) { 
             const t = App.datos.find(x => x.id === id); 
             let dataToSend = t;
-            if(!t) {
-                const r = await fetch(`/api/troqueles`);
-                const full = await r.json();
-                dataToSend = full.find(x => x.id === id);
-            }
+            if(!t) { const r = await fetch(`/api/troqueles`); const full = await r.json(); dataToSend = full.find(x => x.id === id); }
             if(dataToSend) {
                 dataToSend.estado = "DESCATALOGADO"; 
                 await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dataToSend) }); 
                 await App.cargarTodo(); 
-                
-                if(!document.getElementById('vista-estadisticas').classList.contains('oculto')) {
-                    const meses = document.getElementById('select-inactividad').value;
-                    App.cargarEstadisticas(meses);
-                }
+                if(!document.getElementById('vista-estadisticas').classList.contains('oculto')) App.cargarEstadisticas(document.getElementById('select-inactividad').value);
             }
         } 
     },
@@ -483,52 +421,60 @@ const App = {
     verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.limpiarSeleccion(); App.cargarTodo(); },
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(); } },
-    generarQR: (id, ubi, nom) => { document.getElementById('modal-qr').classList.remove('oculto'); document.getElementById('qr-texto-ubi').innerText = ubi; document.getElementById('qr-texto-id').innerText = id; document.getElementById('qr-texto-desc').innerText = nom; new QRious({ element: document.getElementById('qr-canvas'), value: id, size: 200, padding: 0, level: 'M' }); },
+    abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
+    cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
     
-    // --- NUEVO: IMPRESIÓN MASIVA DE QRS ---
-    imprimirLoteQRs: () => {
-        if(App.seleccionados.size === 0) return;
-        
-        // Recopilamos los datos de los troqueles seleccionados
-        const itemsToPrint = Array.from(App.seleccionados)
-            .map(id => App.datos.find(t => t.id === id))
-            .filter(t => t);
-            
-        // Creamos una ventana nueva para imprimir
-        let printWindow = window.open('', '_blank');
-        
-        // Maquetación HTML de las etiquetas
+    // --- MAGIA GODEX: MOTOR CENTRAL DE IMPRESIÓN (50x23mm) ---
+    imprimirEtiquetasGodex: (items) => {
+        let printWindow = window.open('', '_blank', 'width=600,height=600');
         let html = `
-            <html><head><title>Impresión de QRs en Lote</title>
+            <!DOCTYPE html>
+            <html><head><title>Impresión Godex 50x23</title>
             <style>
-                body { font-family: 'Inter', sans-serif; text-align: center; margin: 0; padding: 10px; }
-                /* Estilo de la etiqueta: 2 por fila habitualmente, evita que se corten por la mitad */
-                .etiqueta { 
-                    display: inline-block; width: 42%; margin: 15px; padding: 20px; 
-                    border: 2px dashed #94a3b8; border-radius: 8px; page-break-inside: avoid; 
+                /* EL SECRETO PARA LA GODEX: El navegador cortará el papel exactamente aquí */
+                @page { size: 50mm 23mm; margin: 0; }
+                body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; }
+                
+                .label {
+                    width: 50mm; height: 23mm;
+                    box-sizing: border-box; padding: 1mm;
+                    display: flex; align-items: center; justify-content: space-between;
+                    page-break-after: always;
+                    overflow: hidden;
                 }
-                img { width: 180px; height: 180px; margin: 10px 0; }
-                .mat { font-size: 32px; font-weight: 900; color: #0f172a; margin-bottom: 5px; }
-                .ubi { font-size: 20px; color: #475569; font-weight: 600; background: #f1f5f9; padding: 5px; border-radius: 4px; }
-                .nom { font-size: 16px; margin-top: 10px; color: #334155; }
+                .qr { width: 19mm; display: flex; justify-content: center; align-items: center; }
+                .qr img { width: 18mm; height: 18mm; }
+                
+                .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; }
+                .mat { font-size: 10pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; }
+                .ubi { font-size: 7.5pt; font-weight: bold; line-height: 1; margin-bottom: 2px; color: black; }
+                .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+                
+                /* Estilos visuales solo para la pantalla del PC, al imprimir desaparecen */
+                @media screen {
+                    body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+                    .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; }
+                    .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+                    .btn:hover { background: #0f766e; }
+                }
                 @media print {
-                    .no-print { display: none; }
+                    .no-print { display: none !important; }
                 }
             </style></head><body>
-            <div class="no-print" style="margin-bottom: 20px;">
-                <button onclick="window.print()" style="padding:15px 30px; font-size:20px; background:#0f766e; color:white; border:none; border-radius:8px; cursor:pointer;">🖨️ Imprimir Ahora</button>
-            </div>
+            
+            <button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex</button>
         `;
         
-        // Generamos el código para cada troquel
-        itemsToPrint.forEach(t => {
-            const qr = new QRious({ value: t.id_troquel, size: 300, level: 'M' });
+        items.forEach(t => {
+            const qr = new QRious({ value: t.id_troquel, size: 150, level: 'M' });
             html += `
-                <div class="etiqueta">
-                    <div class="ubi">UBI: ${t.ubicacion || '-'}</div>
-                    <img src="${qr.toDataURL()}">
-                    <div class="mat">${t.id_troquel}</div>
-                    <div class="nom">${t.nombre}</div>
+                <div class="label">
+                    <div class="qr"><img src="${qr.toDataURL()}"></div>
+                    <div class="text">
+                        <div class="mat">${t.id_troquel}</div>
+                        <div class="ubi">Ubi: ${t.ubicacion || '-'}</div>
+                        <div class="nom">${t.nombre}</div>
+                    </div>
                 </div>
             `;
         });
@@ -537,32 +483,45 @@ const App = {
         printWindow.document.write(html);
         printWindow.document.close();
         
-        // Lanza el diálogo de impresión automáticamente al cabo de 1 segundo (para asegurar que las imágenes cargan)
-        setTimeout(() => { printWindow.print(); }, 1000);
-        
-        // Limpiamos selección al terminar
+        // Abre el diálogo de impresión automáticamente
+        setTimeout(() => { printWindow.print(); }, 800);
+    },
+
+    // IMPRESIÓN LOTE
+    imprimirLoteQRs: () => {
+        if(App.seleccionados.size === 0) return;
+        const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t);
+        App.imprimirEtiquetasGodex(itemsToPrint);
         App.limpiarSeleccion();
     },
 
-    abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
-    cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
-    
-    // --- MEJORADO: CSV IMPORTACIÓN BLINDADA (Usa ";" y respeta textos) ---
+    // IMPRESIÓN INDIVIDUAL DESDE EL MODAL
+    generarQR: (id, ubi, nom) => { 
+        document.getElementById('modal-qr').classList.remove('oculto'); 
+        document.getElementById('qr-texto-ubi').innerText = ubi; 
+        document.getElementById('qr-texto-id').innerText = id; 
+        document.getElementById('qr-texto-desc').innerText = nom; 
+        new QRious({ element: document.getElementById('qr-canvas'), value: id, size: 200, padding: 0, level: 'M' }); 
+        
+        // Conectamos el botón de imprimir del modal directamente al motor de la Godex
+        document.getElementById('btn-imprimir-qr-unico').onclick = () => {
+            App.imprimirEtiquetasGodex([{ id_troquel: id, ubicacion: ubi, nombre: nom }]);
+        };
+    },
+
+    // --- CSV ROBUSTO ---
     procesarImportacion: async (input) => { 
         const file = input.files[0]; 
         if(!file) return; 
-        
         const reader = new FileReader(); 
         reader.onload = async(e) => { 
             try {
-                // Dividimos por saltos de línea genéricos (Windows o Mac/Linux)
                 const filas = e.target.result.split(/\r?\n/).slice(1); 
                 const troqueles = [];
                 
                 filas.forEach(f => {
                     if(!f.trim()) return;
-                    
-                    // Detectamos si está separado por punto y coma (nuestro nuevo estándar) o por coma
+                    // Detecta si es punto y coma o coma
                     const separador = f.includes(';') ? ';' : ',';
                     const cols = f.split(separador);
                     
@@ -570,57 +529,30 @@ const App = {
                     const ubi = cols[1] ? cols[1].replace(/"/g,'').trim() : null;
                     const nom = cols[2] ? cols[2].replace(/"/g,'').trim() : null;
                     
-                    if(mat) {
-                        troqueles.push({ 
-                            id_troquel: mat, 
-                            ubicacion: ubi || mat, 
-                            nombre: nom || "Sin Descripción" 
-                        });
-                    }
+                    if(mat) troqueles.push({ id_troquel: mat, ubicacion: ubi || mat, nombre: nom || "Sin Descripción" });
                 });
                 
-                if(troqueles.length === 0) { 
-                    alert("El archivo está vacío o no tiene el formato correcto."); 
-                    input.value = ""; return; 
-                }
+                if(troqueles.length === 0) { alert("Archivo vacío o formato incorrecto."); input.value = ""; return; }
+                const res = await fetch('/api/troqueles/importar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(troqueles) });
                 
-                const res = await fetch('/api/troqueles/importar', {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify(troqueles)
-                });
-                
-                if(res.ok) { 
-                    App.cargarTodo(); 
-                    alert(`✅ Importación completada: ${troqueles.length} troqueles importados correctamente.`); 
-                } else {
-                    alert("❌ Error en el servidor durante la importación.");
-                }
-            } catch (err) {
-                alert("❌ Ocurrió un error al leer el archivo CSV.");
-                console.error(err);
-            }
+                if(res.ok) { App.cargarTodo(); alert(`✅ ${troqueles.length} troqueles importados.`); } 
+                else { alert("❌ Error en el servidor."); }
+            } catch (err) { alert("❌ Error al leer el archivo."); }
             input.value = ""; 
         }; 
-        // Leemos como UTF-8 para respetar tildes y eñes
         reader.readAsText(file, 'UTF-8'); 
     },
     
-    // --- MEJORADO: EXPORTACIÓN CSV A PUNTO Y COMA (;) PARA EVITAR ERRORES CON TEXTOS ---
     exportarCSV: () => { 
         let c = "Matricula;Ubicacion;Descripcion;Estado\n"; 
         App.datos.forEach(t => {
-            // Limpiamos saltos de línea y punto y comas del texto para que no rompa el Excel
             const nomLimpio = (t.nombre || "").replace(/;/g, ',').replace(/\r?\n/g, ' ');
             c += `${t.id_troquel};${t.ubicacion};${nomLimpio};${t.estado}\n`;
         }); 
-        
-        // Usamos Blob con cabecera BOM (0xEF,0xBB,0xBF) para que Excel abra el UTF-8 automáticamente sin romper acentos
+        // Genera el Excel sin romper tildes ni eñes
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), c], {type: "text/csv;charset=utf-8"});
-        const a = document.createElement('a'); 
-        a.href = URL.createObjectURL(blob); 
-        a.download = 'inventario_troqueles.csv'; 
-        a.click(); 
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
+        a.download = 'inventario_troqueles.csv'; a.click(); 
     }
 };
 
