@@ -11,11 +11,24 @@ const App = {
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
 
     // 1. INICIO
-    init: async () => {
-        console.log("Iniciando Sistema V16...");
+init: async () => {
+        console.log("Iniciando ERP...");
+        
+        // 1. Cargar datos obligatorios
         await App.cargarSelects();
         await App.cargarTodo();
+
+        // 2. DETECTAR MODO OPERARIO EXCLUSIVO
+        // Si el enlace termina en ?modo=operario
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('modo') === 'operario') {
+            // Activamos la clase CSS que oculta el sidebar y botones de salida
+            document.body.classList.add('kiosk-mode');
+            // Forzamos la vista móvil inmediatamente
+            App.activarModoMovil();
+        }
     },
+  
 
     // 2. CARGA DATOS
     cargarTodo: async (papelera = false) => {

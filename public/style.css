@@ -120,3 +120,18 @@ input, select, textarea { width: 100%; padding: 10px; border: 2px solid #e2e8f0;
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
     z-index: 9999; overflow-y: auto;
 }
+/* --- AÑADIR AL FINAL DEL CSS --- */
+
+/* MODO KIOSCO (OPERARIO BLOQUEADO) */
+body.kiosk-mode .sidebar { 
+    display: none !important; 
+}
+body.kiosk-mode .btn-salir-kiosco { 
+    display: none !important; 
+}
+body.kiosk-mode .erp-layout {
+    display: block; /* Quita el layout flex para que ocupe todo */
+}
+body.kiosk-mode .main-content {
+    padding: 0;
+}
