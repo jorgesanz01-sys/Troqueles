@@ -6,15 +6,17 @@ import uuid
 
 app = FastAPI()
 
-# CREDENCIALES
+# --- CONFIGURACIÓN SUPABASE ---
+# SUSTITUYE CON TUS CREDENCIALES REALES SI SON DIFERENTES
 SUPABASE_URL = "https://pkaqgtelkdhxlyjodzbq.supabase.co"
 SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
+
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 except:
-    print("Error conexión Supabase")
+    print("Error crítico conectando a Supabase")
 
-# --- MODELOS ---
+# --- MODELOS DE DATOS (Lo que envías desde la web) ---
 class EntidadAux(BaseModel):
     nombre: str
 
@@ -30,7 +32,7 @@ class TroquelData(BaseModel):
     tamano_troquel: Optional[str] = ""
     tamano_final: Optional[str] = ""
     observaciones: Optional[str] = ""
-    archivos: List[Dict[str, Any]] = []
+    archivos: List[Dict[str, Any]] = [] # Lista de fotos/pdf
 
 class MovimientoLote(BaseModel):
     ids: List[int]
@@ -41,10 +43,10 @@ class BulkUpdate(BaseModel):
     ids: List[int]
     valor_id: int
 
-# --- RUTAS GET (LECTURA SIMPLE) ---
+# --- RUTAS DE LECTURA (GET) ---
 @app.get("/api/troqueles")
 def leer_troqueles(ver_papelera: bool = False):
-    # SIMPLIFICADO: No pedimos relaciones. Solo los datos crudos.
+    # PEDIMOS DATOS CRUDOS. Sin relaciones que fallen.
     query = supabase.table("troqueles").select("*")
     
     if ver_papelera:
@@ -62,7 +64,7 @@ def leer_fam(): return supabase.table("familias").select("*").order("nombre").ex
 
 @app.get("/api/historial")
 def leer_historial():
-    # Aquí sí intentamos traer el nombre para que el log sea legible
+    # El historial sí intenta traer nombres para que sea legible, si falla trae null
     try:
         return supabase.table("historial").select("*, troqueles(nombre, id_troquel)").order("fecha_hora", desc=True).limit(50).execute().data
     except:
@@ -70,6 +72,7 @@ def leer_historial():
 
 @app.get("/api/siguiente_numero")
 def siguiente_numero(categoria_id: int):
+    # Busca el número más alto de esa categoría para sugerir el siguiente
     res = supabase.table("troqueles").select("id_troquel").eq("categoria_id", categoria_id).execute().data
     max_num = 0
     for t in res:
@@ -79,42 +82,54 @@ def siguiente_numero(categoria_id: int):
         except: pass
     return {"siguiente": max_num + 1}
 
-# --- RUTAS POST/PUT ---
+# --- RUTAS DE ESCRITURA (POST/PUT/DELETE) ---
+
+# Crear Familias/Tipos
 @app.post("/api/categorias")
 def crear_cat(d: EntidadAux):
-    # Devuelve el objeto creado para que el frontend coja el ID
     return supabase.table("categorias").insert({"nombre": d.nombre.upper()}).select().execute()
 
 @app.post("/api/familias")
 def crear_fam(d: EntidadAux):
-    # Devuelve el objeto creado
     return supabase.table("familias").insert({"nombre": d.nombre.upper()}).select().execute()
 
+# Subir Fotos
 @app.post("/api/subir_foto")
 async def subir_foto(file: UploadFile = File(...)):
     try:
         ext = file.filename.split('.')[-1]
         nombre_fichero = f"{uuid.uuid4()}.{ext}"
         contenido = await file.read()
+        
         supabase.storage.from_("fotos").upload(nombre_fichero, contenido, {"content-type": file.content_type})
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/fotos/{nombre_fichero}"
+        
         tipo = "pdf" if "pdf" in file.content_type else "img"
         return {"url": public_url, "nombre": file.filename, "tipo": tipo}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# CRUD Troqueles
 @app.post("/api/troqueles")
 def crear_troquel(t: TroquelData):
     datos = t.dict()
     datos["estado_activo"] = "Activo"
     if not datos["ubicacion"]: datos["ubicacion"] = datos["id_troquel"]
+    
     res = supabase.table("troqueles").insert(datos).execute()
     if res.data: registrar_log(res.data[0]['id'], "CREACION", "NUEVO", datos["ubicacion"])
     return res
 
 @app.put("/api/troqueles/{id_db}")
 def editar_troquel(id_db: int, t: TroquelData):
+    # Guardamos ubicación anterior para el log
+    prev = supabase.table("troqueles").select("ubicacion").eq("id", id_db).execute().data
+    ubi_old = prev[0]['ubicacion'] if prev else ""
+    
     res = supabase.table("troqueles").update(t.dict()).eq("id", id_db).execute()
+    
+    if ubi_old != t.ubicacion: 
+        registrar_log(id_db, "CAMBIO UBICACION", ubi_old, t.ubicacion)
     return res
 
 @app.delete("/api/troqueles/{id_db}")
@@ -129,7 +144,20 @@ def restaurar(id_db: int):
     registrar_log(id_db, "RESTAURADO", "PAPELERA", "ACTIVO")
     return {"ok": True}
 
-# --- BULK & MOVIMIENTOS ---
+# Acciones Masivas
+@app.post("/api/movimientos/lote")
+def mover_lote(d: MovimientoLote):
+    for id_db in d.ids:
+        actual = supabase.table("troqueles").select("ubicacion, estado").eq("id", id_db).execute().data
+        if not actual: continue
+        
+        nuevo_estado = "EN PRODUCCION" if d.accion == 'SALIDA' else "EN ALMACEN"
+        nueva_ubi = "PRODUCCION" if d.accion == 'SALIDA' else (d.ubicacion_destino or actual[0]['ubicacion'])
+        
+        supabase.table("troqueles").update({"estado": nuevo_estado, "ubicacion": nueva_ubi}).eq("id", id_db).execute()
+        registrar_log(id_db, d.accion, actual[0]['ubicacion'], nueva_ubi)
+    return {"ok": True}
+
 @app.put("/api/troqueles/bulk/familia")
 def bulk_fam(d: BulkUpdate):
     return supabase.table("troqueles").update({"familia_id": d.valor_id}).in_("id", d.ids).execute()
@@ -138,17 +166,7 @@ def bulk_fam(d: BulkUpdate):
 def bulk_cat(d: BulkUpdate):
     return supabase.table("troqueles").update({"categoria_id": d.valor_id}).in_("id", d.ids).execute()
 
-@app.post("/api/movimientos/lote")
-def mover_lote(d: MovimientoLote):
-    for id_db in d.ids:
-        actual = supabase.table("troqueles").select("ubicacion, estado").eq("id", id_db).execute().data
-        if not actual: continue
-        nuevo_estado = "EN PRODUCCION" if d.accion == 'SALIDA' else "EN ALMACEN"
-        nueva_ubi = "PRODUCCION" if d.accion == 'SALIDA' else (d.ubicacion_destino or actual[0]['ubicacion'])
-        supabase.table("troqueles").update({"estado": nuevo_estado, "ubicacion": nueva_ubi}).eq("id", id_db).execute()
-        registrar_log(id_db, d.accion, actual[0]['ubicacion'], nueva_ubi)
-    return {"ok": True}
-
+# Helper
 def registrar_log(id_t, accion, orig, dest):
     try:
         supabase.table("historial").insert({
