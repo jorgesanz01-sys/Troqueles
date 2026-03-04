@@ -6,16 +6,12 @@ import uuid
 
 app = FastAPI()
 
-# --- CAMBIA ESTO POR TUS CREDENCIALES REALES ---
+# CREDENCIALES
 SUPABASE_URL = "https://pkaqgtelkdhxlyjodzbq.supabase.co"
 SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-try:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-except:
-    print("Error conectando a Supabase")
-
-# --- MODELOS DE DATOS ---
+# MODELOS
 class EntidadAux(BaseModel):
     nombre: str
 
@@ -42,14 +38,18 @@ class BulkUpdate(BaseModel):
     ids: List[int]
     valor_id: int
 
-# --- LECTURA ---
+# RUTAS GET (LECTURA)
 @app.get("/api/troqueles")
 def leer_troqueles(ver_papelera: bool = False):
+    # Lógica permisiva: Si es papelera, busca 'Eliminado'. 
+    # Si NO es papelera, trae todo lo que NO sea 'Eliminado' (incluyendo nulos)
     query = supabase.table("troqueles").select("*")
     if ver_papelera:
         query = query.eq("estado_activo", "Eliminado")
     else:
+        # Esto trae 'Activo', NULL, y cualquier cosa que no sea explícitamente 'Eliminado'
         query = query.neq("estado_activo", "Eliminado")
+        
     return query.order("id_troquel", desc=True).execute().data
 
 @app.get("/api/categorias")
@@ -60,10 +60,8 @@ def leer_fam(): return supabase.table("familias").select("*").order("nombre").ex
 
 @app.get("/api/historial")
 def leer_historial():
-    try:
-        return supabase.table("historial").select("*, troqueles(nombre, id_troquel)").order("fecha_hora", desc=True).limit(50).execute().data
-    except:
-        return []
+    try: return supabase.table("historial").select("*, troqueles(nombre, id_troquel)").order("fecha_hora", desc=True).limit(50).execute().data
+    except: return []
 
 @app.get("/api/siguiente_numero")
 def siguiente_numero(categoria_id: int):
@@ -76,7 +74,7 @@ def siguiente_numero(categoria_id: int):
         except: pass
     return {"siguiente": max_num + 1}
 
-# --- ESCRITURA ---
+# RUTAS POST (ESCRITURA)
 @app.post("/api/categorias")
 def crear_cat(d: EntidadAux):
     return supabase.table("categorias").insert({"nombre": d.nombre.upper()}).select().execute()
@@ -95,47 +93,38 @@ async def subir_foto(file: UploadFile = File(...)):
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/fotos/{nombre_fichero}"
         tipo = "pdf" if "pdf" in file.content_type else "img"
         return {"url": public_url, "nombre": file.filename, "tipo": tipo}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e: return {"error": str(e)}
 
 @app.post("/api/troqueles")
 def crear_troquel(t: TroquelData):
-    datos = t.dict()
-    datos["estado_activo"] = "Activo"
-    if not datos["ubicacion"]: datos["ubicacion"] = datos["id_troquel"]
-    res = supabase.table("troqueles").insert(datos).execute()
-    if res.data: registrar_log(res.data[0]['id'], "CREACION", "NUEVO", datos["ubicacion"])
+    d = t.dict()
+    d["estado_activo"] = "Activo"
+    if not d["ubicacion"]: d["ubicacion"] = d["id_troquel"]
+    res = supabase.table("troqueles").insert(d).execute()
+    if res.data: registrar_log(res.data[0]['id'], "CREACION", "NUEVO", d["ubicacion"])
     return res
 
 @app.put("/api/troqueles/{id_db}")
 def editar_troquel(id_db: int, t: TroquelData):
-    prev = supabase.table("troqueles").select("ubicacion").eq("id", id_db).execute().data
-    ubi_old = prev[0]['ubicacion'] if prev else ""
-    res = supabase.table("troqueles").update(t.dict()).eq("id", id_db).execute()
-    if ubi_old != t.ubicacion: registrar_log(id_db, "CAMBIO UBICACION", ubi_old, t.ubicacion)
-    return res
+    return supabase.table("troqueles").update(t.dict()).eq("id", id_db).execute()
 
 @app.delete("/api/troqueles/{id_db}")
 def papelera(id_db: int):
     supabase.table("troqueles").update({"estado_activo": "Eliminado"}).eq("id", id_db).execute()
-    registrar_log(id_db, "PAPELERA", "", "")
     return {"ok": True}
 
 @app.post("/api/troqueles/{id_db}/restaurar")
 def restaurar(id_db: int):
     supabase.table("troqueles").update({"estado_activo": "Activo"}).eq("id", id_db).execute()
-    registrar_log(id_db, "RESTAURADO", "PAPELERA", "ACTIVO")
     return {"ok": True}
 
 @app.post("/api/movimientos/lote")
 def mover_lote(d: MovimientoLote):
     for id_db in d.ids:
-        actual = supabase.table("troqueles").select("ubicacion, estado").eq("id", id_db).execute().data
-        if not actual: continue
-        nuevo_estado = "EN PRODUCCION" if d.accion == 'SALIDA' else "EN ALMACEN"
-        nueva_ubi = "PRODUCCION" if d.accion == 'SALIDA' else (d.ubicacion_destino or actual[0]['ubicacion'])
-        supabase.table("troqueles").update({"estado": nuevo_estado, "ubicacion": nueva_ubi}).eq("id", id_db).execute()
-        registrar_log(id_db, d.accion, actual[0]['ubicacion'], nueva_ubi)
+        st = "EN PRODUCCION" if d.accion == 'SALIDA' else "EN ALMACEN"
+        ubi = "PRODUCCION" if d.accion == 'SALIDA' else (d.ubicacion_destino or "ALMACEN")
+        supabase.table("troqueles").update({"estado": st, "ubicacion": ubi}).eq("id", id_db).execute()
+        registrar_log(id_db, d.accion, "?", ubi)
     return {"ok": True}
 
 @app.put("/api/troqueles/bulk/familia")
@@ -147,9 +136,5 @@ def bulk_cat(d: BulkUpdate):
     return supabase.table("troqueles").update({"categoria_id": d.valor_id}).in_("id", d.ids).execute()
 
 def registrar_log(id_t, accion, orig, dest):
-    try:
-        supabase.table("historial").insert({
-            "troquel_id": id_t, "accion": accion, "tipo_movimiento": accion,
-            "ubicacion_anterior": orig, "ubicacion_nueva": dest
-        }).execute()
+    try: supabase.table("historial").insert({"troquel_id": id_t, "accion": accion, "tipo_movimiento": accion, "ubicacion_anterior": orig, "ubicacion_nueva": dest}).execute()
     except: pass
