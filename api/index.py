@@ -1,22 +1,27 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from supabase import create_client, Client
-from datetime import datetime
 import uuid
 
 app = FastAPI()
 
-# CREDENCIALES
+# --- CONFIGURACIÓN SUPABASE ---
 SUPABASE_URL = "https://pkaqgtelkdhxlyjodzbq.supabase.co"
 SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except:
+    print("Error conectando a Supabase")
 
-# --- MODELOS ---
+# --- MODELOS DE DATOS ---
+class EntidadAux(BaseModel):
+    nombre: str
+
 class TroquelData(BaseModel):
     nombre: str
-    id_troquel: str       # Matrícula
-    ubicacion: str        # Estantería
+    id_troquel: str
+    ubicacion: str
     estado: Optional[str] = "EN ALMACEN"
     codigos_articulo: Optional[str] = ""
     referencias_ot: Optional[str] = ""
@@ -25,14 +30,18 @@ class TroquelData(BaseModel):
     tamano_troquel: Optional[str] = ""
     tamano_final: Optional[str] = ""
     observaciones: Optional[str] = ""
-    foto_url: Optional[str] = "" 
+    archivos: List[Dict[str, Any]] = [] # LISTA DE ARCHIVOS (Url, Nombre, Tipo)
 
 class MovimientoLote(BaseModel):
     ids: List[int]
     accion: str
     ubicacion_destino: Optional[str] = ""
 
-# --- RUTAS GET ---
+class BulkUpdate(BaseModel):
+    ids: List[int]
+    valor_id: int
+
+# --- RUTAS DE LECTURA (GET) ---
 @app.get("/api/troqueles")
 def leer_troqueles():
     return supabase.table("troqueles")\
@@ -49,33 +58,32 @@ def leer_fam(): return supabase.table("familias").select("*").order("nombre").ex
 
 @app.get("/api/historial")
 def leer_historial():
-    return supabase.table("historial")\
-        .select("*, troqueles(nombre, id_troquel)")\
-        .order("fecha_hora", desc=True)\
-        .limit(100)\
-        .execute().data
+    return supabase.table("historial").select("*, troqueles(nombre, id_troquel)").order("fecha_hora", desc=True).limit(100).execute().data
 
-# --- NUEVO: CALCULAR SIGUIENTE NÚMERO ---
 @app.get("/api/siguiente_numero")
 def siguiente_numero(categoria_id: int):
-    # Buscamos los troqueles de esa categoría
-    res = supabase.table("troqueles")\
-        .select("id_troquel")\
-        .eq("categoria_id", categoria_id)\
-        .execute().data
-    
+    # Lógica para calcular el siguiente número basado en el Tipo
+    res = supabase.table("troqueles").select("id_troquel").eq("categoria_id", categoria_id).execute().data
     max_num = 0
     for t in res:
-        # Intentamos extraer número. Si es "1050" -> 1050. Si es "A-10" -> Ignorar o tratar
         try:
             val = int(t['id_troquel'])
             if val > max_num: max_num = val
-        except:
-            pass # Si tiene letras, lo ignoramos para el cálculo automático
-            
+        except: pass
     return {"siguiente": max_num + 1}
 
-# --- NUEVO: SUBIR FOTO ---
+# --- RUTAS DE ESCRITURA (POST/PUT/DELETE) ---
+
+# 1. Crear Auxiliares
+@app.post("/api/categorias")
+def crear_cat(d: EntidadAux):
+    return supabase.table("categorias").insert({"nombre": d.nombre.upper()}).execute()
+
+@app.post("/api/familias")
+def crear_fam(d: EntidadAux):
+    return supabase.table("familias").insert({"nombre": d.nombre.upper()}).execute()
+
+# 2. Subir Archivos
 @app.post("/api/subir_foto")
 async def subir_foto(file: UploadFile = File(...)):
     try:
@@ -83,28 +91,23 @@ async def subir_foto(file: UploadFile = File(...)):
         nombre_fichero = f"{uuid.uuid4()}.{ext}"
         contenido = await file.read()
         
-        # Subir a Supabase Storage (Bucket 'fotos')
-        res = supabase.storage.from_("fotos").upload(nombre_fichero, contenido, {"content-type": file.content_type})
-        
-        # Construir URL pública
+        supabase.storage.from_("fotos").upload(nombre_fichero, contenido, {"content-type": file.content_type})
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/fotos/{nombre_fichero}"
-        return {"url": public_url}
+        
+        tipo = "pdf" if "pdf" in file.content_type else "img"
+        return {"url": public_url, "nombre": file.filename, "tipo": tipo}
     except Exception as e:
-        print(f"Error subida: {e}")
-        raise HTTPException(status_code=500, detail="Error subiendo imagen")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# --- RUTAS CRUD ---
+# 3. Gestión Troqueles
 @app.post("/api/troqueles")
 def crear_troquel(t: TroquelData):
     datos = t.dict()
     datos["estado_activo"] = "Activo"
-    # Si es nuevo, la matrícula también es la ubicación inicial (Regla de negocio)
-    if not datos["ubicacion"]: 
-        datos["ubicacion"] = datos["id_troquel"]
-        
+    if not datos["ubicacion"]: datos["ubicacion"] = datos["id_troquel"]
+    
     res = supabase.table("troqueles").insert(datos).execute()
-    if res.data:
-        registrar_log(res.data[0]['id'], "CREACION", "NUEVO", datos["ubicacion"])
+    if res.data: registrar_log(res.data[0]['id'], "CREACION", "NUEVO", datos["ubicacion"])
     return res
 
 @app.put("/api/troqueles/{id_db}")
@@ -113,11 +116,16 @@ def editar_troquel(id_db: int, t: TroquelData):
     ubi_old = prev[0]['ubicacion'] if prev else ""
     
     res = supabase.table("troqueles").update(t.dict()).eq("id", id_db).execute()
-    
-    if ubi_old != t.ubicacion:
-        registrar_log(id_db, "CAMBIO UBICACION", ubi_old, t.ubicacion)
+    if ubi_old != t.ubicacion: registrar_log(id_db, "CAMBIO UBICACION", ubi_old, t.ubicacion)
     return res
 
+@app.delete("/api/troqueles/{id_db}")
+def borrar(id_db: int):
+    # Soft Delete
+    supabase.table("troqueles").update({"estado_activo": "Eliminado"}).eq("id", id_db).execute()
+    return {"ok": True}
+
+# 4. Acciones en Lote
 @app.post("/api/movimientos/lote")
 def mover_lote(d: MovimientoLote):
     for id_db in d.ids:
@@ -131,11 +139,15 @@ def mover_lote(d: MovimientoLote):
         registrar_log(id_db, d.accion, actual[0]['ubicacion'], nueva_ubi)
     return {"ok": True}
 
-@app.delete("/api/troqueles/{id_db}")
-def borrar(id_db: int):
-    supabase.table("troqueles").update({"estado_activo": "Eliminado"}).eq("id", id_db).execute()
-    return {"ok": True}
+@app.put("/api/troqueles/bulk/familia")
+def bulk_fam(d: BulkUpdate):
+    return supabase.table("troqueles").update({"familia_id": d.valor_id}).in_("id", d.ids).execute()
 
+@app.put("/api/troqueles/bulk/categoria")
+def bulk_cat(d: BulkUpdate):
+    return supabase.table("troqueles").update({"categoria_id": d.valor_id}).in_("id", d.ids).execute()
+
+# Helper Log
 def registrar_log(id_t, accion, orig, dest):
     supabase.table("historial").insert({
         "troquel_id": id_t, "accion": accion, "tipo_movimiento": accion,
