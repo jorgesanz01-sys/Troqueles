@@ -59,9 +59,15 @@ def leer_cat(): return supabase.table("categorias").select("*").order("nombre").
 def leer_fam(): return supabase.table("familias").select("*").order("nombre").execute().data
 
 @app.get("/api/historial")
-def leer_historial():
-    try: return supabase.table("historial").select("*, troqueles(nombre, id_troquel)").order("fecha_hora", desc=True).limit(50).execute().data
-    except: return []
+def leer_historial(troquel_id: Optional[int] = None):
+    # Preparamos la consulta
+    query = supabase.table("historial").select("*, troqueles(nombre, id_troquel)")
+    
+    # Si nos pasan un ID, filtramos. Si no, traemos los últimos 50 generales.
+    if troquel_id:
+        query = query.eq("troquel_id", troquel_id)
+    
+    return query.order("fecha_hora", desc=True).limit(50).execute().data
 
 @app.get("/api/siguiente_numero")
 def siguiente_numero(categoria_id: int):
