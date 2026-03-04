@@ -1,262 +1,420 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ERP V16 | Completo</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-</head>
-<body>
-    <div class="erp-layout">
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-logo"><span>🏭</span><h2>ERP V16</h2></div>
-            <nav class="sidebar-menu">
-                <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
-                <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
-                <div class="menu-divisor"></div>
-                <button class="menu-item" onclick="App.nuevoTroquel()">➕ Nuevo Troquel</button>
-                <button class="menu-item" onclick="App.abrirGestionAux()">⚙️ Familias/Tipos</button>
-                <button class="menu-item" onclick="App.nav('vista-historial', this); App.cargarHistorial()">📝 Historial</button>
-                <div class="menu-divisor"></div>
-                <button class="menu-item" onclick="App.verPapelera()" style="color:#ef4444;">🗑️ Papelera</button>
-            </nav>
-        </aside>
+const App = {
+    // --- ESTADO ---
+    datos: [], seleccionados: new Set(), filtroTipo: 'TODOS',
+    mapaCat: {}, mapaFam: {}, mapaCatInv: {}, mapaFamInv: {}, // Mapas normales e inversos para importación
+    columnaOrden: 'id_troquel', ordenAsc: true,
+    scanner: null, modoMovil: false, 
+    modoScanner: 'LOTE', 
+    archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
 
-        <main class="main-content">
+    // 1. INICIO
+    init: async () => {
+        console.log("Iniciando ERP V19...");
+        await App.cargarSelects();
+        await App.cargarTodo();
+
+        // Modo Kiosco
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('modo') === 'operario') {
+            document.body.classList.add('kiosk-mode');
+            App.activarModoMovil();
+        }
+    },
+
+    // 2. CARGA
+    cargarTodo: async (papelera = false) => {
+        try {
+            App.enPapelera = papelera;
+            const res = await fetch(`/api/troqueles?ver_papelera=${papelera}`);
+            if (res.ok) {
+                App.datos = await res.json();
+                App.renderTabla();
+                document.getElementById('titulo-lista').innerText = papelera ? "🗑️ PAPELERA" : "Inventario Activo";
+                const btn = document.getElementById('btn-restaurar-papelera');
+                const panel = document.getElementById('panel-acciones');
+                if (papelera) { 
+                    if(btn) btn.classList.remove('oculto'); 
+                    if(panel) panel.classList.add('oculto'); 
+                } else { 
+                    if(btn) btn.classList.add('oculto'); 
+                }
+            }
+        } catch (e) { console.error(e); }
+    },
+
+    cargarSelects: async () => {
+        try {
+            const [cats, fams] = await Promise.all([fetch('/api/categorias').then(r=>r.json()), fetch('/api/familias').then(r=>r.json())]);
             
-            <section id="vista-lista" class="vista">
-                <div class="header-modulo">
-                    <h1 id="titulo-lista">Inventario</h1>
-                    <div style="display:flex; gap:10px;">
-                        <button id="btn-restaurar-papelera" class="btn-accion oculto" style="background:#22c55e;" onclick="App.salirPapelera()">🔙 Salir de Papelera</button>
-                        <button class="btn-secundario" onclick="App.exportarCSV()">📥 Excel</button>
-                    </div>
-                </div>
+            App.mapaCat = {}; App.mapaFam = {};
+            App.mapaCatInv = {}; App.mapaFamInv = {}; // Inversos para CSV
 
-                <div class="filtros-chips" id="chips-tipos"></div>
+            cats.forEach(c => { App.mapaCat[c.id] = c.nombre; App.mapaCatInv[c.nombre.toUpperCase()] = c.id; });
+            fams.forEach(f => { App.mapaFam[f.id] = f.nombre; App.mapaFamInv[f.nombre.toUpperCase()] = f.id; });
+
+            const divChips = document.getElementById('chips-tipos');
+            if(divChips) {
+                divChips.innerHTML = `<button class="chip activo" onclick="App.setFiltroTipo('TODOS', this)">TODOS</button>`;
+                cats.forEach(c => divChips.innerHTML += `<button class="chip" onclick="App.setFiltroTipo('${c.nombre}', this)">${c.nombre}</button>`);
+            }
+
+            const llenar = (id, data, def) => {
+                const el = document.getElementById(id);
+                if(el) {
+                    const prev = el.value;
+                    let first = `<option value="">${def}</option>`;
+                    if(id==='filtro-familia') first = '<option value="TODAS">Todas las Familias</option>';
+                    if(id==='f-fam') first = '<option value="">Sin Familia</option>';
+                    el.innerHTML = first;
+                    data.forEach(d => el.innerHTML += `<option value="${d.id}">${d.nombre}</option>`);
+                    if(prev) el.value = prev;
+                }
+            };
+            llenar('f-cat', cats, 'Tipo...'); llenar('bulk-tipo', cats, 'Asignar Tipo...');
+            llenar('f-fam', fams, 'Familia...'); llenar('bulk-familia', fams, 'Asignar Familia...');
+            llenar('filtro-familia', fams, ''); 
+
+        } catch (e) { console.error(e); }
+    },
+
+    // --- IMPORTADOR CSV INTELIGENTE (RECUPERADO) ---
+    // Nota: Necesitas añadir el botón en el HTML manualmente o usar la consola: App.triggerImport()
+    triggerImport: () => {
+        // Truco para abrir el selector de archivos sin ensuciar el HTML visualmente
+        let input = document.getElementById('hidden-import-input');
+        if (!input) {
+            input = document.createElement('input');
+            input.id = 'hidden-import-input';
+            input.type = 'file';
+            input.accept = '.csv';
+            input.style.display = 'none';
+            input.onchange = (e) => App.procesarImportacion(e.target);
+            document.body.appendChild(input);
+        }
+        input.click();
+    },
+
+    procesarImportacion: (input) => {
+        const file = input.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const text = e.target.result;
+            const separador = text.indexOf(';') > -1 ? ';' : ',';
+            const lineas = text.split('\n');
+            const lista = [];
+
+            for(let i=1; i<lineas.length; i++) {
+                const fila = lineas[i].trim();
+                if(!fila) continue;
+                const cols = fila.split(separador);
+                if(cols.length < 3) continue;
+
+                // Mapeo inteligente usando los diccionarios inversos
+                const tipoStr = cols[3] ? cols[3].trim().replace(/"/g,'').toUpperCase() : "";
+                const famStr = cols[4] ? cols[4].trim().replace(/"/g,'').toUpperCase() : "";
                 
-                <div style="display:flex; gap:15px; margin-bottom:15px; align-items:center; flex-wrap:wrap;">
-                    <select id="filtro-familia" onchange="App.filtrar()" style="width:200px; padding:8px;"><option value="TODAS">Todas las Familias</option></select>
-                    <select id="filtro-estado" onchange="App.filtrar()" style="width:150px; padding:8px;">
-                        <option value="TODOS">Todos Estados</option>
-                        <option value="EN ALMACEN">En Almacén</option>
-                        <option value="EN PRODUCCION">En Producción</option>
-                        <option value="DESCATALOGADO">Descatalogados</option>
-                    </select>
-                    <div class="caja-buscador" style="flex:1; position:relative;">
-                        <input type="text" id="buscador" placeholder="Buscar..." oninput="App.filtrar()" style="width:100%;">
-                        <button id="btn-limpiar" onclick="App.limpiarBuscador()" class="oculto" style="position:absolute; right:5px; top:5px; border:none; background:transparent;">✕</button>
-                    </div>
-                </div>
+                lista.push({
+                    id_troquel: cols[0].trim().replace(/"/g,''),
+                    ubicacion: cols[1].trim().replace(/"/g,''),
+                    nombre: cols[2].trim().replace(/"/g,''),
+                    categoria_id: App.mapaCatInv[tipoStr] || null,
+                    familia_id: App.mapaFamInv[famStr] || null,
+                    estado: "EN ALMACEN"
+                });
+            }
 
-                <div id="panel-acciones" class="panel-acciones oculto">
-                    <strong style="color:#0369a1;"><span id="contador-sel">0</span> sel.</strong>
-                    <button class="btn-accion" style="background:#e11d48;" onclick="App.moverLote('SALIDA')">🏭 A Prod.</button>
-                    <button class="btn-accion" style="background:#16a34a;" onclick="App.moverLote('RETORNO')">✅ Devolver</button>
-                    <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
-                    <select id="bulk-familia" class="select-bulk"><option value="">Asignar Familia...</option></select>
-                    <button class="btn-secundario" onclick="App.asignarMasivo('familia')">OK</button>
-                    <select id="bulk-tipo" class="select-bulk"><option value="">Asignar Tipo...</option></select>
-                    <button class="btn-secundario" onclick="App.asignarMasivo('categoria')">OK</button>
-                    <button class="btn-secundario" onclick="App.limpiarSeleccion()">Cancelar</button>
-                </div>
+            if(lista.length > 0 && confirm(`Importar ${lista.length} troqueles?`)) {
+                await fetch('/api/troqueles/importar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(lista) });
+                alert("Importado");
+                App.cargarTodo();
+            }
+            input.value = "";
+        };
+        reader.readAsText(file);
+    },
 
-                <div class="contenedor-tabla">
-                    <table class="tabla-pro">
-                        <thead>
-                            <tr>
-                                <th width="30"><input type="checkbox" id="check-all" onclick="App.toggleAll(this)"></th>
-                                <th width="40">Docs</th>
-                                <th>Estado</th>
-                                <th onclick="App.ordenar('id_troquel')" style="cursor:pointer;">Matrícula ↕️</th>
-                                <th onclick="App.ordenar('ubicacion')" style="cursor:pointer;">Ubicación ↕️</th>
-                                <th onclick="App.ordenar('nombre')" style="cursor:pointer;">Descripción ↕️</th>
-                                <th onclick="App.ordenar('familia')" style="cursor:pointer;">Familia ↕️</th>
-                                <th width="100">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-body"></tbody>
-                    </table>
-                </div>
-            </section>
+    // 3. TABLA PC (BOTONES: FICHA 👁️, HISTORIAL 🕒, EDITAR ✏️, QR 🖨️, BORRAR 🗑️)
+    renderTabla: () => {
+        const tbody = document.getElementById('tabla-body'); if (!tbody) return;
+        const txt = document.getElementById('buscador').value.toLowerCase();
+        const fam = document.getElementById('filtro-familia').value;
+        const est = document.getElementById('filtro-estado').value;
 
-            <section id="vista-formulario" class="vista oculto">
-                <div class="header-modulo">
-                    <h1 id="titulo-form">Ficha Troquel</h1>
-                    <button class="btn-secundario" onclick="App.volverDesdeForm()">Volver</button>
-                </div>
-                <div class="panel-formulario">
-                    <form onsubmit="App.guardarFicha(event)">
-                        <input type="hidden" id="f-id-db">
-                        <div class="form-grid">
-                            <div class="full-width" style="background:#f0fdf4; padding:15px; border:1px solid #86efac;">
-                                <label style="color:#15803d; font-weight:900;">1. TIPO (Calcula Matrícula)</label>
-                                <div style="display:flex; gap:5px;">
-                                    <select id="f-cat" required onchange="App.calcularSiguienteId()" style="font-weight:bold; width:100%; border:2px solid #16a34a; padding:10px;"></select>
-                                    <button type="button" class="btn-secundario" onclick="App.crearTipo()">+</button>
-                                </div>
-                            </div>
-                            <div><label>Matrícula</label><input type="text" id="f-matricula" required readonly style="background:#eee; font-weight:900;"></div>
-                            <div><label>Ubicación</label><input type="text" id="f-ubicacion" required style="font-weight:900;"></div>
+        let res = App.datos.filter(t => {
+            const nCat = App.mapaCat[t.categoria_id] || '';
+            const okTip = App.filtroTipo === 'TODOS' || nCat === App.filtroTipo;
+            const okFam = fam === 'TODAS' || t.familia_id == fam;
+            const okEst = est === 'TODOS' || (t.estado || 'EN ALMACEN') === est;
+            const okTxt = (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt);
+            return okTip && okFam && okEst && okTxt;
+        });
 
-                            <div class="full-width" style="padding:15px; border:2px dashed #cbd5e1; background:#f8fafc;">
-                                <label style="display:block; margin-bottom:10px; font-weight:bold;">📎 Documentación (Fotos / PDF)</label>
-                                <div id="lista-archivos" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;"></div>
-                                <label class="btn-secundario" style="cursor:pointer; display:inline-block;">
-                                    ➕ Subir Archivo
-                                    <input type="file" multiple accept="image/*,.pdf" onchange="App.subirArchivos(this)" style="display:none;">
-                                </label>
-                            </div>
+        res.sort((a,b) => {
+            let vA = (a[App.columnaOrden]||"").toString(), vB = (b[App.columnaOrden]||"").toString();
+            if(App.columnaOrden==='familia') { vA=App.mapaFam[a.familia_id]||""; vB=App.mapaFam[b.familia_id]||""; }
+            const nA=parseFloat(vA), nB=parseFloat(vB);
+            if(!isNaN(nA)&&!isNaN(nB)&&!vA.match(/[a-z]/i)) return App.ordenAsc ? nA-nB : nB-nA;
+            return App.ordenAsc ? vA.localeCompare(vB) : vB.localeCompare(vA);
+        });
 
-                            <div class="full-width"><label>Descripción *</label><input type="text" id="f-nombre" required></div>
-                            <div>
-                                <label>Familia</label>
-                                <div style="display:flex; gap:5px;">
-                                    <select id="f-fam" style="flex:1;"></select>
-                                    <button type="button" class="btn-secundario" onclick="App.crearFamilia()">+</button>
-                                </div>
-                            </div>
-                            <div><label>OT</label><input type="text" id="f-ot"></div>
-                            <div><label>Medidas Madera</label><input type="text" id="f-medidas-madera"></div>
-                            <div><label>Medidas Corte</label><input type="text" id="f-medidas-corte"></div>
-                            <div class="full-width"><label>Artículos</label><textarea id="f-arts" rows="2"></textarea></div>
-                            <div class="full-width"><label>Observaciones</label><textarea id="f-obs" rows="2"></textarea></div>
-                        </div>
-                        <div style="margin-top:20px; text-align:right;">
-                            <button type="button" class="btn-secundario" onclick="App.volverDesdeForm()">Cancelar</button>
-                            <button type="submit" class="btn-accion" style="padding:12px 30px;">💾 GUARDAR</button>
-                        </div>
-                    </form>
-                </div>
-            </section>
+        if(res.length===0) { tbody.innerHTML='<tr><td colspan="8" class="text-center">Sin datos</td></tr>'; return; }
 
-            <section id="vista-movil" class="vista oculto" style="padding:10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h1 style="margin:0;">Zona Operario</h1>
-                    <button class="btn-secundario" onclick="App.desactivarModoMovil()">Ver PC</button>
-                </div>
-                <div class="grid-movil">
-                    <button class="btn-gigante" style="background:#0f766e;" onclick="App.toggleScanner(true, 'UNICO')">
-                        <span style="font-size:30px;">🔎</span><br>CONSULTAR QR
-                    </button>
-                    <button class="btn-gigante scan" onclick="App.toggleScanner(true, 'LOTE')">
-                        <span style="font-size:30px;">📦</span><br>MOVER LOTE
-                    </button>
-                    <button class="btn-gigante nuevo" onclick="App.nuevoTroquel()">
-                        <span style="font-size:30px;">➕</span><br>NUEVO
-                    </button>
-                </div>
-                <div style="margin-top:20px;">
-                    <input type="text" id="buscador-movil" placeholder="Escribe para buscar..." style="width:100%; padding:15px; font-size:18px;" oninput="App.buscarMovil(this.value)">
-                    <div id="resultados-movil" style="margin-top:10px; display:flex; flex-direction:column; gap:10px;"></div>
-                </div>
-            </section>
-
-            <section id="vista-movil-detalle" class="vista oculto" style="padding:10px; background:#f8fafc; min-height:100vh;">
-                <button class="btn-secundario" onclick="App.volverMenuMovil()" style="width:100%; margin-bottom:15px; padding:15px;">⬅️ Volver</button>
-                
-                <div style="background:white; border:2px solid #0f766e; border-radius:8px; padding:20px; text-align:center; margin-bottom:20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                    <div style="font-size:12px; color:#64748b; font-weight:bold;">Matrícula</div>
-                    <div id="movil-id" style="font-size:40px; font-weight:900; color:#0f766e;">-</div>
-                    <div style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
-                        <div style="font-size:12px; color:#64748b;">Ubicación</div>
-                        <div id="movil-ubi" style="font-size:24px; font-weight:800;">-</div>
-                    </div>
-                    <div id="movil-nombre" style="margin-top:10px; font-weight:600;">-</div>
-                    <div id="movil-estado" style="margin-top:10px;"></div>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                    <button class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:10px;" onclick="App.movilCambiarUbi()">📍 Cambiar Ubi</button>
-                    <label class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:10px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
-                        📷 Foto
-                        <input type="file" accept="image/*" capture="environment" onchange="App.movilSubirFoto(this)" style="display:none;">
-                    </label>
-                    <button class="btn-gigante" style="background:#e11d48; color:white; padding:15px;" onclick="App.movilCambiarEstado('SALIDA')">🏭 A FABRICA</button>
-                    <button class="btn-gigante" style="background:#16a34a; color:white; padding:15px;" onclick="App.movilCambiarEstado('RETORNO')">✅ A ALMACÉN</button>
-                </div>
-                <input type="hidden" id="movil-id-db">
-            </section>
-
-            <div id="modal-ficha" class="modal oculto">
-                <div class="modal-contenido" style="max-width:800px; width:95%;">
-                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid #ddd; padding-bottom:10px;">
-                        <h2 style="margin:0;">Ficha de Consulta</h2>
-                        <button onclick="document.getElementById('modal-ficha').classList.add('oculto')" style="border:none; font-size:20px; cursor:pointer;">&times;</button>
-                    </div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:15px;">
-                        <div>
-                            <label style="font-weight:bold; color:#64748b; font-size:12px;">Matrícula</label>
-                            <div id="ver-matricula" style="font-size:22px; font-weight:900; color:#0f766e;"></div>
-                            
-                            <label style="font-weight:bold; color:#64748b; font-size:12px; margin-top:10px; display:block;">Ubicación</label>
-                            <div id="ver-ubicacion" style="font-size:18px; font-weight:800;"></div>
-                            
-                            <label style="font-weight:bold; color:#64748b; font-size:12px; margin-top:10px; display:block;">Descripción</label>
-                            <div id="ver-nombre"></div>
-                            
-                            <div style="margin-top:10px;">
-                                Tipo: <span id="ver-tipo" style="font-weight:bold;"></span> | 
-                                Familia: <span id="ver-familia" style="font-weight:bold;"></span>
-                            </div>
-                            
-                            <label style="font-weight:bold; color:#64748b; font-size:12px; margin-top:10px; display:block;">Observaciones</label>
-                            <div id="ver-obs" style="font-style:italic;"></div>
-                        </div>
-                        <div style="background:#f8fafc; padding:10px; border-radius:6px;">
-                            <h4 style="margin-top:0;">Archivos</h4>
-                            <div id="ver-galeria" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
-                        </div>
-                    </div>
-                    <input type="hidden" id="ver-id-oculto">
-                    <div style="text-align:right; margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
-                        <button class="btn-accion" onclick="App.editarDesdeFicha()">✏️ Editar Datos</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="modal-aux" class="modal oculto"><div class="modal-contenido"><h2>Gestión</h2><div style="display:flex; gap:10px; margin-top:20px;"><button class="btn-accion" onclick="App.crearFamilia()">➕ Nueva Familia</button><button class="btn-accion" onclick="App.crearTipo()">➕ Nuevo Tipo</button></div><div style="margin-top:20px; text-align:right;"><button class="btn-secundario" onclick="document.getElementById('modal-aux').classList.add('oculto')">Cerrar</button></div></div></div>
+        tbody.innerHTML = res.map(t => {
+            const chk = App.seleccionados.has(t.id) ? 'checked' : '';
+            const nDocs = (t.archivos && t.archivos.length) || 0;
+            const bdg = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
             
-            <div id="modal-scanner" class="modal oculto" style="background:black;"><div class="modal-contenido" style="background:#1e293b; color:white; width:100%; height:100%; max-width:none; border:none; display:flex; flex-direction:column;"><div style="padding:10px; display:flex; justify-content:space-between;"><h3 id="titulo-scanner">📸 Escáner</h3><button class="btn-secundario" onclick="App.toggleScanner(false)" style="background:transparent; color:white; border:1px solid white;">✕ Cerrar</button></div><div id="reader" style="flex:1; background:black;"></div><div id="panel-lote" style="height:35%; background:#0f172a; padding:10px; overflow-y:auto;"><div style="display:flex; justify-content:space-between;"><span>Leídos: <strong id="count-scans">0</strong></span></div><div id="lista-escaneados" style="display:flex; flex-wrap:wrap; gap:10px;"></div></div><div id="btns-lote" style="padding:15px; display:flex; gap:10px; justify-content:center; background:#0f172a;"><button class="btn-accion" style="background:#e11d48; width:50%; padding:15px;" onclick="App.procesarEscaneo('SALIDA')">A PRODUCCIÓN</button><button class="btn-accion" style="background:#16a34a; width:50%; padding:15px;" onclick="App.procesarEscaneo('RETORNO')">DEVOLVER</button></div></div></div>
-            
-            <div id="modal-qr" class="modal oculto"><div class="modal-contenido text-center"><div id="zona-impresion" class="etiqueta-preview"><canvas id="qr-canvas"></canvas><div class="etiqueta-info"><div id="qr-texto-ubi" class="etiq-ubi"></div><div id="qr-texto-id" class="etiq-id"></div><div id="qr-texto-desc" class="etiq-desc"></div></div></div><div class="modal-botones no-print"><button class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cerrar</button><button class="btn-accion" onclick="window.print()">Imprimir</button></div></div></div>
-            <section id="vista-historial" class="vista oculto"><div class="header-modulo"><h1>Historial</h1></div><div class="contenedor-tabla"><table class="tabla-pro"><thead><tr><th>Fecha</th><th>Troquel</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tabla-historial"></tbody></table></div></section>
-        </main>
-    </div>
-    <script src="app.js"></script>
-<div id="modal-historial-unico" class="modal oculto">
-    <div class="modal-contenido" style="width: 600px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding-bottom:10px;">
-            <h3 style="margin:0;">📜 Historial de Movimientos</h3>
-            <button class="btn-secundario" onclick="document.getElementById('modal-historial-unico').classList.add('oculto')">✕</button>
-        </div>
-        
-        <div style="background:#f1f5f9; padding:10px; margin:10px 0; border-radius:4px;">
-            Matrícula: <strong id="hist-titulo-mat"></strong> <br>
-            Nombre: <span id="hist-titulo-nom"></span>
-        </div>
+            let col = '#166534', bg = '#dcfce7';
+            if(t.estado==='EN PRODUCCION') { col='#991b1b'; bg='#fee2e2'; }
+            if(t.estado==='DESCATALOGADO') { col='#6b7280'; bg='#f3f4f6'; }
+            const st = `<span style="background:${bg}; color:${col}; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:800;">${t.estado||'ALMACÉN'}</span>`;
 
-        <div style="max-height:300px; overflow-y:auto;">
-            <table class="tabla-pro" style="font-size:12px;">
-                <thead>
-                    <tr style="background:#e2e8f0;">
-                        <th>Fecha</th>
-                        <th>Acción</th>
-                        <th>Detalle</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-historial-unico">
-                    </tbody>
-            </table>
-        </div>
+            let fam = App.mapaFam[t.familia_id];
+            if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
+
+            let btns = `
+                <button class="btn-icono" onclick="App.verFicha(${t.id})" title="Ver Ficha">👁️</button>
+                <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
+                <button class="btn-icono" onclick="App.editar(${t.id})">✏️</button>
+                <button class="btn-icono" onclick="App.generarQR('${t.id_troquel}', '${t.ubicacion}', '${t.nombre.replace(/'/g,"")}')">🖨️</button>
+                <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red">🗑️</button>
+            `;
+            if(App.enPapelera) btns = `<button class="btn-accion" style="background:#22c55e; padding:2px 5px;" onclick="App.restaurar(${t.id})">♻️</button>`;
+
+            return `<tr style="${t.estado==='DESCATALOGADO'?'opacity:0.6':''}" onclick="App.verFicha(${t.id})" style="cursor:pointer;">
+                <td onclick="event.stopPropagation()" class="text-center"><input type="checkbox" value="${t.id}" ${chk} onchange="App.select(this, ${t.id})"></td>
+                <td class="text-center">${bdg}</td><td class="text-center">${st}</td>
+                <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td><td>${t.ubicacion}</td><td>${t.nombre}</td>
+                <td><small>${fam||'-'}</small></td><td onclick="event.stopPropagation()">${btns}</td>
+            </tr>`;
+        }).join('');
+    },
+
+    // 4. HISTORIAL INDIVIDUAL (NUEVO)
+    verHistorialTroquel: async (id, mat, nom) => {
+        document.getElementById('hist-titulo-mat').innerText = mat;
+        document.getElementById('hist-titulo-nom').innerText = nom;
+        const tbody = document.getElementById('tabla-historial-unico');
+        tbody.innerHTML = '<tr><td colspan="3">Cargando...</td></tr>';
+        document.getElementById('modal-historial-unico').classList.remove('oculto');
+
+        try {
+            const res = await fetch(`/api/historial?troquel_id=${id}`);
+            if (res.ok) {
+                const data = await res.json();
+                if(data.length===0) tbody.innerHTML = '<tr><td colspan="3">Sin movimientos</td></tr>';
+                else tbody.innerHTML = data.map(h => `<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td style="color:${h.accion.includes('SALIDA')?'red':'green'}">${h.accion}</td><td>${h.ubicacion_anterior||'-'} ➝ ${h.ubicacion_nueva||'-'}</td></tr>`).join('');
+            }
+        } catch(e) { tbody.innerHTML='<tr><td colspan="3">Error</td></tr>'; }
+    },
+
+    // 5. VISTA FICHA
+    verFicha: (id) => {
+        const t = App.datos.find(x => x.id === id); if (!t) return;
+        document.getElementById('ver-matricula').innerText = t.id_troquel || "-";
+        document.getElementById('ver-ubicacion').innerText = t.ubicacion || "-";
+        document.getElementById('ver-nombre').innerText = t.nombre || "-";
+        document.getElementById('ver-tipo').innerHTML = App.mapaCat[t.categoria_id] || '-';
+        document.getElementById('ver-familia').innerHTML = App.mapaFam[t.familia_id] || '-';
+        document.getElementById('ver-id-oculto').value = t.id;
+
+        const gal = document.getElementById('ver-galeria'); gal.innerHTML = "";
+        if (t.archivos && t.archivos.length > 0) {
+            t.archivos.forEach(arch => {
+                const icon = arch.tipo === 'pdf' ? '📄' : `<img src="${arch.url}" style="height:50px;">`;
+                gal.innerHTML += `<a href="${arch.url}" target="_blank" style="margin-right:10px; text-decoration:none;">${icon}<br><small>${arch.nombre.substring(0,10)}</small></a>`;
+            });
+        } else gal.innerHTML = "<span style='color:#999'>Sin archivos</span>";
         
-        <div style="text-align:right; margin-top:15px;">
-            <button class="btn-secundario" onclick="document.getElementById('modal-historial-unico').classList.add('oculto')">Cerrar</button>
-        </div>
-    </div>
-</div>
-</body>
-</html>
+        let btnPrint = document.getElementById('btn-print-ficha');
+        if(!btnPrint) {
+            const header = document.querySelector('#modal-ficha h2').parentNode;
+            btnPrint = document.createElement('button');
+            btnPrint.id = 'btn-print-ficha';
+            btnPrint.className = 'btn-secundario';
+            btnPrint.style.marginRight = '10px';
+            btnPrint.innerHTML = '🖨️ Etiqueta';
+            header.insertBefore(btnPrint, header.firstChild);
+        }
+        btnPrint.onclick = () => App.generarQR(t.id_troquel, t.ubicacion, t.nombre);
+
+        document.getElementById('modal-ficha').classList.remove('oculto');
+    },
+    editarDesdeFicha: () => {
+        const id = parseInt(document.getElementById('ver-id-oculto').value);
+        document.getElementById('modal-ficha').classList.add('oculto');
+        App.editar(id);
+    },
+
+    // 6. MÓVIL
+    activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
+    desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
+    
+    abrirDetalleMovil: (id) => {
+        const t = App.datos.find(x => x.id === id); if(!t) return;
+        document.getElementById('vista-movil').classList.add('oculto');
+        document.getElementById('vista-movil-detalle').classList.remove('oculto');
+        document.getElementById('movil-id-db').value = t.id;
+        document.getElementById('movil-id').innerText = t.id_troquel;
+        document.getElementById('movil-ubi').innerText = t.ubicacion;
+        document.getElementById('movil-nombre').innerText = t.nombre;
+        let stHtml = `<span style="background:#dcfce7; color:#166534; padding:5px 10px; border-radius:15px;">ALMACÉN</span>`;
+        if(t.estado==='EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px;">PRODUCCIÓN</span>`;
+        document.getElementById('movil-estado').innerHTML = stHtml;
+    },
+    volverMenuMovil: () => { document.getElementById('vista-movil-detalle').classList.add('oculto'); document.getElementById('vista-movil').classList.remove('oculto'); App.cargarTodo(); },
+    movilCambiarUbi: async () => {
+        const id = document.getElementById('movil-id-db').value;
+        const actual = document.getElementById('movil-ubi').innerText;
+        const nueva = prompt("Nueva Ubicación:", actual);
+        if(nueva && nueva !== actual) {
+            const t = App.datos.find(x => x.id == id);
+            const payload = { ...t, ubicacion: nueva }; 
+            await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            await App.cargarTodo();
+            document.getElementById('movil-ubi').innerText = nueva;
+        }
+    },
+    movilCambiarEstado: async (accion) => {
+        const id = parseInt(document.getElementById('movil-id-db').value);
+        if(!confirm(`¿Marcar como ${accion}?`)) return;
+        await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: [id], accion: accion }) });
+        await App.cargarTodo();
+        App.abrirDetalleMovil(id);
+    },
+    movilSubirFoto: async (input) => {
+        if(!input.files.length) return;
+        const id = document.getElementById('movil-id-db').value;
+        const t = App.datos.find(x => x.id == id);
+        const fd = new FormData(); fd.append('file', input.files[0]);
+        try {
+            const res = await fetch('/api/subir_foto', { method: 'POST', body: fd });
+            if(res.ok) {
+                const data = await res.json();
+                if(!t.archivos) t.archivos = [];
+                t.archivos.push({ url: data.url, nombre: input.files[0].name, tipo: data.tipo });
+                await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(t) });
+                alert("Foto guardada");
+                await App.cargarTodo();
+            }
+        } catch(e) { alert("Error foto"); }
+    },
+
+    // 7. ESCÁNER
+    toggleScanner: (show=true, modo='LOTE') => {
+        const el = document.getElementById('modal-scanner');
+        App.modoScanner = modo;
+        const pLote = document.getElementById('panel-lote');
+        const bLote = document.getElementById('btns-lote');
+        const tit = document.getElementById('titulo-scanner');
+        if (modo === 'UNICO') {
+            if(pLote) pLote.style.display='none';
+            if(bLote) bLote.style.display='none';
+            if(tit) tit.innerText = "🔎 Escanear Un Troquel";
+        } else {
+            if(pLote) pLote.style.display='block';
+            if(bLote) bLote.style.display='flex';
+            if(tit) tit.innerText = "📦 Escanear Lote";
+        }
+        if(show) {
+            el.classList.remove('oculto'); App.escaneadosLote.clear(); App.renderListaEscaneados();
+            App.scanner = new Html5Qrcode("reader");
+            let last = null; let t0 = 0;
+            App.scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, (txt) => {
+                if(txt === last && (Date.now() - t0 < 3000)) return; 
+                const t = App.datos.find(x => x.id_troquel === txt);
+                if(t) {
+                    if (App.modoScanner === 'UNICO') {
+                        App.toggleScanner(false);
+                        if(navigator.vibrate) navigator.vibrate(200);
+                        App.abrirDetalleMovil(t.id);
+                    } else {
+                        if(!App.escaneadosLote.has(t.id)) { App.escaneadosLote.set(t.id, t); App.renderListaEscaneados(); if(navigator.vibrate) navigator.vibrate(100); }
+                    }
+                    last = txt; t0 = Date.now();
+                }
+            });
+        } else { el.classList.add('oculto'); if(App.scanner) App.scanner.stop(); }
+    },
+    renderListaEscaneados: () => { const div = document.getElementById('lista-escaneados'); div.innerHTML=""; document.getElementById('count-scans').innerText=App.escaneadosLote.size; App.escaneadosLote.forEach((t,id)=>{ div.innerHTML+=`<div class="chip activo" style="background:white; color:black;"><b>${t.id_troquel}</b><span onclick="App.borrarDeLote(${id})" style="color:red; cursor:pointer; margin-left:5px">✕</span></div>`; }); },
+    borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
+    procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
+
+    // 8. RESTO
+    crearFamilia: async () => { const n = prompt("Familia:"); if(n) { await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
+    crearTipo: async () => { const n = prompt("Tipo:"); if(n) { await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
+    subirArchivos: async (input) => { 
+        if(!input.files.length) return; const btn = input.parentElement; btn.innerText="⏳";
+        for(let i=0; i<input.files.length; i++) {
+            const fd = new FormData(); fd.append('file', input.files[i]);
+            const res = await fetch('/api/subir_foto', { method:'POST', body:fd });
+            if(res.ok) { const d = await res.json(); App.archivosActuales.push({ url: d.url, nombre: input.files[i].name, tipo: d.tipo }); }
+        }
+        App.renderListaArchivos(); btn.innerText="➕"; input.value="";
+    },
+    renderListaArchivos: () => { const div = document.getElementById('lista-archivos'); div.innerHTML=""; App.archivosActuales.forEach((a,i) => div.innerHTML += `<div>${a.nombre} <span onclick="App.quitarArchivo(${i})" style="color:red;cursor:pointer">✕</span></div>`); },
+    quitarArchivo: (i) => { App.archivosActuales.splice(i,1); App.renderListaArchivos(); },
+    nav: (v) => { document.querySelectorAll('.vista').forEach(x=>x.classList.add('oculto')); document.getElementById(v).classList.remove('oculto'); if(v==='vista-lista') document.getElementById('sidebar').classList.remove('oculto'); },
+    buscarMovil: (txt) => { const d = document.getElementById('resultados-movil'); d.innerHTML = ""; if(txt.length<2)return; const h = App.datos.filter(t => (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt.toLowerCase())); d.innerHTML = h.slice(0,10).map(t => `<div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); },
+    nuevoTroquel: () => { document.getElementById('titulo-form').innerText="Nuevo"; document.querySelector('form').reset(); document.getElementById('f-id-db').value=""; App.archivosActuales=[]; App.renderListaArchivos(); if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); App.nav('vista-formulario'); },
+    editar: (id) => { 
+        const t = App.datos.find(x=>x.id===id); if(!t)return;
+        document.getElementById('titulo-form').innerText="Editar";
+        document.getElementById('f-id-db').value=t.id;
+        document.getElementById('f-matricula').value=t.id_troquel;
+        document.getElementById('f-ubicacion').value=t.ubicacion;
+        document.getElementById('f-nombre').value=t.nombre;
+        document.getElementById('f-cat').value=t.categoria_id||"";
+        document.getElementById('f-fam').value=t.familia_id||"";
+        document.getElementById('f-medidas-madera').value=t.tamano_troquel||"";
+        document.getElementById('f-medidas-corte').value=t.tamano_final||"";
+        document.getElementById('f-arts').value=t.codigos_articulo||"";
+        document.getElementById('f-ot').value=t.referencias_ot||"";
+        document.getElementById('f-obs').value=t.observaciones||"";
+        App.archivosActuales = (t.archivos && Array.isArray(t.archivos)) ? t.archivos : [];
+        App.renderListaArchivos();
+        if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); 
+        App.nav('vista-formulario');
+    },
+    volverDesdeForm: () => { if(App.modoMovil) App.activarModoMovil(); else App.nav('vista-lista'); },
+    guardarFicha: async (e) => {
+        e.preventDefault(); const id = document.getElementById('f-id-db').value;
+        const d = { 
+            id_troquel: document.getElementById('f-matricula').value,
+            ubicacion: document.getElementById('f-ubicacion').value,
+            nombre: document.getElementById('f-nombre').value,
+            categoria_id: parseInt(document.getElementById('f-cat').value)||null,
+            familia_id: parseInt(document.getElementById('f-fam').value)||null,
+            tamano_troquel: document.getElementById('f-medidas-madera').value,
+            tamano_final: document.getElementById('f-medidas-corte').value,
+            codigos_articulo: document.getElementById('f-arts').value,
+            referencias_ot: document.getElementById('f-ot').value,
+            observaciones: document.getElementById('f-obs').value,
+            archivos: App.archivosActuales
+        };
+        await fetch(id ? `/api/troqueles/${id}` : '/api/troqueles', { method: id?'PUT':'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) });
+        await App.cargarTodo(); App.volverDesdeForm();
+    },
+    calcularSiguienteId: async () => { const c = document.getElementById('f-cat').value; if(c) { try { const r=await fetch(`/api/siguiente_numero?categoria_id=${c}`); const d=await r.json(); document.getElementById('f-matricula').value=d.siguiente; document.getElementById('f-ubicacion').value=d.siguiente; } catch(e){} } },
+    setFiltroTipo: (t,b) => { App.filtroTipo=t; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('activo')); b.classList.add('activo'); App.renderTabla(); },
+    filtrar: () => { const b=document.getElementById('btn-limpiar'); b.classList.toggle('oculto', document.getElementById('buscador').value===''); App.renderTabla(); },
+    limpiarBuscador: () => { document.getElementById('buscador').value=''; App.filtrar(); },
+    ordenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
+    select: (c,id) => { c.checked ? App.seleccionados.add(id) : App.seleccionados.delete(id); App.updatePanel(); },
+    toggleAll: (c) => { document.querySelectorAll('#tabla-body input[type="checkbox"]').forEach(k=>{ k.checked=c.checked; c.checked ? App.seleccionados.add(parseInt(k.value)) : App.seleccionados.delete(parseInt(k.value)); }); App.updatePanel(); },
+    updatePanel: () => { const p=document.getElementById('panel-acciones'); if(App.seleccionados.size>0) { p.classList.remove('oculto'); document.getElementById('contador-sel').innerText=App.seleccionados.size; } else p.classList.add('oculto'); },
+    limpiarSeleccion: () => { App.seleccionados.clear(); document.getElementById('check-all').checked=false; App.updatePanel(); App.renderTabla(); },
+    descatalogar: async (id) => { if(confirm("¿Baja?")) { const t=App.datos.find(x=>x.id===id); t.estado="DESCATALOGADO"; await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(t) }); App.cargarTodo(); } },
+    borrar: async (id) => { if(confirm("¿Papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
+    restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.cargarTodo(true); },
+    verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
+    moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.limpiarSeleccion(); App.cargarTodo(); },
+    asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(); } },
+    generarQR: (id, ubi, nom) => { document.getElementById('modal-qr').classList.remove('oculto'); document.getElementById('qr-texto-ubi').innerText = ubi; document.getElementById('qr-texto-id').innerText = id; document.getElementById('qr-texto-desc').innerText = nom; new QRious({ element: document.getElementById('qr-canvas'), value: id, size: 200, padding: 0, level: 'M' }); },
+    abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
+    cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
+    exportarCSV: () => { let c="Mat,Ubi,Nom,Est\n"; App.datos.forEach(t=>c+=`${t.id_troquel},${t.ubicacion},${t.nombre},${t.estado}\n`); const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURI(c); a.download='inv.csv'; a.click(); }
+};
+
+window.onload = App.init;

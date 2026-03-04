@@ -6,12 +6,16 @@ import uuid
 
 app = FastAPI()
 
-# CREDENCIALES
+# --- CREDENCIALES ---
 SUPABASE_URL = "https://pkaqgtelkdhxlyjodzbq.supabase.co"
 SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# MODELOS
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except:
+    print("Error conectando a Supabase")
+
+# --- MODELOS ---
 class EntidadAux(BaseModel):
     nombre: str
 
@@ -38,18 +42,12 @@ class BulkUpdate(BaseModel):
     ids: List[int]
     valor_id: int
 
-# RUTAS GET (LECTURA)
+# --- GET ---
 @app.get("/api/troqueles")
 def leer_troqueles(ver_papelera: bool = False):
-    # Lógica permisiva: Si es papelera, busca 'Eliminado'. 
-    # Si NO es papelera, trae todo lo que NO sea 'Eliminado' (incluyendo nulos)
     query = supabase.table("troqueles").select("*")
-    if ver_papelera:
-        query = query.eq("estado_activo", "Eliminado")
-    else:
-        # Esto trae 'Activo', NULL, y cualquier cosa que no sea explícitamente 'Eliminado'
-        query = query.neq("estado_activo", "Eliminado")
-        
+    if ver_papelera: query = query.eq("estado_activo", "Eliminado")
+    else: query = query.neq("estado_activo", "Eliminado")
     return query.order("id_troquel", desc=True).execute().data
 
 @app.get("/api/categorias")
@@ -60,13 +58,8 @@ def leer_fam(): return supabase.table("familias").select("*").order("nombre").ex
 
 @app.get("/api/historial")
 def leer_historial(troquel_id: Optional[int] = None):
-    # Preparamos la consulta
     query = supabase.table("historial").select("*, troqueles(nombre, id_troquel)")
-    
-    # Si nos pasan un ID, filtramos. Si no, traemos los últimos 50 generales.
-    if troquel_id:
-        query = query.eq("troquel_id", troquel_id)
-    
+    if troquel_id: query = query.eq("troquel_id", troquel_id)
     return query.order("fecha_hora", desc=True).limit(50).execute().data
 
 @app.get("/api/siguiente_numero")
@@ -80,7 +73,7 @@ def siguiente_numero(categoria_id: int):
         except: pass
     return {"siguiente": max_num + 1}
 
-# RUTAS POST (ESCRITURA)
+# --- POST/PUT ---
 @app.post("/api/categorias")
 def crear_cat(d: EntidadAux):
     return supabase.table("categorias").insert({"nombre": d.nombre.upper()}).select().execute()
@@ -93,7 +86,8 @@ def crear_fam(d: EntidadAux):
 async def subir_foto(file: UploadFile = File(...)):
     try:
         ext = file.filename.split('.')[-1]
-        nombre_fichero = f"{uuid.uuid4()}.{ext}"
+        id_fichero = str(uuid.uuid4())
+        nombre_fichero = f"{id_fichero}.{ext}"
         contenido = await file.read()
         supabase.storage.from_("fotos").upload(nombre_fichero, contenido, {"content-type": file.content_type})
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/fotos/{nombre_fichero}"
@@ -110,9 +104,24 @@ def crear_troquel(t: TroquelData):
     if res.data: registrar_log(res.data[0]['id'], "CREACION", "NUEVO", d["ubicacion"])
     return res
 
+# --- NUEVA RUTA PARA IMPORTACIÓN MASIVA ---
+@app.post("/api/troqueles/importar")
+def importar_masivo(lista: List[TroquelData]):
+    datos = [t.dict() for t in lista]
+    # Forzamos estado activo
+    for d in datos:
+        d["estado_activo"] = "Activo"
+        if not d["ubicacion"]: d["ubicacion"] = d["id_troquel"]
+        
+    return supabase.table("troqueles").insert(datos).execute()
+
 @app.put("/api/troqueles/{id_db}")
 def editar_troquel(id_db: int, t: TroquelData):
-    return supabase.table("troqueles").update(t.dict()).eq("id", id_db).execute()
+    prev = supabase.table("troqueles").select("ubicacion").eq("id", id_db).execute().data
+    ubi_old = prev[0]['ubicacion'] if prev else ""
+    res = supabase.table("troqueles").update(t.dict()).eq("id", id_db).execute()
+    if ubi_old != t.ubicacion: registrar_log(id_db, "CAMBIO UBICACION", ubi_old, t.ubicacion)
+    return res
 
 @app.delete("/api/troqueles/{id_db}")
 def papelera(id_db: int):
