@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Any, Dict
 from supabase import create_client, Client
 import uuid
-from datetime import datetime, timedelta # NUEVO: Herramientas para calcular fechas
+from datetime import datetime, timedelta
 
 app = FastAPI()
 
@@ -74,37 +74,27 @@ def siguiente_numero(categoria_id: int):
         except: pass
     return {"siguiente": max_num + 1}
 
-# --- NUEVO: ESTADÍSTICAS OBSOLETOS ---
 @app.get("/api/estadisticas/inactivos")
 def troqueles_inactivos(meses: int = 12):
-    # Calculamos la fecha límite (hace X meses)
     fecha_limite = (datetime.utcnow() - timedelta(days=30*meses)).isoformat()
-    
-    # 1. Traemos troqueles activos y el historial completo
     troqueles = supabase.table("troqueles").select("*").eq("estado_activo", "Activo").execute().data
     historial = supabase.table("historial").select("troquel_id, fecha_hora").order("fecha_hora", desc=True).execute().data
     
-    # 2. Agrupamos cuál fue el último movimiento de cada troquel
     ultimos_mov = {}
     for h in historial:
         tid = h['troquel_id']
         if tid not in ultimos_mov:
-            ultimos_mov[tid] = h['fecha_hora'] # Como está ordenado desc, el primero es el más reciente
+            ultimos_mov[tid] = h['fecha_hora'] 
             
     inactivos = []
     for t in troqueles:
-        if t.get('estado') == 'DESCATALOGADO':
-            continue # Si ya está descatalogado, no nos interesa mostrarlo aquí
-            
+        if t.get('estado') == 'DESCATALOGADO': continue
         tid = t['id']
         ultima_fecha = ultimos_mov.get(tid, "")
-        
-        # 3. Filtramos: Si no tiene movimientos, o su último movimiento es más antiguo que el límite
         if not ultima_fecha or ultima_fecha < fecha_limite:
             t['ultima_fecha'] = ultima_fecha
             inactivos.append(t)
             
-    # Ordenamos poniendo los que llevan más tiempo (o no tienen fecha) arriba
     inactivos.sort(key=lambda x: x['ultima_fecha'] if x['ultima_fecha'] else "")
     return inactivos
 
@@ -185,3 +175,36 @@ def bulk_cat(d: BulkUpdate):
 def registrar_log(id_t, accion, orig, dest):
     try: supabase.table("historial").insert({"troquel_id": id_t, "accion": accion, "tipo_movimiento": accion, "ubicacion_anterior": orig, "ubicacion_nueva": dest}).execute()
     except: pass
+
+# --- NUEVO: MANTENIMIENTO DE DUPLICADOS ---
+@app.delete("/api/mantenimiento/limpiar_duplicados")
+def limpiar_duplicados():
+    todos = supabase.table("troqueles").select("*").execute().data
+    vistos = set()
+    ids_a_borrar = []
+    
+    for t in todos:
+        # Creamos la huella ignorando minúsculas y espacios
+        huella = (
+            str(t.get("id_troquel") or "").strip().upper(),
+            str(t.get("ubicacion") or "").strip().upper(),
+            str(t.get("nombre") or "").strip().upper(),
+            t.get("categoria_id"),
+            t.get("familia_id"),
+            str(t.get("codigos_articulo") or "").strip().upper(),
+            str(t.get("referencias_ot") or "").strip().upper(),
+            str(t.get("tamano_troquel") or "").strip().upper(),
+            str(t.get("tamano_final") or "").strip().upper(),
+            str(t.get("observaciones") or "").strip().upper()
+        )
+        # Si ya hemos visto esta huella exacta, lo marcamos para borrar
+        if huella in vistos:
+            ids_a_borrar.append(t["id"])
+        else:
+            vistos.add(huella)
+            
+    # Borramos los clones (uno por uno por seguridad)
+    for id_borrar in ids_a_borrar:
+        supabase.table("troqueles").delete().eq("id", id_borrar).execute()
+        
+    return {"borrados": len(ids_a_borrar)}

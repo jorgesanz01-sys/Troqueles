@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ERP V24 | Importación Avanzada</title>
+    <title>ERP V26 | Anti-Duplicados</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -12,7 +12,7 @@
 <body>
     <div class="erp-layout">
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-logo"><span>🏭</span><h2>ERP V24</h2></div>
+            <div class="sidebar-logo"><span>🏭</span><h2>ERP V26</h2></div>
             <nav class="sidebar-menu">
                 <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
                 <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
@@ -259,7 +259,27 @@
                 </div>
             </div>
 
-            <div id="modal-aux" class="modal oculto"><div class="modal-contenido"><h2>Gestión</h2><div style="display:flex; gap:10px; margin-top:20px;"><button class="btn-accion" onclick="App.crearFamilia()">➕ Nueva Familia</button><button class="btn-accion" onclick="App.crearTipo()">➕ Nuevo Tipo</button></div><div style="margin-top:20px; text-align:right;"><button class="btn-secundario" onclick="document.getElementById('modal-aux').classList.add('oculto')">Cerrar</button></div></div></div>
+            <div id="modal-aux" class="modal oculto">
+                <div class="modal-contenido">
+                    <h2 style="margin-top:0;">⚙️ Gestión y Mantenimiento</h2>
+                    <div style="display:flex; flex-direction:column; gap:15px; margin-top:20px;">
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-accion" style="flex:1;" onclick="App.crearFamilia()">➕ Nueva Familia</button>
+                            <button class="btn-accion" style="flex:1;" onclick="App.crearTipo()">➕ Nuevo Tipo</button>
+                        </div>
+                        <hr style="border:0; border-top:1px solid #cbd5e1; margin:10px 0;">
+                        
+                        <div style="background:#fee2e2; padding:15px; border-radius:8px; border:1px solid #f87171;">
+                            <h4 style="color:#b91c1c; margin-top:0;">Zona de Peligro</h4>
+                            <p style="font-size:12px; color:#991b1b; margin-bottom:10px;">Si has subido el mismo Excel varias veces por error, este botón escaneará toda tu base de datos y eliminará los troqueles que sean copias exactas.</p>
+                            <button id="btn-limpiar-dup" class="btn-secundario" style="width:100%; border-color:#e11d48; color:#e11d48; font-weight:bold;" onclick="App.limpiarDuplicadosExactos()">🧹 Borrar Duplicados Exactos de la BD</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:20px; text-align:right;">
+                        <button class="btn-secundario" onclick="document.getElementById('modal-aux').classList.add('oculto')">Cerrar</button>
+                    </div>
+                </div>
+            </div>
             
             <div id="modal-scanner" class="modal oculto" style="background:black;"><div class="modal-contenido" style="background:#1e293b; color:white; width:100%; height:100%; max-width:none; border:none; display:flex; flex-direction:column;"><div style="padding:10px; display:flex; justify-content:space-between;"><h3 id="titulo-scanner">📸 Escáner</h3><button class="btn-secundario" onclick="App.toggleScanner(false)" style="background:transparent; color:white; border:1px solid white;">✕ Cerrar</button></div><div id="reader" style="flex:1; background:black;"></div><div id="panel-lote" style="height:35%; background:#0f172a; padding:10px; overflow-y:auto;"><div style="display:flex; justify-content:space-between;"><span>Leídos: <strong id="count-scans">0</strong></span></div><div id="lista-escaneados" style="display:flex; flex-wrap:wrap; gap:10px;"></div></div><div id="btns-lote" style="padding:15px; display:flex; gap:10px; justify-content:center; background:#0f172a;"><button class="btn-accion" style="background:#e11d48; width:50%; padding:15px;" onclick="App.procesarEscaneo('SALIDA')">A PRODUCCIÓN</button><button class="btn-accion" style="background:#16a34a; width:50%; padding:15px;" onclick="App.procesarEscaneo('RETORNO')">DEVOLVER</button></div></div></div>
             

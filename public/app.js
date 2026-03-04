@@ -1,21 +1,17 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V25 (IMPORTACIÓN MODO "IA HEURÍSTICA")
+// ERP PACKAGING - LÓGICA V26 (SISTEMA ANTI-DUPLICADOS)
 // =============================================================
 
 const App = {
-    // --- ESTADO ---
     datos: [], seleccionados: new Set(), filtroTipo: 'TODOS',
     mapaCat: {}, mapaFam: {}, columnaOrden: 'id_troquel', ordenAsc: true,
-    scanner: null, modoMovil: false, 
-    modoScanner: 'LOTE', 
+    scanner: null, modoMovil: false, modoScanner: 'LOTE', 
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
 
-    // 1. INICIO
     init: async () => {
-        console.log("Iniciando ERP V25 con Auto-Detección de Columnas...");
+        console.log("Iniciando ERP V26 Anti-Duplicados...");
         await App.cargarSelects();
         await App.cargarTodo();
-
         const params = new URLSearchParams(window.location.search);
         if (params.get('modo') === 'operario') {
             document.body.classList.add('kiosk-mode');
@@ -23,7 +19,6 @@ const App = {
         }
     },
 
-    // 2. CARGA
     cargarTodo: async (papelera = false) => {
         try {
             App.enPapelera = papelera;
@@ -76,7 +71,6 @@ const App = {
         } catch (e) { console.error(e); }
     },
 
-    // 3. TABLA
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body'); if (!tbody) return;
         const txt = document.getElementById('buscador').value.toLowerCase();
@@ -133,7 +127,6 @@ const App = {
         }).join('');
     },
 
-    // ESTADÍSTICAS Y VISTAS
     cargarEstadisticas: async (meses) => {
         const tbody = document.getElementById('tabla-estadisticas');
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando cálculos... ⏳</td></tr>';
@@ -212,7 +205,6 @@ const App = {
         App.editar(id);
     },
 
-    // MÓVIL Y UTILS
     activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
     desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
     abrirDetalleMovil: (id) => {
@@ -313,7 +305,6 @@ const App = {
     borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
     procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
 
-    // FUNCIONES NAVEGACION Y VARIOS
     crearFamilia: async () => { const n = prompt("Familia:"); if(n) { await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     crearTipo: async () => { const n = prompt("Tipo:"); if(n) { await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     subirArchivos: async (input) => { 
@@ -398,6 +389,7 @@ const App = {
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
     cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
     
+    // --- MAGIA GODEX ---
     imprimirEtiquetasGodex: (items) => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
         let html = `<!DOCTYPE html><html><head><title>Impresión Godex 50x23</title><style>@page { size: 50mm 23mm; margin: 0; } body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } .label { width: 50mm; height: 23mm; box-sizing: border-box; padding: 1mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } .qr { width: 19mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 18mm; height: 18mm; } .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 10pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } .ubi { font-size: 7.5pt; font-weight: bold; line-height: 1; margin-bottom: 2px; color: black; } .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; } .arts { font-size: 5.5pt; font-weight: bold; margin-top: 1px; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } @media screen { body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; } .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; } .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; } } @media print { .no-print { display: none !important; } }</style></head><body><button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex</button>`;
@@ -424,14 +416,32 @@ const App = {
         document.getElementById('btn-imprimir-qr-unico').onclick = () => { App.imprimirEtiquetasGodex([t]); };
     },
 
+    // --- NUEVO: FUNCIÓN PARA LIMPIAR DUPLICADOS DE LA BD ---
+    limpiarDuplicadosExactos: async () => {
+        if(confirm("⚠️ ¿Estás seguro? Esto escaneará toda tu base de datos y borrará los troqueles que sean COPIAS EXACTAS (misma matrícula, misma descripción, mismo tipo, etc.).")) {
+            const btn = document.getElementById('btn-limpiar-dup');
+            if(btn) btn.innerText = "⏳ Limpiando Base de Datos...";
+            try {
+                const res = await fetch('/api/mantenimiento/limpiar_duplicados', { method: 'DELETE' });
+                const data = await res.json();
+                alert(`✅ Limpieza completada.\n\nSe han pulverizado ${data.borrados} troqueles que estaban repetidos y eran idénticos.`);
+                await App.cargarTodo();
+            } catch(e) {
+                alert("❌ Ocurrió un error al limpiar los duplicados.");
+                console.error(e);
+            }
+            if(btn) btn.innerText = "🧹 Borrar Duplicados Exactos de la BD";
+            document.getElementById('modal-aux').classList.add('oculto');
+        }
+    },
+
     // ====================================================================
-    // 🧠 MAGIA HEURÍSTICA V25: AUTO-DETECCIÓN DE CUALQUIER COLUMNA
+    // 🧠 IMPORTACIÓN V26: IA HEURÍSTICA Y BLOQUEO DE DUPLICADOS EN LA PUERTA
     // ====================================================================
     procesarImportacion: async (input) => { 
         const file = input.files[0]; 
         if(!file) return; 
 
-        // Capturamos el selector por si quieres forzar el "Tipo" de todos los importados
         const selectElement = document.getElementById('select-import-tipo');
         const idTipoDefecto = (selectElement && selectElement.value) ? parseInt(selectElement.value) : null;
         
@@ -441,15 +451,11 @@ const App = {
                 const filas = e.target.result.split(/\r?\n/); 
                 if(filas.length < 2) { alert("El archivo está vacío o no tiene datos."); return; }
                 
-                // --- 1. LECTURA DE CABECERA ---
                 const cabeceraStr = filas[0];
                 const separador = cabeceraStr.includes(';') ? ';' : ',';
-                
-                // Normalizamos las palabras quitando acentos y comillas, todo a mayúsculas
                 const normalizar = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/['"]/g,'').trim();
                 const cabecera = cabeceraStr.split(separador).map(c => normalizar(c));
                 
-                // --- 2. MAPEO INTELIGENTE (LA IA EN ACCIÓN) ---
                 let colsMap = { mat: -1, ubi: -1, nom: -1, tipo: -1, ot: -1, arts: -1, madera: -1, corte: -1, obs: -1 };
 
                 cabecera.forEach((c, index) => {
@@ -464,31 +470,39 @@ const App = {
                     else if (/OBS|NOTAS|COMENTARIO/i.test(c) && colsMap.obs === -1) colsMap.obs = index;
                 });
 
-                // Si no detecta nada porque el Excel no tiene títulos, asume un orden por defecto para no romper
                 if (colsMap.mat === -1) colsMap.mat = 0;
                 if (colsMap.ubi === -1) colsMap.ubi = 1;
                 if (colsMap.nom === -1) colsMap.nom = 2;
 
-                // Mapa de tipos
                 const catNameToId = {};
                 Object.keys(App.mapaCat).forEach(id => { catNameToId[normalizar(App.mapaCat[id])] = parseInt(id); });
 
                 const troqueles = [];
-                
-                // --- 3. EXTRACCIÓN DE DATOS ---
+                const hashesExistentes = new Set();
+                let duplicadosOmitidos = 0;
+
+                // Creador de Huellas Dactilares para detectar copias exactas
+                const generarHuella = (t) => {
+                    return [
+                        t.id_troquel, t.ubicacion, t.nombre, t.categoria_id, t.familia_id,
+                        t.codigos_articulo, t.referencias_ot, t.tamano_troquel, t.tamano_final, t.observaciones
+                    ].map(x => (x || "").toString().trim().toUpperCase()).join('|');
+                };
+
+                // Registramos las huellas de los troqueles que YA están en la BD
+                App.datos.forEach(t => hashesExistentes.add(generarHuella(t)));
+
+                // Extracción del Excel
                 for(let i=1; i<filas.length; i++) {
                     const f = filas[i];
                     if(!f.trim()) continue;
                     
                     const cols = f.split(separador);
-                    
                     const mat = colsMap.mat !== -1 && cols[colsMap.mat] ? cols[colsMap.mat].replace(/['"]/g,'').trim() : null;
-                    if(!mat) continue; // Si no hay matrícula, saltamos la línea
+                    if(!mat) continue; 
 
                     const ubi = colsMap.ubi !== -1 && cols[colsMap.ubi] ? cols[colsMap.ubi].replace(/['"]/g,'').trim() : mat;
                     const nom = colsMap.nom !== -1 && cols[colsMap.nom] ? cols[colsMap.nom].replace(/['"]/g,'').trim() : "Sin Descripción";
-                    
-                    // Extraemos los opcionales
                     const tipoStr = colsMap.tipo !== -1 && cols[colsMap.tipo] ? normalizar(cols[colsMap.tipo]) : null;
                     const ot = colsMap.ot !== -1 && cols[colsMap.ot] ? cols[colsMap.ot].replace(/['"]/g,'').trim() : "";
                     const arts = colsMap.arts !== -1 && cols[colsMap.arts] ? cols[colsMap.arts].replace(/['"]/g,'').trim() : "";
@@ -496,23 +510,30 @@ const App = {
                     const corte = colsMap.corte !== -1 && cols[colsMap.corte] ? cols[colsMap.corte].replace(/['"]/g,'').trim() : "";
                     const obs = colsMap.obs !== -1 && cols[colsMap.obs] ? cols[colsMap.obs].replace(/['"]/g,'').trim() : "";
                     
-                    let catId = idTipoDefecto; // Por defecto el del desplegable
-                    if(tipoStr && catNameToId[tipoStr]) catId = catNameToId[tipoStr]; // Si el Excel trae uno válido, lo sobreescribe
+                    let catId = idTipoDefecto; 
+                    if(tipoStr && catNameToId[tipoStr]) catId = catNameToId[tipoStr]; 
 
-                    troqueles.push({ 
-                        id_troquel: mat, 
-                        ubicacion: ubi, 
-                        nombre: nom,
-                        categoria_id: catId,
-                        referencias_ot: ot,
-                        codigos_articulo: arts,
-                        tamano_troquel: madera,
-                        tamano_final: corte,
-                        observaciones: obs
-                    });
+                    const nuevoTroquel = { 
+                        id_troquel: mat, ubicacion: ubi, nombre: nom, categoria_id: catId,
+                        referencias_ot: ot, codigos_articulo: arts,
+                        tamano_troquel: madera, tamano_final: corte, observaciones: obs
+                    };
+
+                    const huella = generarHuella(nuevoTroquel);
+
+                    // FILTRO ANTI-DUPLICADOS: Si es exactamente igual a uno que ya existe, lo saltamos
+                    if (!hashesExistentes.has(huella)) {
+                        troqueles.push(nuevoTroquel);
+                        hashesExistentes.add(huella); // Evitamos que se duplique dentro del mismo Excel
+                    } else {
+                        duplicadosOmitidos++;
+                    }
                 }
                 
-                if(troqueles.length === 0) { alert("No se encontraron datos para importar."); input.value = ""; return; }
+                if(troqueles.length === 0) { 
+                    alert(`No hay nada nuevo que importar.\nSe han ignorado ${duplicadosOmitidos} filas porque eran copias EXACTAS de troqueles que ya tenías en el sistema.`); 
+                    input.value = ""; return; 
+                }
                 
                 const res = await fetch('/api/troqueles/importar', { 
                     method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(troqueles) 
@@ -520,12 +541,12 @@ const App = {
                 
                 if(res.ok) { 
                     App.cargarTodo(); 
-                    alert(`✅ Mapeo Inteligente Completado.\nSe han importado ${troqueles.length} troqueles con todos sus datos extra.`); 
+                    let msj = `✅ ÉXITO: Se han importado ${troqueles.length} troqueles nuevos.`;
+                    if(duplicadosOmitidos > 0) msj += `\n\n🛡️ SISTEMA ANTI-DUPLICADOS: Se han bloqueado ${duplicadosOmitidos} filas que estaban repetidas.`;
+                    alert(msj);
                     if(selectElement) selectElement.value = ""; 
                 } else {
-                    const errorBack = await res.text();
-                    console.error("Error BD:", errorBack);
-                    alert(`❌ ERROR DE BASE DE DATOS:\nProbablemente algún código del Excel ya existe y Supabase bloqueó la subida.`);
+                    alert(`❌ ERROR DE BASE DE DATOS:\nProbablemente algún código del Excel rompe alguna regla de la BD.`);
                 }
             } catch (err) { console.error("Fallo general:", err); alert("❌ Ocurrió un error procesando el archivo."); }
             input.value = ""; 
