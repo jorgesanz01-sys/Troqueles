@@ -79,9 +79,13 @@ init: async () => {
         } catch (e) { console.error(e); }
     },
 
-    // 3. VISTA LECTURA PC
+ // ... dentro de App ...
+
+    // 3. VISTA LECTURA PC (MODAL) - CON BOTÓN DE IMPRIMIR AÑADIDO
     verFicha: (id) => {
         const t = App.datos.find(x => x.id === id); if (!t) return;
+        
+        // Rellenamos los textos
         document.getElementById('ver-matricula').innerText = t.id_troquel || "-";
         document.getElementById('ver-ubicacion').innerText = t.ubicacion || "-";
         document.getElementById('ver-nombre').innerText = t.nombre || "-";
@@ -89,15 +93,45 @@ init: async () => {
         document.getElementById('ver-familia').innerHTML = App.mapaFam[t.familia_id] || '-';
         document.getElementById('ver-id-oculto').value = t.id;
 
+        // Galería de fotos
         const gal = document.getElementById('ver-galeria'); gal.innerHTML = "";
         if (t.archivos && t.archivos.length > 0) {
             t.archivos.forEach(arch => {
-                const icon = arch.tipo === 'pdf' ? '📄' : `<img src="${arch.url}">`;
-                gal.innerHTML += `<a href="${arch.url}" target="_blank" class="thumb-archivo">${icon}<span>${arch.nombre}</span></a>`;
+                const icon = arch.tipo === 'pdf' ? '📄' : `<img src="${arch.url}" style="height:50px;">`;
+                gal.innerHTML += `<a href="${arch.url}" target="_blank" style="margin-right:10px; text-decoration:none;">${icon}<br><small>${arch.nombre.substring(0,10)}</small></a>`;
             });
-        } else gal.innerHTML = "<span>Sin archivos</span>";
+        } else gal.innerHTML = "<span style='color:#999'>Sin archivos</span>";
+        
+        // === AQUÍ ESTÁ EL CAMBIO CLAVE ===
+        // Añadimos un botón de imprimir directamente en la cabecera del modal o lo inyectamos
+        // Para no tocar el HTML, usaremos el botón de editar como referencia o añadimos uno nuevo dinámicamente
+        // La forma más fácil es asegurarnos de que el botón de generarQR funciona:
+        
+        // TRUCO: Como el HTML del modal es fijo, vamos a añadir un botón de "Imprimir" 
+        // temporalmente al lado del título solo visualmente si quieres, 
+        // PERO lo más limpio es añadirlo en la tabla (que ya lo tienes) 
+        // O añadir un botón extra en el modal de ficha.
+        
+        // Vamos a inyectar el botón de IMPRIMIR dentro del modal de ficha via JS:
+        let btnPrint = document.getElementById('btn-print-ficha');
+        if(!btnPrint) {
+            // Si no existe, lo creamos al vuelo en la cabecera del modal
+            const header = document.querySelector('#modal-ficha h2').parentNode;
+            btnPrint = document.createElement('button');
+            btnPrint.id = 'btn-print-ficha';
+            btnPrint.className = 'btn-secundario';
+            btnPrint.style.marginRight = '10px';
+            btnPrint.innerHTML = '🖨️ Etiqueta';
+            header.insertBefore(btnPrint, header.firstChild);
+        }
+        
+        // Le asignamos la función de imprimir el troquel actual
+        btnPrint.onclick = () => App.generarQR(t.id_troquel, t.ubicacion, t.nombre);
+
         document.getElementById('modal-ficha').classList.remove('oculto');
     },
+
+    // ... resto del código ...
     editarDesdeFicha: () => {
         const id = parseInt(document.getElementById('ver-id-oculto').value);
         document.getElementById('modal-ficha').classList.add('oculto');

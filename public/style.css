@@ -135,3 +135,83 @@ body.kiosk-mode .erp-layout {
 body.kiosk-mode .main-content {
     padding: 0;
 }
+/* ================================================================= */
+/* CONFIGURACIÓN ETIQUETA GODEX 50x23mm (NO BORRAR) */
+/* ================================================================= */
+
+/* Diseño en pantalla (Preview) */
+.etiqueta-preview {
+    width: 50mm;
+    height: 23mm;
+    border: 1px dashed black;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    background: white;
+    padding: 1mm;
+    box-sizing: border-box;
+}
+
+.etiqueta-preview canvas {
+    width: 18mm !important;
+    height: 18mm !important;
+    image-rendering: pixelated; /* Para que el QR no salga borroso */
+}
+
+.etiqueta-info {
+    flex: 1;
+    margin-left: 2mm;
+    text-align: left;
+    overflow: hidden;
+    line-height: 1;
+}
+
+.etiq-ubi { font-size: 14px; font-weight: 900; }
+.etiq-id { font-size: 10px; font-family: monospace; font-weight: bold; }
+.etiq-desc { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28mm; }
+
+/* CONFIGURACIÓN DE IMPRESIÓN REAL */
+@media print {
+    @page {
+        size: 50mm 23mm;
+        margin: 0; /* IMPRESCINDIBLE PARA GODEX */
+    }
+    
+    body { 
+        margin: 0; 
+        padding: 0; 
+        background: white; 
+    }
+
+    /* Ocultar TODO lo que no sea el modal de QR */
+    .erp-layout, .sidebar, .main-content, .modal, .no-print { 
+        display: none !important; 
+    }
+
+    /* Mostrar SOLO el modal QR y posicionarlo arriba a la izquierda */
+    #modal-qr {
+        display: block !important;
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 50mm;
+        height: 23mm;
+        background: white;
+        z-index: 9999;
+    }
+
+    .modal-contenido {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    .etiqueta-preview {
+        border: none; /* Quitar borde discontinuo al imprimir */
+        width: 100%;
+        height: 100%;
+    }
+}
