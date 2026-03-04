@@ -6,17 +6,16 @@ import uuid
 
 app = FastAPI()
 
-# --- CONFIGURACIÓN SUPABASE ---
-# SUSTITUYE CON TUS CREDENCIALES REALES SI SON DIFERENTES
+# --- TUS CREDENCIALES ---
 SUPABASE_URL = "https://pkaqgtelkdhxlyjodzbq.supabase.co"
 SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
 
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 except:
-    print("Error crítico conectando a Supabase")
+    print("Error conectando a Supabase")
 
-# --- MODELOS DE DATOS (Lo que envías desde la web) ---
+# --- MODELOS ---
 class EntidadAux(BaseModel):
     nombre: str
 
@@ -32,7 +31,7 @@ class TroquelData(BaseModel):
     tamano_troquel: Optional[str] = ""
     tamano_final: Optional[str] = ""
     observaciones: Optional[str] = ""
-    archivos: List[Dict[str, Any]] = [] # Lista de fotos/pdf
+    archivos: List[Dict[str, Any]] = []
 
 class MovimientoLote(BaseModel):
     ids: List[int]
@@ -46,7 +45,7 @@ class BulkUpdate(BaseModel):
 # --- RUTAS DE LECTURA (GET) ---
 @app.get("/api/troqueles")
 def leer_troqueles(ver_papelera: bool = False):
-    # PEDIMOS DATOS CRUDOS. Sin relaciones que fallen.
+    # PEDIMOS DATOS CRUDOS. Sin relaciones complejas.
     query = supabase.table("troqueles").select("*")
     
     if ver_papelera:
@@ -64,7 +63,7 @@ def leer_fam(): return supabase.table("familias").select("*").order("nombre").ex
 
 @app.get("/api/historial")
 def leer_historial():
-    # El historial sí intenta traer nombres para que sea legible, si falla trae null
+    # El historial intenta traer nombres, si falla devuelve vacio para no romper
     try:
         return supabase.table("historial").select("*, troqueles(nombre, id_troquel)").order("fecha_hora", desc=True).limit(50).execute().data
     except:
@@ -72,7 +71,7 @@ def leer_historial():
 
 @app.get("/api/siguiente_numero")
 def siguiente_numero(categoria_id: int):
-    # Busca el número más alto de esa categoría para sugerir el siguiente
+    # Busca el número más alto para sugerir el siguiente
     res = supabase.table("troqueles").select("id_troquel").eq("categoria_id", categoria_id).execute().data
     max_num = 0
     for t in res:
@@ -82,9 +81,8 @@ def siguiente_numero(categoria_id: int):
         except: pass
     return {"siguiente": max_num + 1}
 
-# --- RUTAS DE ESCRITURA (POST/PUT/DELETE) ---
+# --- RUTAS DE ESCRITURA ---
 
-# Crear Familias/Tipos
 @app.post("/api/categorias")
 def crear_cat(d: EntidadAux):
     return supabase.table("categorias").insert({"nombre": d.nombre.upper()}).select().execute()
@@ -93,7 +91,6 @@ def crear_cat(d: EntidadAux):
 def crear_fam(d: EntidadAux):
     return supabase.table("familias").insert({"nombre": d.nombre.upper()}).select().execute()
 
-# Subir Fotos
 @app.post("/api/subir_foto")
 async def subir_foto(file: UploadFile = File(...)):
     try:
@@ -109,7 +106,6 @@ async def subir_foto(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# CRUD Troqueles
 @app.post("/api/troqueles")
 def crear_troquel(t: TroquelData):
     datos = t.dict()
@@ -122,7 +118,6 @@ def crear_troquel(t: TroquelData):
 
 @app.put("/api/troqueles/{id_db}")
 def editar_troquel(id_db: int, t: TroquelData):
-    # Guardamos ubicación anterior para el log
     prev = supabase.table("troqueles").select("ubicacion").eq("id", id_db).execute().data
     ubi_old = prev[0]['ubicacion'] if prev else ""
     
@@ -144,7 +139,6 @@ def restaurar(id_db: int):
     registrar_log(id_db, "RESTAURADO", "PAPELERA", "ACTIVO")
     return {"ok": True}
 
-# Acciones Masivas
 @app.post("/api/movimientos/lote")
 def mover_lote(d: MovimientoLote):
     for id_db in d.ids:
@@ -166,7 +160,6 @@ def bulk_fam(d: BulkUpdate):
 def bulk_cat(d: BulkUpdate):
     return supabase.table("troqueles").update({"categoria_id": d.valor_id}).in_("id", d.ids).execute()
 
-# Helper
 def registrar_log(id_t, accion, orig, dest):
     try:
         supabase.table("historial").insert({
