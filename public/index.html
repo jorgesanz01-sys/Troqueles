@@ -177,5 +177,26 @@
         </main>
     </div>
     <script src="app.js"></script>
+    <div id="modal-historial-unico" class="modal oculto">
+    <div class="modal-contenido" style="width: 600px; max-width:95%;">
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #ddd; padding-bottom:10px;">
+            <h3 style="margin:0;">📜 Historial del Troquel</h3>
+            <button class="btn-secundario" onclick="document.getElementById('modal-historial-unico').classList.add('oculto')">✕</button>
+        </div>
+        <div style="background:#f1f5f9; padding:10px; margin:10px 0; border-radius:4px;">
+            <strong id="hist-titulo-mat" style="color:#0f766e; font-size:18px;"></strong><br>
+            <span id="hist-titulo-nom"></span>
+        </div>
+        <div style="max-height:300px; overflow-y:auto;">
+            <table class="tabla-pro" style="font-size:12px;">
+                <thead><tr style="background:#e2e8f0;"><th>Fecha</th><th>Acción</th><th>Movimiento</th></tr></thead>
+                <tbody id="tabla-historial-unico"></tbody>
+            </table>
+        </div>
+        <div style="text-align:right; margin-top:10px;">
+            <button class="btn-secundario" onclick="document.getElementById('modal-historial-unico').classList.add('oculto')">Cerrar</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
