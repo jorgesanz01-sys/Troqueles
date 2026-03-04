@@ -104,7 +104,6 @@ def crear_troquel(t: TroquelData):
     if res.data: registrar_log(res.data[0]['id'], "CREACION", "NUEVO", d["ubicacion"])
     return res
 
-# --- NUEVA RUTA PARA IMPORTACIÓN MASIVA ---
 @app.post("/api/troqueles/importar")
 def importar_masivo(lista: List[TroquelData]):
     datos = [t.dict() for t in lista]

@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V17 (CORREGIDA)
+// ERP PACKAGING - LÓGICA V17 (OPERARIO + HISTORIAL INDIVIDUAL)
 // =============================================================
 
 const App = {
@@ -16,7 +16,7 @@ const App = {
         await App.cargarSelects();
         await App.cargarTodo();
 
-        // Detectar Modo Kiosco Operario
+        // Detectar Modo Kiosco
         const params = new URLSearchParams(window.location.search);
         if (params.get('modo') === 'operario') {
             document.body.classList.add('kiosk-mode');
@@ -24,7 +24,7 @@ const App = {
         }
     },
 
-    // 2. CARGA DE DATOS
+    // 2. CARGA
     cargarTodo: async (papelera = false) => {
         try {
             App.enPapelera = papelera;
@@ -32,11 +32,9 @@ const App = {
             if (res.ok) {
                 App.datos = await res.json();
                 App.renderTabla();
-                
                 document.getElementById('titulo-lista').innerText = papelera ? "🗑️ PAPELERA" : "Inventario Activo";
                 const btn = document.getElementById('btn-restaurar-papelera');
                 const panel = document.getElementById('panel-acciones');
-                
                 if (papelera) { 
                     if(btn) btn.classList.remove('oculto'); 
                     if(panel) panel.classList.add('oculto'); 
@@ -79,7 +77,7 @@ const App = {
         } catch (e) { console.error(e); }
     },
 
-    // 3. TABLA PC
+    // 3. TABLA PC (CON BOTÓN HISTORIAL 🕒)
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body'); if (!tbody) return;
         const txt = document.getElementById('buscador').value.toLowerCase();
@@ -118,7 +116,6 @@ const App = {
             let fam = App.mapaFam[t.familia_id];
             if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
 
-            // BOTONES
             let btns = `
                 <button class="btn-icono" onclick="App.verFicha(${t.id})" title="Ver Ficha">👁️</button>
                 <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
@@ -137,7 +134,7 @@ const App = {
         }).join('');
     },
 
-    // 4. HISTORIAL INDIVIDUAL
+    // 4. NUEVA FUNCIÓN: VER HISTORIAL INDIVIDUAL
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico');
         const tbody = document.getElementById('tabla-historial-unico');
@@ -167,7 +164,7 @@ const App = {
         } catch (e) { tbody.innerHTML = '<tr><td colspan="3">Error carga</td></tr>'; }
     },
 
-    // 5. VISTA FICHA DE LECTURA (MODAL)
+    // 5. VISTA FICHA
     verFicha: (id) => {
         const t = App.datos.find(x => x.id === id); if (!t) return;
         document.getElementById('ver-matricula').innerText = t.id_troquel || "-";
@@ -199,155 +196,29 @@ const App = {
 
         document.getElementById('modal-ficha').classList.remove('oculto');
     },
-    
     editarDesdeFicha: () => {
         const id = parseInt(document.getElementById('ver-id-oculto').value);
         document.getElementById('modal-ficha').classList.add('oculto');
         App.editar(id);
     },
 
-    // =========================================================
-    // 6. FORMULARIO DE EDICIÓN Y ALTA (CORREGIDO Y RESTAURADO)
-    // =========================================================
-    nuevoTroquel: () => {
-        // Limpiamos y preparamos el formulario para un alta nueva
-        document.getElementById('titulo-form').innerText = "Alta de Nuevo Troquel";
-        document.querySelector('form').reset();
-        document.getElementById('f-id-db').value = ""; // ID vacío significa "Nuevo"
-        
-        // Limpiamos los archivos temporales
-        App.archivosActuales = [];
-        App.renderListaArchivos();
-        
-        // Si estamos en móvil, ocultamos la barra lateral para que se vea bien
-        if (App.modoMovil) document.getElementById('sidebar').classList.add('oculto');
-        
-        App.nav('vista-formulario'); // Mostramos la pantalla del formulario
-    },
-
-    editar: (id) => {
-        // Buscamos el troquel en nuestra base de datos local
-        const t = App.datos.find(x => x.id === id); 
-        if (!t) return;
-        
-        // Rellenamos el formulario con los datos existentes
-        document.getElementById('titulo-form').innerText = "Editar Ficha Técnica";
-        document.getElementById('f-id-db').value = t.id; // Guardamos el ID para saber que estamos editando
-        document.getElementById('f-matricula').value = t.id_troquel;
-        document.getElementById('f-ubicacion').value = t.ubicacion;
-        document.getElementById('f-nombre').value = t.nombre;
-        
-        // Cargar selects, si no tienen valor ponemos cadena vacía
-        document.getElementById('f-cat').value = t.categoria_id || "";
-        document.getElementById('f-fam').value = t.familia_id || "";
-        
-        document.getElementById('f-medidas-madera').value = t.tamano_troquel || "";
-        document.getElementById('f-medidas-corte').value = t.tamano_final || "";
-        document.getElementById('f-arts').value = t.codigos_articulo || "";
-        document.getElementById('f-ot').value = t.referencias_ot || "";
-        document.getElementById('f-obs').value = t.observaciones || "";
-        
-        // Cargar los archivos que ya tenía el troquel
-        App.archivosActuales = (t.archivos && Array.isArray(t.archivos)) ? t.archivos : [];
-        App.renderListaArchivos();
-        
-        if (App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); 
-        
-        App.nav('vista-formulario'); // Vamos a la pantalla
-    },
-
-    guardarFicha: async (e) => {
-        e.preventDefault(); // Evitar que la página recargue por defecto
-        
-        const id = document.getElementById('f-id-db').value;
-        
-        // Recogemos todos los datos de las cajas de texto
-        const datosFormulario = { 
-            id_troquel: document.getElementById('f-matricula').value,
-            ubicacion: document.getElementById('f-ubicacion').value,
-            nombre: document.getElementById('f-nombre').value,
-            categoria_id: parseInt(document.getElementById('f-cat').value) || null,
-            familia_id: parseInt(document.getElementById('f-fam').value) || null,
-            tamano_troquel: document.getElementById('f-medidas-madera').value,
-            tamano_final: document.getElementById('f-medidas-corte').value,
-            codigos_articulo: document.getElementById('f-arts').value,
-            referencias_ot: document.getElementById('f-ot').value,
-            observaciones: document.getElementById('f-obs').value,
-            archivos: App.archivosActuales // La lista de fotos/pdf
-        };
-
-        // Si hay ID usamos PUT (actualizar), si no hay usamos POST (crear)
-        const method = id ? 'PUT' : 'POST';
-        const url = id ? `/api/troqueles/${id}` : '/api/troqueles';
-
-        try {
-            await fetch(url, { 
-                method: method, 
-                headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify(datosFormulario) 
-            });
-            
-            // Volvemos a la lista y recargamos datos frescos
-            await App.cargarTodo(); 
-            App.volverDesdeForm();
-        } catch (e) {
-            console.error("Error guardando:", e);
-            alert("Hubo un error al guardar la ficha.");
-        }
-    },
-
-    volverDesdeForm: () => {
-        if (App.modoMovil) App.activarModoMovil();
-        else App.nav('vista-lista');
-    },
-
-    calcularSiguienteId: async () => {
-        const idDb = document.getElementById('f-id-db').value;
-        if (idDb) return; // Si estamos editando, NO calculamos nueva matrícula
-        
-        const catId = document.getElementById('f-cat').value;
-        if (!catId) return; // Si no hay tipo seleccionado, no calculamos nada
-        
-        try {
-            const res = await fetch(`/api/siguiente_numero?categoria_id=${catId}`);
-            const data = await res.json();
-            document.getElementById('f-matricula').value = data.siguiente;
-            document.getElementById('f-ubicacion').value = data.siguiente;
-        } catch (e) { console.error("Error calculando ID", e); }
-    },
-
-    // 7. MODO OPERARIO (MÓVIL)
-    activarModoMovil: () => { 
-        App.modoMovil = true; 
-        document.getElementById('sidebar').classList.add('oculto'); 
-        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); 
-        document.getElementById('vista-movil').classList.remove('oculto'); 
-    },
-    desactivarModoMovil: () => { 
-        App.modoMovil = false; 
-        document.getElementById('sidebar').classList.remove('oculto'); 
-        App.nav('vista-lista'); 
-    },
+    // 6. MODO OPERARIO
+    activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
+    desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
     
     abrirDetalleMovil: (id) => {
         const t = App.datos.find(x => x.id === id); if(!t) return;
         document.getElementById('vista-movil').classList.add('oculto');
         document.getElementById('vista-movil-detalle').classList.remove('oculto');
-        
         document.getElementById('movil-id-db').value = t.id;
         document.getElementById('movil-id').innerText = t.id_troquel;
         document.getElementById('movil-ubi').innerText = t.ubicacion;
         document.getElementById('movil-nombre').innerText = t.nombre;
-        
         let stHtml = `<span style="background:#dcfce7; color:#166534; padding:5px 10px; border-radius:15px; font-weight:bold;">ALMACÉN</span>`;
         if(t.estado==='EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px; font-weight:bold;">PRODUCCIÓN</span>`;
         document.getElementById('movil-estado').innerHTML = stHtml;
     },
-    volverMenuMovil: () => { 
-        document.getElementById('vista-movil-detalle').classList.add('oculto'); 
-        document.getElementById('vista-movil').classList.remove('oculto'); 
-        App.cargarTodo(); 
-    },
+    volverMenuMovil: () => { document.getElementById('vista-movil-detalle').classList.add('oculto'); document.getElementById('vista-movil').classList.remove('oculto'); App.cargarTodo(); },
     
     movilCambiarUbi: async () => {
         const id = document.getElementById('movil-id-db').value;
@@ -386,11 +257,10 @@ const App = {
         } catch(e) { alert("Error foto"); }
     },
 
-    // 8. ESCÁNER
+    // 7. ESCÁNER
     toggleScanner: (show=true, modo='LOTE') => {
         const el = document.getElementById('modal-scanner');
         App.modoScanner = modo;
-        
         const pLote = document.getElementById('panel-lote');
         const bLote = document.getElementById('btns-lote');
         const tit = document.getElementById('titulo-scanner');
@@ -437,99 +307,97 @@ const App = {
     borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
     procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
 
-    // 9. IMPORTACIÓN CSV MASIVA
-    procesarImportacion: (input) => {
-        const file = input.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const text = e.target.result;
-            const separador = text.indexOf(';') > -1 ? ';' : ',';
-            const lineas = text.split('\n');
-            const lista = [];
-
-            // Invertir diccionarios para buscar ID a partir del Nombre
-            const catInv = {}; const famInv = {};
-            Object.keys(App.mapaCat).forEach(k => catInv[App.mapaCat[k].toUpperCase()] = parseInt(k));
-            Object.keys(App.mapaFam).forEach(k => famInv[App.mapaFam[k].toUpperCase()] = parseInt(k));
-
-            for(let i=1; i<lineas.length; i++) {
-                const fila = lineas[i].trim();
-                if(!fila) continue;
-                const cols = fila.split(separador);
-                if(cols.length < 3) continue;
-
-                const tipoStr = cols[3] ? cols[3].trim().replace(/"/g,'').toUpperCase() : "";
-                const famStr = cols[4] ? cols[4].trim().replace(/"/g,'').toUpperCase() : "";
-                
-                lista.push({
-                    id_troquel: cols[0].trim().replace(/"/g,''),
-                    ubicacion: cols[1].trim().replace(/"/g,''),
-                    nombre: cols[2].trim().replace(/"/g,''),
-                    categoria_id: catInv[tipoStr] || null,
-                    familia_id: famInv[famStr] || null,
-                    estado: "EN ALMACEN"
-                });
-            }
-
-            if(lista.length > 0 && confirm(`Importar ${lista.length} troqueles?`)) {
-                await fetch('/api/troqueles/importar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(lista) });
-                alert("Importado");
-                App.cargarTodo();
-            }
-            input.value = "";
-        };
-        reader.readAsText(file);
-    },
-
-    // 10. UTILIDADES Y GESTIÓN DE ARCHIVOS
+    // 8. UTILS
     crearFamilia: async () => { const n = prompt("Familia:"); if(n) { await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     crearTipo: async () => { const n = prompt("Tipo:"); if(n) { await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
-    
     subirArchivos: async (input) => { 
-        if(!input.files.length) return; const btn = input.parentElement; btn.innerText="⏳ ...";
+        if(!input.files.length) return; const btn = input.parentElement; btn.innerText="⏳";
         for(let i=0; i<input.files.length; i++) {
             const fd = new FormData(); fd.append('file', input.files[i]);
             const res = await fetch('/api/subir_foto', { method:'POST', body:fd });
             if(res.ok) { const d = await res.json(); App.archivosActuales.push({ url: d.url, nombre: input.files[i].name, tipo: d.tipo }); }
         }
-        App.renderListaArchivos(); btn.innerText="➕ Subir Archivo"; input.value="";
+        App.renderListaArchivos(); btn.innerText="➕"; input.value="";
     },
     renderListaArchivos: () => { 
         const div = document.getElementById('lista-archivos'); div.innerHTML=""; 
-        App.archivosActuales.forEach((a,i) => {
-            const icon = a.tipo === 'pdf' ? '📄' : `<img src="${a.url}" style="height:30px; border-radius:3px;">`;
-            div.innerHTML += `<div style="display:flex; align-items:center; gap:5px; background:white; padding:5px; border:1px solid #ddd; font-size:11px;"><a href="${a.url}" target="_blank">${icon}</a><span>${a.nombre.substring(0,10)}</span><span onclick="App.quitarArchivo(${i})" style="color:red;cursor:pointer">✕</span></div>`;
-        }); 
+        App.archivosActuales.forEach((a,i) => div.innerHTML += `<div>${a.nombre} <span onclick="App.quitarArchivo(${i})" style="color:red;cursor:pointer">✕</span></div>`); 
     },
-    quitarArchivo: (i) => { if(confirm("¿Quitar?")){ App.archivosActuales.splice(i,1); App.renderListaArchivos(); } },
-
+    quitarArchivo: (i) => { App.archivosActuales.splice(i,1); App.renderListaArchivos(); },
     nav: (v) => { document.querySelectorAll('.vista').forEach(x=>x.classList.add('oculto')); document.getElementById(v).classList.remove('oculto'); if(v==='vista-lista') document.getElementById('sidebar').classList.remove('oculto'); },
     buscarMovil: (txt) => { const d = document.getElementById('resultados-movil'); d.innerHTML = ""; if(txt.length<2)return; const h = App.datos.filter(t => (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt.toLowerCase())); d.innerHTML = h.slice(0,10).map(t => `<div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); },
+    nuevoTroquel: () => { document.getElementById('titulo-form').innerText="Nuevo"; document.querySelector('form').reset(); document.getElementById('f-id-db').value=""; App.archivosActuales=[]; App.renderListaArchivos(); if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); App.nav('vista-formulario'); },
     
+    // AQUÍ ESTÁ LA MAGIA: Una función editar segura a prueba de errores
+    editar: (id) => { 
+        const t = App.datos.find(x=>x.id===id); if(!t)return;
+        document.getElementById('titulo-form').innerText="Editar";
+        
+        // Función ayudante que asigna el valor sólo si el elemento existe en el HTML
+        const setVal = (elId, val) => { const el = document.getElementById(elId); if(el) el.value = val; };
+        
+        setVal('f-id-db', t.id);
+        setVal('f-matricula', t.id_troquel);
+        setVal('f-ubicacion', t.ubicacion);
+        setVal('f-nombre', t.nombre);
+        setVal('f-cat', t.categoria_id||"");
+        setVal('f-fam', t.familia_id||"");
+        setVal('f-medidas-madera', t.tamano_troquel||"");
+        setVal('f-medidas-corte', t.tamano_final||"");
+        setVal('f-arts', t.codigos_articulo||"");
+        setVal('f-ot', t.referencias_ot||"");
+        setVal('f-obs', t.observaciones||"");
+
+        App.archivosActuales = (t.archivos && Array.isArray(t.archivos)) ? t.archivos : [];
+        App.renderListaArchivos();
+        if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); 
+        App.nav('vista-formulario');
+    },
+    
+    volverDesdeForm: () => { if(App.modoMovil) App.activarModoMovil(); else App.nav('vista-lista'); },
+    
+    guardarFicha: async (e) => {
+        e.preventDefault(); const id = document.getElementById('f-id-db').value;
+        
+        // Función ayudante para sacar datos de forma segura
+        const getVal = (elId) => { const el = document.getElementById(elId); return el ? el.value : ""; };
+        
+        const d = { 
+            id_troquel: getVal('f-matricula'),
+            ubicacion: getVal('f-ubicacion'),
+            nombre: getVal('f-nombre'),
+            categoria_id: parseInt(getVal('f-cat'))||null,
+            familia_id: parseInt(getVal('f-fam'))||null,
+            tamano_troquel: getVal('f-medidas-madera'),
+            tamano_final: getVal('f-medidas-corte'),
+            codigos_articulo: getVal('f-arts'),
+            referencias_ot: getVal('f-ot'),
+            observaciones: getVal('f-obs'),
+            archivos: App.archivosActuales
+        };
+        await fetch(id ? `/api/troqueles/${id}` : '/api/troqueles', { method: id?'PUT':'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) });
+        await App.cargarTodo(); App.volverDesdeForm();
+    },
+    
+    calcularSiguienteId: async () => { const c = document.getElementById('f-cat').value; if(c) { try { const r=await fetch(`/api/siguiente_numero?categoria_id=${c}`); const d=await r.json(); document.getElementById('f-matricula').value=d.siguiente; document.getElementById('f-ubicacion').value=d.siguiente; } catch(e){} } },
     setFiltroTipo: (t,b) => { App.filtroTipo=t; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('activo')); b.classList.add('activo'); App.renderTabla(); },
     filtrar: () => { const b=document.getElementById('btn-limpiar'); b.classList.toggle('oculto', document.getElementById('buscador').value===''); App.renderTabla(); },
     limpiarBuscador: () => { document.getElementById('buscador').value=''; App.filtrar(); },
     ordenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
-    
     select: (c,id) => { c.checked ? App.seleccionados.add(id) : App.seleccionados.delete(id); App.updatePanel(); },
     toggleAll: (c) => { document.querySelectorAll('#tabla-body input[type="checkbox"]').forEach(k=>{ k.checked=c.checked; c.checked ? App.seleccionados.add(parseInt(k.value)) : App.seleccionados.delete(parseInt(k.value)); }); App.updatePanel(); },
     updatePanel: () => { const p=document.getElementById('panel-acciones'); if(App.seleccionados.size>0) { p.classList.remove('oculto'); document.getElementById('contador-sel').innerText=App.seleccionados.size; } else p.classList.add('oculto'); },
     limpiarSeleccion: () => { App.seleccionados.clear(); document.getElementById('check-all').checked=false; App.updatePanel(); App.renderTabla(); },
-    
     descatalogar: async (id) => { if(confirm("¿Baja?")) { const t=App.datos.find(x=>x.id===id); t.estado="DESCATALOGADO"; await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(t) }); App.cargarTodo(); } },
-    borrar: async (id) => { if(confirm("¿Mover a Papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
+    borrar: async (id) => { if(confirm("¿Papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
     restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.cargarTodo(true); },
     verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
-    
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.limpiarSeleccion(); App.cargarTodo(); },
-    asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(App.enPapelera); } },
-    
+    asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(); } },
     generarQR: (id, ubi, nom) => { document.getElementById('modal-qr').classList.remove('oculto'); document.getElementById('qr-texto-ubi').innerText = ubi; document.getElementById('qr-texto-id').innerText = id; document.getElementById('qr-texto-desc').innerText = nom; new QRious({ element: document.getElementById('qr-canvas'), value: id, size: 200, padding: 0, level: 'M' }); },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
-    
-    cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre||'-'}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
-    exportarCSV: () => { let c="Matricula,Ubicacion,Nombre,Tipo,Familia,Estado\n"; App.datos.forEach(t=>{ const tipo=App.mapaCat[t.categoria_id]||""; const fam=App.mapaFam[t.familia_id]||""; c+=`"${t.id_troquel}","${t.ubicacion}","${t.nombre}","${tipo}","${fam}","${t.estado}"\n`;}); const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURI(c); a.download='inventario.csv'; a.click(); }
+    cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
+    exportarCSV: () => { let c="Mat,Ubi,Nom,Est\n"; App.datos.forEach(t=>c+=`${t.id_troquel},${t.ubicacion},${t.nombre},${t.estado}\n`); const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURI(c); a.download='inv.csv'; a.click(); }
 };
 
 window.onload = App.init;
