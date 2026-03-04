@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V20 (GODEX 50x23mm)
+// ERP PACKAGING - LÓGICA V21 (GODEX CON ARTÍCULO Y CSV BLINDADO)
 // =============================================================
 
 const App = {
@@ -12,7 +12,7 @@ const App = {
 
     // 1. INICIO
     init: async () => {
-        console.log("Iniciando ERP V20...");
+        console.log("Iniciando ERP V21...");
         await App.cargarSelects();
         await App.cargarTodo();
 
@@ -115,11 +115,12 @@ const App = {
             let fam = App.mapaFam[t.familia_id];
             if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
 
+            // OJO AL CAMBIO AQUÍ: Ahora pasamos t.id al botón de generarQR
             let btns = `
                 <button class="btn-icono" onclick="App.verFicha(${t.id})" title="Ver Ficha">👁️</button>
                 <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
                 <button class="btn-icono" onclick="App.editar(${t.id})" title="Editar">✏️</button>
-                <button class="btn-icono" onclick="App.generarQR('${t.id_troquel}', '${t.ubicacion}', '${t.nombre.replace(/'/g,"")}')">🖨️</button>
+                <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir Etiqueta">🖨️</button>
                 <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red" title="A la papelera">🗑️</button>
             `;
             if(App.enPapelera) btns = `<button class="btn-accion" style="background:#22c55e; padding:2px 5px;" onclick="App.restaurar(${t.id})">♻️</button>`;
@@ -150,7 +151,7 @@ const App = {
         } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red">Error al cargar las estadísticas</td></tr>'; }
     },
 
-    // HISTORIAL INDIVIDUAL
+    // HISTORIAL INDIVIDUAL A PANTALLA COMPLETA
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico');
         const tbody = document.getElementById('tabla-historial-unico');
@@ -207,7 +208,8 @@ const App = {
             btnPrint.innerHTML = '🖨️ Etiqueta';
             header.insertBefore(btnPrint, header.firstChild);
         }
-        btnPrint.onclick = () => App.generarQR(t.id_troquel, t.ubicacion, t.nombre);
+        // CAMBIO AQUÍ: Ahora pasamos el ID completo
+        btnPrint.onclick = () => App.generarQR(t.id);
         document.getElementById('modal-ficha').classList.remove('oculto');
     },
     editarDesdeFicha: () => {
@@ -424,14 +426,13 @@ const App = {
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
     cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
     
-    // --- MAGIA GODEX: MOTOR CENTRAL DE IMPRESIÓN (50x23mm) ---
+    // --- MAGIA GODEX MEJORADA (CON ARTÍCULOS) ---
     imprimirEtiquetasGodex: (items) => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
         let html = `
             <!DOCTYPE html>
             <html><head><title>Impresión Godex 50x23</title>
             <style>
-                /* EL SECRETO PARA LA GODEX: El navegador cortará el papel exactamente aquí */
                 @page { size: 50mm 23mm; margin: 0; }
                 body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; }
                 
@@ -449,24 +450,23 @@ const App = {
                 .mat { font-size: 10pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; }
                 .ubi { font-size: 7.5pt; font-weight: bold; line-height: 1; margin-bottom: 2px; color: black; }
                 .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-                
-                /* Estilos visuales solo para la pantalla del PC, al imprimir desaparecen */
+                .arts { font-size: 5.5pt; font-weight: bold; margin-top: 1px; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
                 @media screen {
                     body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; }
                     .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; }
-                    .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-                    .btn:hover { background: #0f766e; }
+                    .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
                 }
-                @media print {
-                    .no-print { display: none !important; }
-                }
+                @media print { .no-print { display: none !important; } }
             </style></head><body>
-            
             <button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex</button>
         `;
         
         items.forEach(t => {
             const qr = new QRious({ value: t.id_troquel, size: 150, level: 'M' });
+            // Agregamos el HTML condicional para el artículo
+            const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
+            
             html += `
                 <div class="label">
                     <div class="qr"><img src="${qr.toDataURL()}"></div>
@@ -474,6 +474,7 @@ const App = {
                         <div class="mat">${t.id_troquel}</div>
                         <div class="ubi">Ubi: ${t.ubicacion || '-'}</div>
                         <div class="nom">${t.nombre}</div>
+                        ${htmlArt}
                     </div>
                 </div>
             `;
@@ -482,12 +483,9 @@ const App = {
         html += `</body></html>`;
         printWindow.document.write(html);
         printWindow.document.close();
-        
-        // Abre el diálogo de impresión automáticamente
         setTimeout(() => { printWindow.print(); }, 800);
     },
 
-    // IMPRESIÓN LOTE
     imprimirLoteQRs: () => {
         if(App.seleccionados.size === 0) return;
         const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t);
@@ -495,49 +493,82 @@ const App = {
         App.limpiarSeleccion();
     },
 
-    // IMPRESIÓN INDIVIDUAL DESDE EL MODAL
-    generarQR: (id, ubi, nom) => { 
+    // IMPRESIÓN INDIVIDUAL MÁS INTELIGENTE
+    generarQR: (id_db) => { 
+        const t = App.datos.find(x => x.id === id_db);
+        if(!t) return;
+
         document.getElementById('modal-qr').classList.remove('oculto'); 
-        document.getElementById('qr-texto-ubi').innerText = ubi; 
-        document.getElementById('qr-texto-id').innerText = id; 
-        document.getElementById('qr-texto-desc').innerText = nom; 
-        new QRious({ element: document.getElementById('qr-canvas'), value: id, size: 200, padding: 0, level: 'M' }); 
+        document.getElementById('qr-texto-ubi').innerText = t.ubicacion || '-'; 
+        document.getElementById('qr-texto-id').innerText = t.id_troquel; 
+        document.getElementById('qr-texto-desc').innerText = t.nombre; 
         
-        // Conectamos el botón de imprimir del modal directamente al motor de la Godex
+        const elArts = document.getElementById('qr-texto-arts');
+        if(elArts) {
+            if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } 
+            else { elArts.style.display = "none"; }
+        }
+
+        new QRious({ element: document.getElementById('qr-canvas'), value: t.id_troquel, size: 200, padding: 0, level: 'M' }); 
+        
         document.getElementById('btn-imprimir-qr-unico').onclick = () => {
-            App.imprimirEtiquetasGodex([{ id_troquel: id, ubicacion: ubi, nombre: nom }]);
+            App.imprimirEtiquetasGodex([t]);
         };
     },
 
-    // --- CSV ROBUSTO ---
+    // --- CSV IMPORTACIÓN BLINDADA PARA ERRORES OCULTOS DE EXCEL ---
     procesarImportacion: async (input) => { 
         const file = input.files[0]; 
         if(!file) return; 
+        
         const reader = new FileReader(); 
         reader.onload = async(e) => { 
             try {
-                const filas = e.target.result.split(/\r?\n/).slice(1); 
+                // Separamos por saltos de línea y quitamos filas vacías
+                const filas = e.target.result.split(/\r?\n/); 
+                if(filas.length < 2) { alert("El archivo está vacío o no tiene datos."); return; }
+                
+                // Leemos la primera fila para saber si Excel guardó con "," o con ";"
+                const cabecera = filas[0];
+                const separador = cabecera.includes(';') ? ';' : ',';
+                
                 const troqueles = [];
                 
-                filas.forEach(f => {
-                    if(!f.trim()) return;
-                    // Detecta si es punto y coma o coma
-                    const separador = f.includes(';') ? ';' : ',';
-                    const cols = f.split(separador);
+                // Empezamos en i=1 para saltarnos la cabecera
+                for(let i=1; i<filas.length; i++) {
+                    const f = filas[i];
+                    if(!f.trim()) continue;
                     
-                    const mat = cols[0] ? cols[0].replace(/"/g,'').trim() : null;
-                    const ubi = cols[1] ? cols[1].replace(/"/g,'').trim() : null;
-                    const nom = cols[2] ? cols[2].replace(/"/g,'').trim() : null;
+                    const cols = f.split(separador);
+                    // Quitamos comillas dobles que Excel suele meter y quitamos espacios extra
+                    const mat = cols[0] ? cols[0].replace(/['"]/g,'').trim() : null;
+                    const ubi = cols[1] ? cols[1].replace(/['"]/g,'').trim() : null;
+                    const nom = cols[2] ? cols[2].replace(/['"]/g,'').trim() : null;
                     
                     if(mat) troqueles.push({ id_troquel: mat, ubicacion: ubi || mat, nombre: nom || "Sin Descripción" });
+                }
+                
+                if(troqueles.length === 0) { alert("No se han encontrado datos válidos para importar."); input.value = ""; return; }
+                
+                const res = await fetch('/api/troqueles/importar', { 
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'}, 
+                    body: JSON.stringify(troqueles) 
                 });
                 
-                if(troqueles.length === 0) { alert("Archivo vacío o formato incorrecto."); input.value = ""; return; }
-                const res = await fetch('/api/troqueles/importar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(troqueles) });
-                
-                if(res.ok) { App.cargarTodo(); alert(`✅ ${troqueles.length} troqueles importados.`); } 
-                else { alert("❌ Error en el servidor."); }
-            } catch (err) { alert("❌ Error al leer el archivo."); }
+                if(res.ok) { 
+                    App.cargarTodo(); 
+                    alert(`✅ Importación completada con éxito: ${troqueles.length} troqueles añadidos.`); 
+                } else {
+                    // SI HAY ERROR, LO CAPTURAMOS AQUÍ Y TE LO ENSEÑAMOS
+                    const errorBack = await res.text();
+                    console.error("Error del servidor:", errorBack);
+                    alert(`❌ Error al subir los datos.\n\nEs muy probable que una "Matrícula" del Excel ya exista en la base de datos, o falte algún campo obligatorio.\n\nMensaje técnico: ${errorBack.substring(0, 100)}...`);
+                }
+            } catch (err) { 
+                console.error("Error leyendo archivo:", err);
+                alert("❌ Ocurrió un error leyendo el archivo. Asegúrate de que es un CSV válido."); 
+            }
             input.value = ""; 
         }; 
         reader.readAsText(file, 'UTF-8'); 
@@ -549,7 +580,6 @@ const App = {
             const nomLimpio = (t.nombre || "").replace(/;/g, ',').replace(/\r?\n/g, ' ');
             c += `${t.id_troquel};${t.ubicacion};${nomLimpio};${t.estado}\n`;
         }); 
-        // Genera el Excel sin romper tildes ni eñes
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), c], {type: "text/csv;charset=utf-8"});
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
         a.download = 'inventario_troqueles.csv'; a.click(); 

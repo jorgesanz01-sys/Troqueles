@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ERP V20 | Godex Edition</title>
+    <title>ERP V21 | Godex Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -12,7 +12,7 @@
 <body>
     <div class="erp-layout">
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-logo"><span>🏭</span><h2>ERP V20</h2></div>
+            <div class="sidebar-logo"><span>🏭</span><h2>ERP V21</h2></div>
             <nav class="sidebar-menu">
                 <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
                 <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
@@ -260,12 +260,13 @@
             <div id="modal-qr" class="modal oculto">
                 <div class="modal-contenido text-center">
                     <h3 style="margin-top:0;">Previsualización de Etiqueta</h3>
-                    <div id="zona-impresion" class="etiqueta-preview" style="margin:20px auto; border: 2px dashed #cbd5e1; padding: 15px; display:inline-block;">
+                    <div id="zona-impresion" class="etiqueta-preview" style="margin:20px auto; border: 2px dashed #cbd5e1; padding: 15px; display:inline-block; max-width: 300px;">
                         <canvas id="qr-canvas"></canvas>
                         <div class="etiqueta-info">
                             <div id="qr-texto-ubi" class="etiq-ubi" style="font-weight:bold; font-size:18px; color:#475569;"></div>
                             <div id="qr-texto-id" class="etiq-id" style="font-weight:900; font-size:24px;"></div>
-                            <div id="qr-texto-desc" class="etiq-desc" style="font-size:14px; color:#64748b;"></div>
+                            <div id="qr-texto-desc" class="etiq-desc" style="font-size:14px; color:#64748b; margin-top: 5px;"></div>
+                            <div id="qr-texto-arts" style="font-size:14px; color:#0f766e; font-weight: bold; margin-top: 5px; display:none;"></div>
                         </div>
                     </div>
                     <div class="modal-botones no-print" style="margin-top: 20px;">
