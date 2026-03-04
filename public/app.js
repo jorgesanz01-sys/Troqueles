@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V24 (IMPORTACIÓN INTELIGENTE CON TIPO POR DEFECTO)
+// ERP PACKAGING - LÓGICA V25 (IMPORTACIÓN MODO "IA HEURÍSTICA")
 // =============================================================
 
 const App = {
@@ -12,7 +12,7 @@ const App = {
 
     // 1. INICIO
     init: async () => {
-        console.log("Iniciando ERP V24...");
+        console.log("Iniciando ERP V25 con Auto-Detección de Columnas...");
         await App.cargarSelects();
         await App.cargarTodo();
 
@@ -69,19 +69,14 @@ const App = {
                     if(prev) el.value = prev;
                 }
             };
-            llenar('f-cat', cats, 'Tipo...'); 
-            llenar('bulk-tipo', cats, 'Asignar Tipo...');
-            llenar('f-fam', fams, 'Familia...'); 
-            llenar('bulk-familia', fams, 'Asignar Familia...');
+            llenar('f-cat', cats, 'Tipo...'); llenar('bulk-tipo', cats, 'Asignar Tipo...');
+            llenar('f-fam', fams, 'Familia...'); llenar('bulk-familia', fams, 'Asignar Familia...');
             llenar('filtro-familia', fams, ''); 
-            
-            // NUEVO: Rellenamos el desplegable de importación
             llenar('select-import-tipo', cats, 'Tipo al importar (Opcional)...');
-
         } catch (e) { console.error(e); }
     },
 
-    // 3. TABLAS Y RENDERIZADO
+    // 3. TABLA
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body'); if (!tbody) return;
         const txt = document.getElementById('buscador').value.toLowerCase();
@@ -138,7 +133,7 @@ const App = {
         }).join('');
     },
 
-    // ESTADÍSTICAS
+    // ESTADÍSTICAS Y VISTAS
     cargarEstadisticas: async (meses) => {
         const tbody = document.getElementById('tabla-estadisticas');
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando cálculos... ⏳</td></tr>';
@@ -154,8 +149,6 @@ const App = {
             }).join('');
         } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red">Error al cargar las estadísticas</td></tr>'; }
     },
-
-    // HISTORIAL INDIVIDUAL A PANTALLA COMPLETA
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico');
         const tbody = document.getElementById('tabla-historial-unico');
@@ -178,8 +171,6 @@ const App = {
             }
         } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-red">Error al cargar la información.</td></tr>'; }
     },
-
-    // VISTA FICHA DETALLADA
     verFicha: (id) => {
         const t = App.datos.find(x => x.id === id); if (!t) return;
         document.getElementById('ver-matricula').innerText = t.id_troquel || "-";
@@ -221,19 +212,9 @@ const App = {
         App.editar(id);
     },
 
-    // MODO OPERARIO
-    activarModoMovil: () => { 
-        App.modoMovil = true; 
-        document.getElementById('sidebar').classList.add('oculto'); 
-        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); 
-        document.getElementById('vista-movil').classList.remove('oculto'); 
-    },
-    desactivarModoMovil: () => { 
-        App.modoMovil = false; 
-        document.getElementById('sidebar').classList.remove('oculto'); 
-        App.nav('vista-lista'); 
-    },
-    
+    // MÓVIL Y UTILS
+    activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
+    desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
     abrirDetalleMovil: (id) => {
         const t = App.datos.find(x => x.id === id); if(!t) return;
         document.getElementById('vista-movil').classList.add('oculto');
@@ -247,7 +228,6 @@ const App = {
         document.getElementById('movil-estado').innerHTML = stHtml;
     },
     volverMenuMovil: () => { document.getElementById('vista-movil-detalle').classList.add('oculto'); document.getElementById('vista-movil').classList.remove('oculto'); App.cargarTodo(); },
-    
     movilCambiarUbi: async () => {
         const id = document.getElementById('movil-id-db').value;
         const actual = document.getElementById('movil-ubi').innerText;
@@ -284,8 +264,6 @@ const App = {
             }
         } catch(e) { alert("Error foto"); }
     },
-
-    // ESCÁNER
     toggleScanner: (show=true, modo='LOTE') => {
         const el = document.getElementById('modal-scanner');
         App.modoScanner = modo;
@@ -335,7 +313,7 @@ const App = {
     borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
     procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
 
-    // UTILS
+    // FUNCIONES NAVEGACION Y VARIOS
     crearFamilia: async () => { const n = prompt("Familia:"); if(n) { await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     crearTipo: async () => { const n = prompt("Tipo:"); if(n) { await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     subirArchivos: async (input) => { 
@@ -352,8 +330,6 @@ const App = {
         App.archivosActuales.forEach((a,i) => div.innerHTML += `<div>${a.nombre} <span onclick="App.quitarArchivo(${i})" style="color:red;cursor:pointer">✕</span></div>`); 
     },
     quitarArchivo: (i) => { App.archivosActuales.splice(i,1); App.renderListaArchivos(); },
-    
-    // NAVEGACIÓN
     nav: (v, btnElement) => { 
         document.querySelectorAll('.vista').forEach(x=>x.classList.add('oculto')); 
         document.getElementById(v).classList.remove('oculto'); 
@@ -363,20 +339,16 @@ const App = {
         }
         if(v==='vista-lista') document.getElementById('sidebar').classList.remove('oculto'); 
     },
-    
     buscarMovil: (txt) => { const d = document.getElementById('resultados-movil'); d.innerHTML = ""; if(txt.length<2)return; const h = App.datos.filter(t => (t.nombre+t.id_troquel+(t.ubicacion||"")).toLowerCase().includes(txt.toLowerCase())); d.innerHTML = h.slice(0,10).map(t => `<div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); },
     nuevoTroquel: () => { document.getElementById('titulo-form').innerText="Nuevo"; document.querySelector('form').reset(); document.getElementById('f-id-db').value=""; App.archivosActuales=[]; App.renderListaArchivos(); if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); App.nav('vista-formulario'); },
-    
     editar: (id) => { 
         const t = App.datos.find(x=>x.id===id); if(!t)return;
         document.getElementById('titulo-form').innerText="Editar";
         const setVal = (elId, val) => { const el = document.getElementById(elId); if(el) el.value = val; };
-        
         setVal('f-id-db', t.id); setVal('f-matricula', t.id_troquel); setVal('f-ubicacion', t.ubicacion);
         setVal('f-nombre', t.nombre); setVal('f-cat', t.categoria_id||""); setVal('f-fam', t.familia_id||"");
         setVal('f-medidas-madera', t.tamano_troquel||""); setVal('f-medidas-corte', t.tamano_final||"");
         setVal('f-arts', t.codigos_articulo||""); setVal('f-ot', t.referencias_ot||""); setVal('f-obs', t.observaciones||"");
-
         App.archivosActuales = (t.archivos && Array.isArray(t.archivos)) ? t.archivos : [];
         App.renderListaArchivos();
         if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); 
@@ -396,7 +368,6 @@ const App = {
         await fetch(id ? `/api/troqueles/${id}` : '/api/troqueles', { method: id?'PUT':'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) });
         await App.cargarTodo(); App.volverDesdeForm();
     },
-    
     calcularSiguienteId: async () => { const c = document.getElementById('f-cat').value; if(c) { try { const r=await fetch(`/api/siguiente_numero?categoria_id=${c}`); const d=await r.json(); document.getElementById('f-matricula').value=d.siguiente; document.getElementById('f-ubicacion').value=d.siguiente; } catch(e){} } },
     setFiltroTipo: (t,b) => { App.filtroTipo=t; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('activo')); b.classList.add('activo'); App.renderTabla(); },
     filtrar: () => { const b=document.getElementById('btn-limpiar'); b.classList.toggle('oculto', document.getElementById('buscador').value===''); App.renderTabla(); },
@@ -406,7 +377,6 @@ const App = {
     toggleAll: (c) => { document.querySelectorAll('#tabla-body input[type="checkbox"]').forEach(k=>{ k.checked=c.checked; c.checked ? App.seleccionados.add(parseInt(k.value)) : App.seleccionados.delete(parseInt(k.value)); }); App.updatePanel(); },
     updatePanel: () => { const p=document.getElementById('panel-acciones'); if(App.seleccionados.size>0) { p.classList.remove('oculto'); document.getElementById('contador-sel').innerText=App.seleccionados.size; } else p.classList.add('oculto'); },
     limpiarSeleccion: () => { App.seleccionados.clear(); document.getElementById('check-all').checked=false; App.updatePanel(); App.renderTabla(); },
-    
     descatalogar: async (id) => { 
         if(confirm("¿Estás seguro de que deseas marcar este troquel como DESCATALOGADO?")) { 
             const t = App.datos.find(x => x.id === id); 
@@ -420,7 +390,6 @@ const App = {
             }
         } 
     },
-    
     borrar: async (id) => { if(confirm("¿Mover a la papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
     restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.cargarTodo(true); },
     verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
@@ -431,96 +400,38 @@ const App = {
     
     imprimirEtiquetasGodex: (items) => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
-        let html = `
-            <!DOCTYPE html>
-            <html><head><title>Impresión Godex 50x23</title>
-            <style>
-                @page { size: 50mm 23mm; margin: 0; }
-                body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; }
-                
-                .label {
-                    width: 50mm; height: 23mm;
-                    box-sizing: border-box; padding: 1mm;
-                    display: flex; align-items: center; justify-content: space-between;
-                    page-break-after: always;
-                    overflow: hidden;
-                }
-                .qr { width: 19mm; display: flex; justify-content: center; align-items: center; }
-                .qr img { width: 18mm; height: 18mm; }
-                
-                .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; }
-                .mat { font-size: 10pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; }
-                .ubi { font-size: 7.5pt; font-weight: bold; line-height: 1; margin-bottom: 2px; color: black; }
-                .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-                .arts { font-size: 5.5pt; font-weight: bold; margin-top: 1px; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-
-                @media screen {
-                    body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-                    .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; }
-                    .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
-                }
-                @media print { .no-print { display: none !important; } }
-            </style></head><body>
-            <button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex</button>
-        `;
-        
+        let html = `<!DOCTYPE html><html><head><title>Impresión Godex 50x23</title><style>@page { size: 50mm 23mm; margin: 0; } body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } .label { width: 50mm; height: 23mm; box-sizing: border-box; padding: 1mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } .qr { width: 19mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 18mm; height: 18mm; } .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 10pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } .ubi { font-size: 7.5pt; font-weight: bold; line-height: 1; margin-bottom: 2px; color: black; } .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; } .arts { font-size: 5.5pt; font-weight: bold; margin-top: 1px; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } @media screen { body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; } .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; } .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; } } @media print { .no-print { display: none !important; } }</style></head><body><button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex</button>`;
         items.forEach(t => {
             const qr = new QRious({ value: t.id.toString(), size: 150, level: 'M' });
             const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
-            html += `
-                <div class="label">
-                    <div class="qr"><img src="${qr.toDataURL()}"></div>
-                    <div class="text">
-                        <div class="mat">${t.id_troquel}</div>
-                        <div class="ubi">Ubi: ${t.ubicacion || '-'}</div>
-                        <div class="nom">${t.nombre}</div>
-                        ${htmlArt}
-                    </div>
-                </div>
-            `;
+            html += `<div class="label"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">${t.id_troquel}</div><div class="ubi">Ubi: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div>`;
         });
-        
         html += `</body></html>`;
         printWindow.document.write(html);
         printWindow.document.close();
         setTimeout(() => { printWindow.print(); }, 800);
     },
-
-    imprimirLoteQRs: () => {
-        if(App.seleccionados.size === 0) return;
-        const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t);
-        App.imprimirEtiquetasGodex(itemsToPrint);
-        App.limpiarSeleccion();
-    },
-
+    imprimirLoteQRs: () => { if(App.seleccionados.size === 0) return; const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); App.imprimirEtiquetasGodex(itemsToPrint); App.limpiarSeleccion(); },
     generarQR: (id_db) => { 
-        const t = App.datos.find(x => x.id === id_db);
-        if(!t) return;
-
+        const t = App.datos.find(x => x.id === id_db); if(!t) return;
         document.getElementById('modal-qr').classList.remove('oculto'); 
         document.getElementById('qr-texto-ubi').innerText = t.ubicacion || '-'; 
         document.getElementById('qr-texto-id').innerText = t.id_troquel; 
         document.getElementById('qr-texto-desc').innerText = t.nombre; 
-        
         const elArts = document.getElementById('qr-texto-arts');
-        if(elArts) {
-            if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } 
-            else { elArts.style.display = "none"; }
-        }
-
+        if(elArts) { if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } else { elArts.style.display = "none"; } }
         new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
-        
-        document.getElementById('btn-imprimir-qr-unico').onclick = () => {
-            App.imprimirEtiquetasGodex([t]);
-        };
+        document.getElementById('btn-imprimir-qr-unico').onclick = () => { App.imprimirEtiquetasGodex([t]); };
     },
 
-    // --- CSV V24: IMPORTACIÓN INTELIGENTE Y CON SELECTOR DE TIPO ---
+    // ====================================================================
+    // 🧠 MAGIA HEURÍSTICA V25: AUTO-DETECCIÓN DE CUALQUIER COLUMNA
+    // ====================================================================
     procesarImportacion: async (input) => { 
         const file = input.files[0]; 
         if(!file) return; 
 
-        // 1. LEER EL VALOR DEL DESPLEGABLE DE TIPO POR DEFECTO
+        // Capturamos el selector por si quieres forzar el "Tipo" de todos los importados
         const selectElement = document.getElementById('select-import-tipo');
         const idTipoDefecto = (selectElement && selectElement.value) ? parseInt(selectElement.value) : null;
         
@@ -530,88 +441,110 @@ const App = {
                 const filas = e.target.result.split(/\r?\n/); 
                 if(filas.length < 2) { alert("El archivo está vacío o no tiene datos."); return; }
                 
+                // --- 1. LECTURA DE CABECERA ---
                 const cabeceraStr = filas[0];
                 const separador = cabeceraStr.includes(';') ? ';' : ',';
-                const cabecera = cabeceraStr.split(separador).map(c => c.trim().toUpperCase().replace(/['"]/g,''));
                 
-                let colMat = cabecera.findIndex(c => c.includes('MATRICULA') || c.includes('ID') || c.includes('CÓDIGO') || c.includes('CODIGO'));
-                let colUbi = cabecera.findIndex(c => c.includes('UBI') || c.includes('LOCALIZACION'));
-                let colNom = cabecera.findIndex(c => c.includes('DESC') || c.includes('NOMBRE'));
-                let colTipo = cabecera.findIndex(c => c.includes('TIPO') || c.includes('CATEGORIA') || c.includes('FAMILIA'));
+                // Normalizamos las palabras quitando acentos y comillas, todo a mayúsculas
+                const normalizar = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/['"]/g,'').trim();
+                const cabecera = cabeceraStr.split(separador).map(c => normalizar(c));
+                
+                // --- 2. MAPEO INTELIGENTE (LA IA EN ACCIÓN) ---
+                let colsMap = { mat: -1, ubi: -1, nom: -1, tipo: -1, ot: -1, arts: -1, madera: -1, corte: -1, obs: -1 };
 
-                if (colMat === -1) colMat = 0;
-                if (colUbi === -1) colUbi = 1;
-                if (colNom === -1) colNom = 2;
-                if (colTipo === -1) colTipo = 3;
-
-                const catNameToId = {};
-                Object.keys(App.mapaCat).forEach(id => {
-                    catNameToId[App.mapaCat[id].toUpperCase()] = parseInt(id);
+                cabecera.forEach((c, index) => {
+                    if (/MATR|ID|CODIGO|NUMERO|REF|TROQUEL/i.test(c) && colsMap.mat === -1) colsMap.mat = index;
+                    else if (/UBI|LOC|ESTAN|HUECO|SITIO|LUGAR/i.test(c) && colsMap.ubi === -1) colsMap.ubi = index;
+                    else if (/DESC|NOM|CLIENT|MOD|TITULO/i.test(c) && colsMap.nom === -1) colsMap.nom = index;
+                    else if (/TIPO|FAM|CAT|CLASE|GRUPO/i.test(c) && colsMap.tipo === -1) colsMap.tipo = index;
+                    else if (/OT|ORDEN|TRABAJO/i.test(c) && colsMap.ot === -1) colsMap.ot = index;
+                    else if (/ART|EAN|PROD/i.test(c) && colsMap.arts === -1) colsMap.arts = index;
+                    else if (/MADERA|BASE|TAM|DIMEN/i.test(c) && colsMap.madera === -1) colsMap.madera = index;
+                    else if (/CORTE|FINAL|DESARROLLO/i.test(c) && colsMap.corte === -1) colsMap.corte = index;
+                    else if (/OBS|NOTAS|COMENTARIO/i.test(c) && colsMap.obs === -1) colsMap.obs = index;
                 });
+
+                // Si no detecta nada porque el Excel no tiene títulos, asume un orden por defecto para no romper
+                if (colsMap.mat === -1) colsMap.mat = 0;
+                if (colsMap.ubi === -1) colsMap.ubi = 1;
+                if (colsMap.nom === -1) colsMap.nom = 2;
+
+                // Mapa de tipos
+                const catNameToId = {};
+                Object.keys(App.mapaCat).forEach(id => { catNameToId[normalizar(App.mapaCat[id])] = parseInt(id); });
 
                 const troqueles = [];
                 
+                // --- 3. EXTRACCIÓN DE DATOS ---
                 for(let i=1; i<filas.length; i++) {
                     const f = filas[i];
                     if(!f.trim()) continue;
                     
                     const cols = f.split(separador);
                     
-                    const mat = cols[colMat] ? cols[colMat].replace(/['"]/g,'').trim() : null;
-                    const ubi = cols[colUbi] ? cols[colUbi].replace(/['"]/g,'').trim() : null;
-                    const nom = cols[colNom] ? cols[colNom].replace(/['"]/g,'').trim() : null;
-                    const tipoStr = cols[colTipo] ? cols[colTipo].replace(/['"]/g,'').trim().toUpperCase() : null;
-                    
-                    // 2. ASIGNACIÓN INTELIGENTE DEL TIPO
-                    let catId = idTipoDefecto; // Empezamos asignando el del desplegable (si lo hay)
-                    
-                    // Pero si la fila del Excel TIENE un tipo escrito y existe en el sistema, ese manda.
-                    if(tipoStr && catNameToId[tipoStr]) {
-                        catId = catNameToId[tipoStr];
-                    }
+                    const mat = colsMap.mat !== -1 && cols[colsMap.mat] ? cols[colsMap.mat].replace(/['"]/g,'').trim() : null;
+                    if(!mat) continue; // Si no hay matrícula, saltamos la línea
 
-                    if(mat) {
-                        troqueles.push({ 
-                            id_troquel: mat, 
-                            ubicacion: ubi || mat, 
-                            nombre: nom || "Sin Descripción",
-                            categoria_id: catId
-                        });
-                    }
+                    const ubi = colsMap.ubi !== -1 && cols[colsMap.ubi] ? cols[colsMap.ubi].replace(/['"]/g,'').trim() : mat;
+                    const nom = colsMap.nom !== -1 && cols[colsMap.nom] ? cols[colsMap.nom].replace(/['"]/g,'').trim() : "Sin Descripción";
+                    
+                    // Extraemos los opcionales
+                    const tipoStr = colsMap.tipo !== -1 && cols[colsMap.tipo] ? normalizar(cols[colsMap.tipo]) : null;
+                    const ot = colsMap.ot !== -1 && cols[colsMap.ot] ? cols[colsMap.ot].replace(/['"]/g,'').trim() : "";
+                    const arts = colsMap.arts !== -1 && cols[colsMap.arts] ? cols[colsMap.arts].replace(/['"]/g,'').trim() : "";
+                    const madera = colsMap.madera !== -1 && cols[colsMap.madera] ? cols[colsMap.madera].replace(/['"]/g,'').trim() : "";
+                    const corte = colsMap.corte !== -1 && cols[colsMap.corte] ? cols[colsMap.corte].replace(/['"]/g,'').trim() : "";
+                    const obs = colsMap.obs !== -1 && cols[colsMap.obs] ? cols[colsMap.obs].replace(/['"]/g,'').trim() : "";
+                    
+                    let catId = idTipoDefecto; // Por defecto el del desplegable
+                    if(tipoStr && catNameToId[tipoStr]) catId = catNameToId[tipoStr]; // Si el Excel trae uno válido, lo sobreescribe
+
+                    troqueles.push({ 
+                        id_troquel: mat, 
+                        ubicacion: ubi, 
+                        nombre: nom,
+                        categoria_id: catId,
+                        referencias_ot: ot,
+                        codigos_articulo: arts,
+                        tamano_troquel: madera,
+                        tamano_final: corte,
+                        observaciones: obs
+                    });
                 }
                 
-                if(troqueles.length === 0) { alert("No se han encontrado datos válidos para importar."); input.value = ""; return; }
+                if(troqueles.length === 0) { alert("No se encontraron datos para importar."); input.value = ""; return; }
                 
                 const res = await fetch('/api/troqueles/importar', { 
-                    method: 'POST', 
-                    headers: {'Content-Type':'application/json'}, 
-                    body: JSON.stringify(troqueles) 
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(troqueles) 
                 });
                 
                 if(res.ok) { 
                     App.cargarTodo(); 
-                    alert(`✅ ÉXITO: Se han importado ${troqueles.length} troqueles.\n\nEl sistema detectó y ordenó las columnas automáticamente.`); 
-                    if(selectElement) selectElement.value = ""; // Resetea el desplegable tras el éxito
+                    alert(`✅ Mapeo Inteligente Completado.\nSe han importado ${troqueles.length} troqueles con todos sus datos extra.`); 
+                    if(selectElement) selectElement.value = ""; 
                 } else {
                     const errorBack = await res.text();
                     console.error("Error BD:", errorBack);
-                    alert(`❌ ERROR EN BASE DE DATOS:\nEs posible que la columna 'id_troquel' en Supabase esté marcada como 'Unique'.\n\nMensaje técnico: ${errorBack.substring(0, 100)}`);
+                    alert(`❌ ERROR DE BASE DE DATOS:\nProbablemente algún código del Excel ya existe y Supabase bloqueó la subida.`);
                 }
-            } catch (err) { 
-                console.error("Fallo general:", err);
-                alert("❌ Ocurrió un error al procesar el archivo CSV."); 
-            }
+            } catch (err) { console.error("Fallo general:", err); alert("❌ Ocurrió un error procesando el archivo."); }
             input.value = ""; 
         }; 
         reader.readAsText(file, 'UTF-8'); 
     },
     
     exportarCSV: () => { 
-        let c = "Matricula;Ubicacion;Descripcion;Tipo;Estado\n"; 
+        let c = "Matricula;Ubicacion;Descripcion;Tipo;OT;Articulos;Madera;Corte;Observaciones;Estado\n"; 
         App.datos.forEach(t => {
             const nomLimpio = (t.nombre || "").replace(/;/g, ',').replace(/\r?\n/g, ' ');
             const tipoNom = App.mapaCat[t.categoria_id] || "";
-            c += `${t.id_troquel};${t.ubicacion};${nomLimpio};${tipoNom};${t.estado}\n`;
+            const ot = (t.referencias_ot || "").replace(/;/g, ',');
+            const arts = (t.codigos_articulo || "").replace(/;/g, ',');
+            const mad = (t.tamano_troquel || "").replace(/;/g, ',');
+            const cor = (t.tamano_final || "").replace(/;/g, ',');
+            const obs = (t.observaciones || "").replace(/;/g, ',').replace(/\r?\n/g, ' ');
+
+            c += `${t.id_troquel};${t.ubicacion};${nomLimpio};${tipoNom};${ot};${arts};${mad};${cor};${obs};${t.estado}\n`;
         }); 
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), c], {type: "text/csv;charset=utf-8"});
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
