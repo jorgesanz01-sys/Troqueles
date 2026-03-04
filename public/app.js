@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V18 (ESTADÍSTICAS AÑADIDAS)
+// ERP PACKAGING - LÓGICA V18 (HISTORIAL PANTALLA COMPLETA)
 // =============================================================
 
 const App = {
@@ -134,7 +134,7 @@ const App = {
         }).join('');
     },
 
-    // --- NUEVO: ESTADÍSTICAS ---
+    // ESTADÍSTICAS
     cargarEstadisticas: async (meses) => {
         const tbody = document.getElementById('tabla-estadisticas');
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando cálculos... ⏳</td></tr>';
@@ -168,14 +168,16 @@ const App = {
         }
     },
 
-    // HISTORIAL INDIVIDUAL
+    // --- NUEVO: HISTORIAL INDIVIDUAL A PANTALLA COMPLETA ---
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico');
         const tbody = document.getElementById('tabla-historial-unico');
         
         document.getElementById('hist-titulo-mat').innerText = mat;
         document.getElementById('hist-titulo-nom').innerText = nom;
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center">Cargando...</td></tr>';
+        
+        // Colspan="4" porque ahora mostramos 4 columnas
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 40px; font-size: 18px;">Cargando historial de movimientos... ⏳</td></tr>';
         
         modal.classList.remove('oculto');
 
@@ -184,18 +186,26 @@ const App = {
             if (res.ok) {
                 const data = await res.json();
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" class="text-center">Sin movimientos registrados.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 40px; font-size: 18px;">No hay movimientos registrados para este troquel.</td></tr>';
                 } else {
-                    tbody.innerHTML = data.map(h => `
+                    tbody.innerHTML = data.map(h => {
+                        // Extraemos la descripción del backend o usamos la que pasamos a la función
+                        const descripcion = h.troqueles && h.troqueles.nombre ? h.troqueles.nombre : nom;
+                        
+                        return `
                         <tr>
-                            <td>${new Date(h.fecha_hora).toLocaleString()}</td>
-                            <td style="font-weight:bold; color:${h.accion.includes('SALIDA')?'red':'green'}">${h.accion}</td>
-                            <td>${h.ubicacion_anterior||'-'} ➝ ${h.ubicacion_nueva||'-'}</td>
+                            <td style="font-weight:600;">${new Date(h.fecha_hora).toLocaleString()}</td>
+                            <td>${descripcion}</td>
+                            <td style="font-weight:bold; color:${h.accion.includes('SALIDA') ? '#dc2626' : '#16a34a'}">${h.accion}</td>
+                            <td>${h.ubicacion_anterior||'-'} ➝ <strong>${h.ubicacion_nueva||'-'}</strong></td>
                         </tr>
-                    `).join('');
+                        `;
+                    }).join('');
                 }
             }
-        } catch (e) { tbody.innerHTML = '<tr><td colspan="3">Error carga</td></tr>'; }
+        } catch (e) { 
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-red">Error al cargar la información.</td></tr>'; 
+        }
     },
 
     // VISTA FICHA
@@ -364,7 +374,6 @@ const App = {
         document.querySelectorAll('.vista').forEach(x=>x.classList.add('oculto')); 
         document.getElementById(v).classList.remove('oculto'); 
         
-        // Efecto visual en el menú lateral
         if(btnElement) {
             document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
             btnElement.classList.add('activo');
@@ -433,14 +442,11 @@ const App = {
     updatePanel: () => { const p=document.getElementById('panel-acciones'); if(App.seleccionados.size>0) { p.classList.remove('oculto'); document.getElementById('contador-sel').innerText=App.seleccionados.size; } else p.classList.add('oculto'); },
     limpiarSeleccion: () => { App.seleccionados.clear(); document.getElementById('check-all').checked=false; App.updatePanel(); App.renderTabla(); },
     
-    // --- EDICIÓN PARA QUE RECARGUE ESTADÍSTICAS SI SE DESCATALOGA DESDE AHÍ ---
     descatalogar: async (id) => { 
         if(confirm("¿Estás seguro de que deseas marcar este troquel como DESCATALOGADO?")) { 
             const t = App.datos.find(x => x.id === id); 
-            // Si no está en datos, lo buscamos en el backend (por si se hace desde la vista estadísticas)
             let dataToSend = t;
             if(!t) {
-                // Fetch de emergencia
                 const r = await fetch(`/api/troqueles`);
                 const full = await r.json();
                 dataToSend = full.find(x => x.id === id);
@@ -450,7 +456,6 @@ const App = {
                 await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dataToSend) }); 
                 await App.cargarTodo(); 
                 
-                // Si la vista de estadísticas está activa, la refrescamos
                 if(!document.getElementById('vista-estadisticas').classList.contains('oculto')) {
                     const meses = document.getElementById('select-inactividad').value;
                     App.cargarEstadisticas(meses);
