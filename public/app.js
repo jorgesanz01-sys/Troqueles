@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V26 (SISTEMA ANTI-DUPLICADOS)
+// ERP PACKAGING - LÓGICA V27 (PAPELERA MASIVA Y ARTÍCULO VISIBLE)
 // =============================================================
 
 const App = {
@@ -9,7 +9,7 @@ const App = {
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
 
     init: async () => {
-        console.log("Iniciando ERP V26 Anti-Duplicados...");
+        console.log("Iniciando ERP V27 (Papelera y Artículos)...");
         await App.cargarSelects();
         await App.cargarTodo();
         const params = new URLSearchParams(window.location.search);
@@ -25,15 +25,21 @@ const App = {
             const res = await fetch(`/api/troqueles?ver_papelera=${papelera}`);
             if (res.ok) {
                 App.datos = await res.json();
+                App.limpiarSeleccion(); // Limpia selecciones al cambiar de pantalla
                 App.renderTabla();
+                
                 document.getElementById('titulo-lista').innerText = papelera ? "🗑️ PAPELERA" : "Inventario Activo";
-                const btn = document.getElementById('btn-restaurar-papelera');
-                const panel = document.getElementById('panel-acciones');
+                
+                // Muestra u oculta los paneles superiores según estemos en papelera o no
+                const divHerramientasNormales = document.getElementById('herramientas-normales');
+                const divHerramientasPapelera = document.getElementById('herramientas-papelera');
+                
                 if (papelera) { 
-                    if(btn) btn.classList.remove('oculto'); 
-                    if(panel) panel.classList.add('oculto'); 
+                    if(divHerramientasNormales) divHerramientasNormales.classList.add('oculto');
+                    if(divHerramientasPapelera) divHerramientasPapelera.classList.remove('oculto'); 
                 } else { 
-                    if(btn) btn.classList.add('oculto'); 
+                    if(divHerramientasNormales) divHerramientasNormales.classList.remove('oculto');
+                    if(divHerramientasPapelera) divHerramientasPapelera.classList.add('oculto'); 
                 }
             }
         } catch (e) { console.error(e); }
@@ -71,6 +77,7 @@ const App = {
         } catch (e) { console.error(e); }
     },
 
+    // 3. TABLA PRINCIPAL
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body'); if (!tbody) return;
         const txt = document.getElementById('buscador').value.toLowerCase();
@@ -82,7 +89,7 @@ const App = {
             const okTip = App.filtroTipo === 'TODOS' || nCat === App.filtroTipo;
             const okFam = fam === 'TODAS' || t.familia_id == fam;
             const okEst = est === 'TODOS' || (t.estado || 'EN ALMACEN') === est;
-            const okTxt = (t.nombre+t.id_troquel+(t.ubicacion||"")).toLowerCase().includes(txt);
+            const okTxt = (t.nombre+t.id_troquel+(t.ubicacion||"")+(t.codigos_articulo||"")).toLowerCase().includes(txt);
             return okTip && okFam && okEst && okTxt;
         });
 
@@ -94,7 +101,7 @@ const App = {
             return App.ordenAsc ? vA.localeCompare(vB) : vB.localeCompare(vA);
         });
 
-        if(res.length===0) { tbody.innerHTML='<tr><td colspan="8" class="text-center">Sin datos</td></tr>'; return; }
+        if(res.length===0) { tbody.innerHTML='<tr><td colspan="9" class="text-center">Sin datos</td></tr>'; return; }
 
         tbody.innerHTML = res.map(t => {
             const chk = App.seleccionados.has(t.id) ? 'checked' : '';
@@ -109,6 +116,7 @@ const App = {
             let fam = App.mapaFam[t.familia_id];
             if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
 
+            // Botones normales
             let btns = `
                 <button class="btn-icono" onclick="App.verFicha(${t.id})" title="Ver Ficha">👁️</button>
                 <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
@@ -116,31 +124,47 @@ const App = {
                 <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir Etiqueta">🖨️</button>
                 <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red" title="A la papelera">🗑️</button>
             `;
-            if(App.enPapelera) btns = `<button class="btn-accion" style="background:#22c55e; padding:2px 5px;" onclick="App.restaurar(${t.id})">♻️</button>`;
+            // Si estamos en papelera, enseñamos Restaurar o Destruir
+            if(App.enPapelera) {
+                btns = `
+                    <button class="btn-accion" style="background:#22c55e; padding:2px 5px; margin-right:5px;" onclick="App.restaurar(${t.id})" title="Restaurar">♻️</button>
+                    <button class="btn-accion" style="background:#b91c1c; padding:2px 5px;" onclick="App.destruirUnico(${t.id})" title="Destruir Definitivamente">🔥</button>
+                `;
+            }
 
             return `<tr style="${t.estado==='DESCATALOGADO'?'opacity:0.6':''}" onclick="App.verFicha(${t.id})" style="cursor:pointer;">
                 <td onclick="event.stopPropagation()" class="text-center"><input type="checkbox" value="${t.id}" ${chk} onchange="App.select(this, ${t.id})"></td>
                 <td class="text-center">${bdg}</td><td class="text-center">${st}</td>
-                <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td><td>${t.ubicacion}</td><td>${t.nombre}</td>
+                <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td>
+                <td>${t.ubicacion}</td>
+                <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                <td>${t.nombre}</td>
                 <td><small>${fam||'-'}</small></td><td onclick="event.stopPropagation()">${btns}</td>
             </tr>`;
         }).join('');
     },
 
+    // ESTADÍSTICAS
     cargarEstadisticas: async (meses) => {
         const tbody = document.getElementById('tabla-estadisticas');
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando cálculos... ⏳</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando cálculos... ⏳</td></tr>';
         try {
             const res = await fetch(`/api/estadisticas/inactivos?meses=${meses}`);
             const data = await res.json();
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center">¡Genial! No tienes troqueles obsoletos en este periodo.</td></tr>'; return;
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">¡Genial! No tienes troqueles obsoletos en este periodo.</td></tr>'; return;
             }
             tbody.innerHTML = data.map(t => {
                 const fecha = t.ultima_fecha ? new Date(t.ultima_fecha).toLocaleDateString() : 'Nunca usado';
-                return `<tr><td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td><td>${t.nombre}</td><td>${t.estado || 'EN ALMACÉN'}</td><td style="color:#b91c1c; font-weight:bold;">${fecha}</td><td><button class="btn-accion" style="background:#64748b;" onclick="App.descatalogar(${t.id})">⛔ Descatalogar</button></td></tr>`;
+                return `<tr>
+                    <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td>
+                    <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                    <td>${t.nombre}</td><td>${t.estado || 'EN ALMACÉN'}</td>
+                    <td style="color:#b91c1c; font-weight:bold;">${fecha}</td>
+                    <td><button class="btn-accion" style="background:#64748b;" onclick="App.descatalogar(${t.id})">⛔ Descatalogar</button></td>
+                </tr>`;
             }).join('');
-        } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red">Error al cargar las estadísticas</td></tr>'; }
+        } catch (e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar las estadísticas</td></tr>'; }
     },
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico');
@@ -205,6 +229,7 @@ const App = {
         App.editar(id);
     },
 
+    // MÓVIL
     activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
     desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
     abrirDetalleMovil: (id) => {
@@ -215,6 +240,10 @@ const App = {
         document.getElementById('movil-id').innerText = t.id_troquel;
         document.getElementById('movil-ubi').innerText = t.ubicacion;
         document.getElementById('movil-nombre').innerText = t.nombre;
+        
+        // Muestra el artículo en el móvil
+        document.getElementById('movil-arts').innerText = t.codigos_articulo ? `Art: ${t.codigos_articulo}` : '';
+
         let stHtml = `<span style="background:#dcfce7; color:#166534; padding:5px 10px; border-radius:15px; font-weight:bold;">ALMACÉN</span>`;
         if(t.estado==='EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px; font-weight:bold;">PRODUCCIÓN</span>`;
         document.getElementById('movil-estado').innerHTML = stHtml;
@@ -305,6 +334,72 @@ const App = {
     borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
     procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
 
+    // SELECCIÓN Y PANELES
+    select: (c,id) => { c.checked ? App.seleccionados.add(id) : App.seleccionados.delete(id); App.updatePanel(); },
+    toggleAll: (c) => { document.querySelectorAll('#tabla-body input[type="checkbox"]').forEach(k=>{ k.checked=c.checked; c.checked ? App.seleccionados.add(parseInt(k.value)) : App.seleccionados.delete(parseInt(k.value)); }); App.updatePanel(); },
+    
+    updatePanel: () => { 
+        const p = document.getElementById('panel-acciones'); 
+        if(App.seleccionados.size > 0) { 
+            p.classList.remove('oculto'); 
+            document.getElementById('contador-sel').innerText = App.seleccionados.size; 
+            
+            // Si estamos en papelera, mostramos botones de destruir/restaurar. Si no, botones normales.
+            if(App.enPapelera) {
+                document.getElementById('acciones-normales').style.display = 'none';
+                document.getElementById('acciones-papelera').style.display = 'inline-flex';
+            } else {
+                document.getElementById('acciones-normales').style.display = 'inline-flex';
+                document.getElementById('acciones-papelera').style.display = 'none';
+            }
+        } else { 
+            p.classList.add('oculto'); 
+        } 
+    },
+    limpiarSeleccion: () => { App.seleccionados.clear(); const chk = document.getElementById('check-all'); if(chk) chk.checked=false; App.updatePanel(); App.renderTabla(); },
+    
+    // --- NUEVAS FUNCIONES DE PAPELERA Y BORRADO MASIVO ---
+    borrar: async (id) => { if(confirm("¿Mover a la papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
+    restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.cargarTodo(true); },
+    
+    borrarLote: async () => {
+        if(!confirm(`¿Mover ${App.seleccionados.size} troqueles a la papelera?`)) return;
+        await fetch('/api/troqueles/bulk/papelera', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados) }) });
+        App.limpiarSeleccion(); App.cargarTodo();
+    },
+    restaurarLote: async () => {
+        await fetch('/api/troqueles/bulk/restaurar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados) }) });
+        App.limpiarSeleccion(); App.cargarTodo(true);
+    },
+    destruirLote: async () => {
+        if(!confirm(`¡PELIGRO! ¿Eliminar permanentemente ${App.seleccionados.size} troqueles?\nEsta acción NO se puede deshacer.`)) return;
+        await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados) }) });
+        App.limpiarSeleccion(); App.cargarTodo(true);
+    },
+    destruirUnico: async (id) => {
+        if(confirm("¡PELIGRO! ¿Eliminar este troquel para siempre? No podrás recuperarlo.")) {
+            await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: [id] }) });
+            App.cargarTodo(true);
+        }
+    },
+    vaciarPapelera: async () => {
+        if(App.datos.length === 0) { alert("La papelera ya está vacía."); return; }
+        if(!confirm("⚠️ ¡PELIGRO EXTREMO! ⚠️\n\n¿Estás seguro de que quieres eliminar TODOS los troqueles de la papelera?\nSe borrarán para siempre y no hay marcha atrás.")) return;
+        
+        const todosIds = App.datos.map(t => t.id);
+        await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: todosIds }) });
+        App.cargarTodo(true);
+    },
+    restaurarTodoPapelera: async () => {
+        if(App.datos.length === 0) return;
+        const todosIds = App.datos.map(t => t.id);
+        await fetch('/api/troqueles/bulk/restaurar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: todosIds }) });
+        App.cargarTodo(true);
+    },
+
+    verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
+    
+    // UTILS VARIOS
     crearFamilia: async () => { const n = prompt("Familia:"); if(n) { await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     crearTipo: async () => { const n = prompt("Tipo:"); if(n) { await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     subirArchivos: async (input) => { 
@@ -364,10 +459,6 @@ const App = {
     filtrar: () => { const b=document.getElementById('btn-limpiar'); b.classList.toggle('oculto', document.getElementById('buscador').value===''); App.renderTabla(); },
     limpiarBuscador: () => { document.getElementById('buscador').value=''; App.filtrar(); },
     ordenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
-    select: (c,id) => { c.checked ? App.seleccionados.add(id) : App.seleccionados.delete(id); App.updatePanel(); },
-    toggleAll: (c) => { document.querySelectorAll('#tabla-body input[type="checkbox"]').forEach(k=>{ k.checked=c.checked; c.checked ? App.seleccionados.add(parseInt(k.value)) : App.seleccionados.delete(parseInt(k.value)); }); App.updatePanel(); },
-    updatePanel: () => { const p=document.getElementById('panel-acciones'); if(App.seleccionados.size>0) { p.classList.remove('oculto'); document.getElementById('contador-sel').innerText=App.seleccionados.size; } else p.classList.add('oculto'); },
-    limpiarSeleccion: () => { App.seleccionados.clear(); document.getElementById('check-all').checked=false; App.updatePanel(); App.renderTabla(); },
     descatalogar: async (id) => { 
         if(confirm("¿Estás seguro de que deseas marcar este troquel como DESCATALOGADO?")) { 
             const t = App.datos.find(x => x.id === id); 
@@ -381,9 +472,6 @@ const App = {
             }
         } 
     },
-    borrar: async (id) => { if(confirm("¿Mover a la papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
-    restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.cargarTodo(true); },
-    verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.limpiarSeleccion(); App.cargarTodo(); },
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(); } },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
@@ -416,7 +504,6 @@ const App = {
         document.getElementById('btn-imprimir-qr-unico').onclick = () => { App.imprimirEtiquetasGodex([t]); };
     },
 
-    // --- NUEVO: FUNCIÓN PARA LIMPIAR DUPLICADOS DE LA BD ---
     limpiarDuplicadosExactos: async () => {
         if(confirm("⚠️ ¿Estás seguro? Esto escaneará toda tu base de datos y borrará los troqueles que sean COPIAS EXACTAS (misma matrícula, misma descripción, mismo tipo, etc.).")) {
             const btn = document.getElementById('btn-limpiar-dup');
@@ -435,9 +522,6 @@ const App = {
         }
     },
 
-    // ====================================================================
-    // 🧠 IMPORTACIÓN V26: IA HEURÍSTICA Y BLOQUEO DE DUPLICADOS EN LA PUERTA
-    // ====================================================================
     procesarImportacion: async (input) => { 
         const file = input.files[0]; 
         if(!file) return; 
@@ -481,7 +565,6 @@ const App = {
                 const hashesExistentes = new Set();
                 let duplicadosOmitidos = 0;
 
-                // Creador de Huellas Dactilares para detectar copias exactas
                 const generarHuella = (t) => {
                     return [
                         t.id_troquel, t.ubicacion, t.nombre, t.categoria_id, t.familia_id,
@@ -489,10 +572,8 @@ const App = {
                     ].map(x => (x || "").toString().trim().toUpperCase()).join('|');
                 };
 
-                // Registramos las huellas de los troqueles que YA están en la BD
                 App.datos.forEach(t => hashesExistentes.add(generarHuella(t)));
 
-                // Extracción del Excel
                 for(let i=1; i<filas.length; i++) {
                     const f = filas[i];
                     if(!f.trim()) continue;
@@ -521,10 +602,9 @@ const App = {
 
                     const huella = generarHuella(nuevoTroquel);
 
-                    // FILTRO ANTI-DUPLICADOS: Si es exactamente igual a uno que ya existe, lo saltamos
                     if (!hashesExistentes.has(huella)) {
                         troqueles.push(nuevoTroquel);
-                        hashesExistentes.add(huella); // Evitamos que se duplique dentro del mismo Excel
+                        hashesExistentes.add(huella); 
                     } else {
                         duplicadosOmitidos++;
                     }

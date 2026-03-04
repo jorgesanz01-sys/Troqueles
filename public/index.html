@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ERP V26 | Anti-Duplicados</title>
+    <title>ERP V27 | Gestión Total y Papelera</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -12,7 +12,7 @@
 <body>
     <div class="erp-layout">
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-logo"><span>🏭</span><h2>ERP V26</h2></div>
+            <div class="sidebar-logo"><span>🏭</span><h2>ERP V27</h2></div>
             <nav class="sidebar-menu">
                 <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
                 <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
@@ -30,9 +30,8 @@
             <section id="vista-lista" class="vista">
                 <div class="header-modulo">
                     <h1 id="titulo-lista">Inventario</h1>
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <button id="btn-restaurar-papelera" class="btn-accion oculto" style="background:#22c55e;" onclick="App.salirPapelera()">🔙 Salir Papelera</button>
-                        
+                    
+                    <div id="herramientas-normales" style="display:flex; gap:10px; align-items:center;">
                         <select id="select-import-tipo" style="padding:10px; border-radius:5px; border:2px solid #0f766e; color:#0f766e; font-weight:bold; outline:none; cursor:pointer;">
                             <option value="">Tipo al importar (Opcional)...</option>
                         </select>
@@ -41,6 +40,13 @@
                         <input type="file" id="input-csv" accept=".csv" style="display:none;" onchange="App.procesarImportacion(this)">
                         
                         <button class="btn-secundario" onclick="App.exportarCSV()">📥 Excel CSV</button>
+                    </div>
+
+                    <div id="herramientas-papelera" class="oculto" style="display:flex; gap:10px; padding:10px; background:#fee2e2; border-radius:8px; border: 1px solid #f87171;">
+                        <button class="btn-secundario" onclick="App.salirPapelera()" style="background:white;">🔙 Volver al Inventario</button>
+                        <div style="width:2px; background:#f87171; margin:0 5px;"></div>
+                        <button class="btn-accion" style="background:#22c55e;" onclick="App.restaurarTodoPapelera()">♻️ Restaurar TODO</button>
+                        <button class="btn-accion" style="background:#b91c1c;" onclick="App.vaciarPapelera()">🔥 Vaciar Papelera</button>
                     </div>
                 </div>
 
@@ -55,7 +61,7 @@
                         <option value="DESCATALOGADO">Descatalogados</option>
                     </select>
                     <div class="caja-buscador" style="flex:1; position:relative;">
-                        <input type="text" id="buscador" placeholder="Buscar..." oninput="App.filtrar()" style="width:100%;">
+                        <input type="text" id="buscador" placeholder="Buscar por Nombre, Artículo o Matrícula..." oninput="App.filtrar()" style="width:100%;">
                         <button id="btn-limpiar" onclick="App.limpiarBuscador()" class="oculto" style="position:absolute; right:5px; top:5px; border:none; background:transparent;">✕</button>
                     </div>
                 </div>
@@ -63,16 +69,25 @@
                 <div id="panel-acciones" class="panel-acciones oculto">
                     <strong style="color:#0369a1;"><span id="contador-sel">0</span> sel.</strong>
                     
-                    <button class="btn-secundario" style="background:white; border:2px solid #14b8a6; color:#0f766e; font-weight:bold;" onclick="App.imprimirLoteQRs()">🖨️ Imprimir QRs (Godex)</button>
+                    <div id="acciones-normales" style="display:inline-flex; gap:5px; align-items:center;">
+                        <button class="btn-secundario" style="background:white; border:2px solid #14b8a6; color:#0f766e; font-weight:bold;" onclick="App.imprimirLoteQRs()">🖨️ QRs (Godex)</button>
+                        <button class="btn-accion" style="background:#e11d48;" onclick="App.moverLote('SALIDA')">🏭 A Prod.</button>
+                        <button class="btn-accion" style="background:#16a34a;" onclick="App.moverLote('RETORNO')">✅ Devolver</button>
+                        <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
+                        <select id="bulk-familia" class="select-bulk"><option value="">Familia...</option></select>
+                        <button class="btn-secundario" onclick="App.asignarMasivo('familia')">OK</button>
+                        <select id="bulk-tipo" class="select-bulk"><option value="">Tipo...</option></select>
+                        <button class="btn-secundario" onclick="App.asignarMasivo('categoria')">OK</button>
+                        <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
+                        <button class="btn-accion" style="background:#ef4444;" onclick="App.borrarLote()">🗑️ Papelera</button>
+                    </div>
 
-                    <button class="btn-accion" style="background:#e11d48;" onclick="App.moverLote('SALIDA')">🏭 A Prod.</button>
-                    <button class="btn-accion" style="background:#16a34a;" onclick="App.moverLote('RETORNO')">✅ Devolver</button>
-                    <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
-                    <select id="bulk-familia" class="select-bulk"><option value="">Asignar Familia...</option></select>
-                    <button class="btn-secundario" onclick="App.asignarMasivo('familia')">OK</button>
-                    <select id="bulk-tipo" class="select-bulk"><option value="">Asignar Tipo...</option></select>
-                    <button class="btn-secundario" onclick="App.asignarMasivo('categoria')">OK</button>
-                    <button class="btn-secundario" onclick="App.limpiarSeleccion()">Cancelar</button>
+                    <div id="acciones-papelera" style="display:none; gap:5px; align-items:center;">
+                        <button class="btn-accion" style="background:#22c55e;" onclick="App.restaurarLote()">♻️ Restaurar Sel.</button>
+                        <button class="btn-accion" style="background:#b91c1c;" onclick="App.destruirLote()">🔥 Destruir Sel.</button>
+                    </div>
+
+                    <button class="btn-secundario" style="margin-left:auto;" onclick="App.limpiarSeleccion()">Cancelar</button>
                 </div>
 
                 <div class="contenedor-tabla">
@@ -84,9 +99,10 @@
                                 <th>Estado</th>
                                 <th onclick="App.ordenar('id_troquel')" style="cursor:pointer;">Matrícula ↕️</th>
                                 <th onclick="App.ordenar('ubicacion')" style="cursor:pointer;">Ubicación ↕️</th>
+                                <th onclick="App.ordenar('codigos_articulo')" style="cursor:pointer;">Artículo ↕️</th>
                                 <th onclick="App.ordenar('nombre')" style="cursor:pointer;">Descripción ↕️</th>
                                 <th onclick="App.ordenar('familia')" style="cursor:pointer;">Familia ↕️</th>
-                                <th width="120">Acciones</th>
+                                <th width="140">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tabla-body"></tbody>
@@ -115,6 +131,7 @@
                         <thead>
                             <tr>
                                 <th>Matrícula</th>
+                                <th>Artículo</th>
                                 <th>Descripción</th>
                                 <th>Estado Actual</th>
                                 <th>Último Movimiento Registrado</th>
@@ -191,6 +208,7 @@
                         <div id="movil-ubi" style="font-size:24px; font-weight:800;">-</div>
                     </div>
                     <div id="movil-nombre" style="margin-top:10px; font-weight:600;">-</div>
+                    <div id="movil-arts" style="font-size:16px; color:#0369a1; font-weight:bold; margin-top:5px;"></div>
                     <div id="movil-estado" style="margin-top:10px;"></div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
@@ -225,7 +243,7 @@
                                 <div style="background:#f8fafc; padding:10px; border-radius:6px;"><b>M. Corte:</b> <span id="ver-medidas-corte"></span></div>
                             </div>
                             <div style="margin-bottom: 10px;"><label style="color:#64748b; font-size:12px;">ORDEN DE TRABAJO (OT)</label><div id="ver-ot" style="font-weight:bold; background:#f1f5f9; padding:8px; border-radius:4px;"></div></div>
-                            <div style="margin-bottom: 10px;"><label style="color:#64748b; font-size:12px;">CÓDIGOS DE ARTÍCULO</label><div id="ver-arts" style="background:#f1f5f9; padding:8px; border-radius:4px; min-height:40px;"></div></div>
+                            <div style="margin-bottom: 10px;"><label style="color:#64748b; font-size:12px;">CÓDIGOS DE ARTÍCULO</label><div id="ver-arts" style="background:#f1f5f9; padding:8px; border-radius:4px; min-height:40px; color:#0369a1; font-weight:bold;"></div></div>
                             <div style="margin-bottom: 10px;"><label style="color:#64748b; font-size:12px;">OBSERVACIONES</label><div id="ver-obs" style="background:#fef3c7; border-left:4px solid #f59e0b; padding:8px; border-radius:4px; min-height:40px;"></div></div>
                         </div>
                         <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">

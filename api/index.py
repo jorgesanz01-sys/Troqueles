@@ -43,6 +43,10 @@ class BulkUpdate(BaseModel):
     ids: List[int]
     valor_id: int
 
+# NUEVO: MODELO PARA BORRADOS MASIVOS
+class BulkIds(BaseModel):
+    ids: List[int]
+
 # --- GET ---
 @app.get("/api/troqueles")
 def leer_troqueles(ver_papelera: bool = False):
@@ -172,11 +176,24 @@ def bulk_fam(d: BulkUpdate):
 def bulk_cat(d: BulkUpdate):
     return supabase.table("troqueles").update({"categoria_id": d.valor_id}).in_("id", d.ids).execute()
 
+# --- NUEVOS CONTROLADORES MASIVOS ---
+@app.post("/api/troqueles/bulk/papelera")
+def bulk_papelera(d: BulkIds):
+    return supabase.table("troqueles").update({"estado_activo": "Eliminado"}).in_("id", d.ids).execute()
+
+@app.post("/api/troqueles/bulk/restaurar")
+def bulk_restaurar(d: BulkIds):
+    return supabase.table("troqueles").update({"estado_activo": "Activo"}).in_("id", d.ids).execute()
+
+@app.post("/api/troqueles/bulk/destruir")
+def bulk_destruir(d: BulkIds):
+    # Destruye los troqueles de la base de datos permanentemente
+    return supabase.table("troqueles").delete().in_("id", d.ids).execute()
+
 def registrar_log(id_t, accion, orig, dest):
     try: supabase.table("historial").insert({"troquel_id": id_t, "accion": accion, "tipo_movimiento": accion, "ubicacion_anterior": orig, "ubicacion_nueva": dest}).execute()
     except: pass
 
-# --- NUEVO: MANTENIMIENTO DE DUPLICADOS ---
 @app.delete("/api/mantenimiento/limpiar_duplicados")
 def limpiar_duplicados():
     todos = supabase.table("troqueles").select("*").execute().data
@@ -184,7 +201,6 @@ def limpiar_duplicados():
     ids_a_borrar = []
     
     for t in todos:
-        # Creamos la huella ignorando minúsculas y espacios
         huella = (
             str(t.get("id_troquel") or "").strip().upper(),
             str(t.get("ubicacion") or "").strip().upper(),
@@ -197,13 +213,9 @@ def limpiar_duplicados():
             str(t.get("tamano_final") or "").strip().upper(),
             str(t.get("observaciones") or "").strip().upper()
         )
-        # Si ya hemos visto esta huella exacta, lo marcamos para borrar
-        if huella in vistos:
-            ids_a_borrar.append(t["id"])
-        else:
-            vistos.add(huella)
+        if huella in vistos: ids_a_borrar.append(t["id"])
+        else: vistos.add(huella)
             
-    # Borramos los clones (uno por uno por seguridad)
     for id_borrar in ids_a_borrar:
         supabase.table("troqueles").delete().eq("id", id_borrar).execute()
         
