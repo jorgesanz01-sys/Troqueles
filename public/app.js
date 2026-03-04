@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V21 (GODEX CON ARTÍCULO Y CSV BLINDADO)
+// ERP PACKAGING - LÓGICA V22 (QR INTELIGENTE E IMPORTACIÓN CON TIPO)
 // =============================================================
 
 const App = {
@@ -12,7 +12,7 @@ const App = {
 
     // 1. INICIO
     init: async () => {
-        console.log("Iniciando ERP V21...");
+        console.log("Iniciando ERP V22...");
         await App.cargarSelects();
         await App.cargarTodo();
 
@@ -115,7 +115,6 @@ const App = {
             let fam = App.mapaFam[t.familia_id];
             if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
 
-            // OJO AL CAMBIO AQUÍ: Ahora pasamos t.id al botón de generarQR
             let btns = `
                 <button class="btn-icono" onclick="App.verFicha(${t.id})" title="Ver Ficha">👁️</button>
                 <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
@@ -208,7 +207,6 @@ const App = {
             btnPrint.innerHTML = '🖨️ Etiqueta';
             header.insertBefore(btnPrint, header.firstChild);
         }
-        // CAMBIO AQUÍ: Ahora pasamos el ID completo
         btnPrint.onclick = () => App.generarQR(t.id);
         document.getElementById('modal-ficha').classList.remove('oculto');
     },
@@ -282,7 +280,7 @@ const App = {
         } catch(e) { alert("Error foto"); }
     },
 
-    // ESCÁNER
+    // ESCÁNER (AHORA BUSCA POR ID INTERNO DE BASE DE DATOS)
     toggleScanner: (show=true, modo='LOTE') => {
         const el = document.getElementById('modal-scanner');
         App.modoScanner = modo;
@@ -306,7 +304,11 @@ const App = {
             let last = null; let t0 = 0;
             App.scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, (txt) => {
                 if(txt === last && (Date.now() - t0 < 3000)) return; 
-                const t = App.datos.find(x => x.id_troquel === txt);
+                
+                // V22: AHORA EL ESCÁNER LEE EL ID INTERNO REAL (txt será "45", "102"...)
+                // Comparamos convirtiendo t.id a string
+                const t = App.datos.find(x => x.id.toString() === txt);
+                
                 if(t) {
                     if (App.modoScanner === 'UNICO') {
                         App.toggleScanner(false);
@@ -426,7 +428,7 @@ const App = {
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
     cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
     
-    // --- MAGIA GODEX MEJORADA (CON ARTÍCULOS) ---
+    // --- MAGIA GODEX: IMPRIME EL ID INTERNO EN EL QR ---
     imprimirEtiquetasGodex: (items) => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
         let html = `
@@ -463,10 +465,10 @@ const App = {
         `;
         
         items.forEach(t => {
-            const qr = new QRious({ value: t.id_troquel, size: 150, level: 'M' });
-            // Agregamos el HTML condicional para el artículo
-            const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
+            // V22: EL QR GUARDA t.id (El número interno de base de datos)
+            const qr = new QRious({ value: t.id.toString(), size: 150, level: 'M' });
             
+            const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
             html += `
                 <div class="label">
                     <div class="qr"><img src="${qr.toDataURL()}"></div>
@@ -493,7 +495,6 @@ const App = {
         App.limpiarSeleccion();
     },
 
-    // IMPRESIÓN INDIVIDUAL MÁS INTELIGENTE
     generarQR: (id_db) => { 
         const t = App.datos.find(x => x.id === id_db);
         if(!t) return;
@@ -509,14 +510,15 @@ const App = {
             else { elArts.style.display = "none"; }
         }
 
-        new QRious({ element: document.getElementById('qr-canvas'), value: t.id_troquel, size: 200, padding: 0, level: 'M' }); 
+        // V22: EL QR GUARDA t.id (El número interno)
+        new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
         
         document.getElementById('btn-imprimir-qr-unico').onclick = () => {
             App.imprimirEtiquetasGodex([t]);
         };
     },
 
-    // --- CSV IMPORTACIÓN BLINDADA PARA ERRORES OCULTOS DE EXCEL ---
+    // --- CSV V22: IMPORTACIÓN INTELIGENTE (4 COLUMNAS) Y BLINDADA A ERRORES ---
     procesarImportacion: async (input) => { 
         const file = input.files[0]; 
         if(!file) return; 
@@ -524,28 +526,44 @@ const App = {
         const reader = new FileReader(); 
         reader.onload = async(e) => { 
             try {
-                // Separamos por saltos de línea y quitamos filas vacías
                 const filas = e.target.result.split(/\r?\n/); 
                 if(filas.length < 2) { alert("El archivo está vacío o no tiene datos."); return; }
                 
-                // Leemos la primera fila para saber si Excel guardó con "," o con ";"
                 const cabecera = filas[0];
                 const separador = cabecera.includes(';') ? ';' : ',';
                 
+                // Mapa inverso para encontrar el ID del "Tipo" a partir de su texto
+                const catNameToId = {};
+                Object.keys(App.mapaCat).forEach(id => {
+                    catNameToId[App.mapaCat[id].toUpperCase()] = parseInt(id);
+                });
+
                 const troqueles = [];
                 
-                // Empezamos en i=1 para saltarnos la cabecera
+                // Bucle desde 1 para saltar la fila de títulos
                 for(let i=1; i<filas.length; i++) {
                     const f = filas[i];
                     if(!f.trim()) continue;
                     
                     const cols = f.split(separador);
-                    // Quitamos comillas dobles que Excel suele meter y quitamos espacios extra
                     const mat = cols[0] ? cols[0].replace(/['"]/g,'').trim() : null;
                     const ubi = cols[1] ? cols[1].replace(/['"]/g,'').trim() : null;
                     const nom = cols[2] ? cols[2].replace(/['"]/g,'').trim() : null;
+                    const tipoStr = cols[3] ? cols[3].replace(/['"]/g,'').trim().toUpperCase() : null;
                     
-                    if(mat) troqueles.push({ id_troquel: mat, ubicacion: ubi || mat, nombre: nom || "Sin Descripción" });
+                    let catId = null;
+                    if(tipoStr && catNameToId[tipoStr]) {
+                        catId = catNameToId[tipoStr];
+                    }
+
+                    if(mat) {
+                        troqueles.push({ 
+                            id_troquel: mat, 
+                            ubicacion: ubi || mat, 
+                            nombre: nom || "Sin Descripción",
+                            categoria_id: catId
+                        });
+                    }
                 }
                 
                 if(troqueles.length === 0) { alert("No se han encontrado datos válidos para importar."); input.value = ""; return; }
@@ -558,31 +576,32 @@ const App = {
                 
                 if(res.ok) { 
                     App.cargarTodo(); 
-                    alert(`✅ Importación completada con éxito: ${troqueles.length} troqueles añadidos.`); 
+                    alert(`✅ ÉXITO: Se han importado ${troqueles.length} troqueles. (Recuerda que si había tipos que no existen en el sistema, se han importado sin tipo).`); 
                 } else {
-                    // SI HAY ERROR, LO CAPTURAMOS AQUÍ Y TE LO ENSEÑAMOS
                     const errorBack = await res.text();
-                    console.error("Error del servidor:", errorBack);
-                    alert(`❌ Error al subir los datos.\n\nEs muy probable que una "Matrícula" del Excel ya exista en la base de datos, o falte algún campo obligatorio.\n\nMensaje técnico: ${errorBack.substring(0, 100)}...`);
+                    console.error("Error BD:", errorBack);
+                    alert(`❌ ERROR EN BASE DE DATOS:\nEs posible que la columna 'id_troquel' en Supabase esté marcada como 'Unique' (Única) y estés intentando meter duplicados.\n\nVe a Supabase > Table Editor > troqueles y quita el tick de 'Is Unique' de esa columna.`);
                 }
             } catch (err) { 
-                console.error("Error leyendo archivo:", err);
-                alert("❌ Ocurrió un error leyendo el archivo. Asegúrate de que es un CSV válido."); 
+                console.error("Fallo general:", err);
+                alert("❌ Ocurrió un error al procesar el archivo CSV."); 
             }
             input.value = ""; 
         }; 
         reader.readAsText(file, 'UTF-8'); 
     },
     
+    // EXPORTACIÓN AHORA INCLUYE EL "TIPO"
     exportarCSV: () => { 
-        let c = "Matricula;Ubicacion;Descripcion;Estado\n"; 
+        let c = "Matricula;Ubicacion;Descripcion;Tipo;Estado\n"; 
         App.datos.forEach(t => {
             const nomLimpio = (t.nombre || "").replace(/;/g, ',').replace(/\r?\n/g, ' ');
-            c += `${t.id_troquel};${t.ubicacion};${nomLimpio};${t.estado}\n`;
+            const tipoNom = App.mapaCat[t.categoria_id] || "";
+            c += `${t.id_troquel};${t.ubicacion};${nomLimpio};${tipoNom};${t.estado}\n`;
         }); 
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), c], {type: "text/csv;charset=utf-8"});
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
-        a.download = 'inventario_troqueles.csv'; a.click(); 
+        a.download = 'inventario_troqueles_v22.csv'; a.click(); 
     }
 };
 
