@@ -1,14 +1,25 @@
+// =============================================================
+// ERP PACKAGING - LÓGICA PRINCIPAL (V16 - MODO OPERARIO ACTIVO)
+// =============================================================
+
 const App = {
+    // --- ESTADO ---
     datos: [], seleccionados: new Set(), filtroTipo: 'TODOS',
-    mapaCat: {}, mapaFam: {}, mapaFamInv: {}, mapaCatInv: {}, // Mapas inversos para importar nombres
-    columnaOrden: 'id_troquel', ordenAsc: true,
-    scanner: null, modoMovil: false, modoScanner: 'LOTE',
+    mapaCat: {}, mapaFam: {}, columnaOrden: 'id_troquel', ordenAsc: true,
+    scanner: null, modoMovil: false, 
+    modoScanner: 'LOTE', // 'LOTE' o 'UNICO' (NUEVO)
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
 
+    // 1. INICIO
     init: async () => {
-        console.log("Iniciando ERP V18...");
+        console.log("Iniciando ERP...");
+        
+        // 1. Cargar datos obligatorios
         await App.cargarSelects();
         await App.cargarTodo();
+
+        // 2. DETECTAR MODO OPERARIO EXCLUSIVO
+        // Si el enlace termina en ?modo=operario
         const params = new URLSearchParams(window.location.search);
         if (params.get('modo') === 'operario') {
             document.body.classList.add('kiosk-mode');
@@ -16,6 +27,7 @@ const App = {
         }
     },
 
+    // 2. CARGA DATOS
     cargarTodo: async (papelera = false) => {
         try {
             App.enPapelera = papelera;
@@ -26,12 +38,8 @@ const App = {
                 document.getElementById('titulo-lista').innerText = papelera ? "🗑️ PAPELERA" : "Inventario Activo";
                 const btn = document.getElementById('btn-restaurar-papelera');
                 const panel = document.getElementById('panel-acciones');
-                if (papelera) { 
-                    if(btn) btn.classList.remove('oculto'); 
-                    if(panel) panel.classList.add('oculto'); 
-                } else { 
-                    if(btn) btn.classList.add('oculto'); 
-                }
+                if (papelera) { btn.classList.remove('oculto'); panel.classList.add('oculto'); }
+                else { btn.classList.add('oculto'); }
             }
         } catch (e) { console.error(e); }
     },
@@ -39,18 +47,13 @@ const App = {
     cargarSelects: async () => {
         try {
             const [cats, fams] = await Promise.all([fetch('/api/categorias').then(r=>r.json()), fetch('/api/familias').then(r=>r.json())]);
-            
             App.mapaCat = {}; App.mapaFam = {};
-            App.mapaCatInv = {}; App.mapaFamInv = {}; // Inversos para importación
-            
-            cats.forEach(c => { App.mapaCat[c.id] = c.nombre; App.mapaCatInv[c.nombre.toUpperCase()] = c.id; });
-            fams.forEach(f => { App.mapaFam[f.id] = f.nombre; App.mapaFamInv[f.nombre.toUpperCase()] = f.id; });
+            cats.forEach(c => App.mapaCat[c.id] = c.nombre);
+            fams.forEach(f => App.mapaFam[f.id] = f.nombre);
 
             const divChips = document.getElementById('chips-tipos');
-            if(divChips) {
-                divChips.innerHTML = `<button class="chip activo" onclick="App.setFiltroTipo('TODOS', this)">TODOS</button>`;
-                cats.forEach(c => divChips.innerHTML += `<button class="chip" onclick="App.setFiltroTipo('${c.nombre}', this)">${c.nombre}</button>`);
-            }
+            divChips.innerHTML = `<button class="chip activo" onclick="App.setFiltroTipo('TODOS', this)">TODOS</button>`;
+            cats.forEach(c => divChips.innerHTML += `<button class="chip" onclick="App.setFiltroTipo('${c.nombre}', this)">${c.nombre}</button>`);
 
             const llenar = (id, data, def) => {
                 const el = document.getElementById(id);
@@ -71,74 +74,14 @@ const App = {
         } catch (e) { console.error(e); }
     },
 
-    // --- IMPORTACIÓN INTELIGENTE ---
-    procesarImportacion: (input) => {
-        const file = input.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        
-        reader.onload = async (e) => {
-            const text = e.target.result;
-            // Detectar separador (; o ,)
-            const separador = text.indexOf(';') > -1 ? ';' : ',';
-            const lineas = text.split('\n');
-            const listaParaEnviar = [];
-
-            // Ignorar cabecera (i=1)
-            for(let i=1; i<lineas.length; i++) {
-                const fila = lineas[i].trim();
-                if(!fila) continue;
-                
-                const cols = fila.split(separador);
-                // Asumimos formato: Matricula, Ubicacion, Nombre, Tipo(Nombre), Familia(Nombre)
-                if(cols.length < 3) continue;
-
-                const mat = cols[0].trim().replace(/"/g, '');
-                const ubi = cols[1].trim().replace(/"/g, '');
-                const nom = cols[2].trim().replace(/"/g, '');
-                const tipoRaw = cols[3] ? cols[3].trim().replace(/"/g, '').toUpperCase() : "";
-                const famRaw = cols[4] ? cols[4].trim().replace(/"/g, '').toUpperCase() : "";
-
-                // Mapeo inteligente
-                let catId = App.mapaCatInv[tipoRaw] || null;
-                let famId = App.mapaFamInv[famRaw] || null;
-
-                listaParaEnviar.push({
-                    id_troquel: mat,
-                    ubicacion: ubi,
-                    nombre: nom,
-                    categoria_id: catId,
-                    familia_id: famId,
-                    estado: "EN ALMACEN"
-                });
-            }
-
-            if(listaParaEnviar.length > 0) {
-                if(confirm(`Se han detectado ${listaParaEnviar.length} troqueles. ¿Importar?`)) {
-                    await fetch('/api/troqueles/importar', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(listaParaEnviar)
-                    });
-                    alert("Importación finalizada.");
-                    App.cargarTodo();
-                }
-            } else {
-                alert("No se detectaron datos válidos en el CSV.");
-            }
-            input.value = ""; // Reset
-        };
-        reader.readAsText(file);
-    },
-
-    // --- VISTA LECTURA ---
+    // 3. VISTA LECTURA PC (MODAL)
     verFicha: (id) => {
         const t = App.datos.find(x => x.id === id); if (!t) return;
         document.getElementById('ver-matricula').innerText = t.id_troquel || "-";
         document.getElementById('ver-ubicacion').innerText = t.ubicacion || "-";
         document.getElementById('ver-nombre').innerText = t.nombre || "-";
-        document.getElementById('ver-tipo').innerText = App.mapaCat[t.categoria_id] || '-';
-        document.getElementById('ver-familia').innerText = App.mapaFam[t.familia_id] || '-';
+        document.getElementById('ver-tipo').innerHTML = App.mapaCat[t.categoria_id] || '-';
+        document.getElementById('ver-familia').innerHTML = App.mapaFam[t.familia_id] || '-';
         document.getElementById('ver-id-oculto').value = t.id;
 
         const gal = document.getElementById('ver-galeria'); gal.innerHTML = "";
@@ -149,6 +92,7 @@ const App = {
             });
         } else gal.innerHTML = "<span style='color:#999'>Sin archivos</span>";
         
+        // Inyectar botón imprimir si no existe
         let btnPrint = document.getElementById('btn-print-ficha');
         if(!btnPrint) {
             const header = document.querySelector('#modal-ficha h2').parentNode;
@@ -163,52 +107,87 @@ const App = {
 
         document.getElementById('modal-ficha').classList.remove('oculto');
     },
+    
     editarDesdeFicha: () => {
         const id = parseInt(document.getElementById('ver-id-oculto').value);
         document.getElementById('modal-ficha').classList.add('oculto');
         App.editar(id);
     },
 
-    // --- MÓVIL ---
-    activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
-    desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
-    
+    // 4. MODO OPERARIO (MÓVIL) - FUNCIONALIDAD NUEVA AÑADIDA
+    activarModoMovil: () => {
+        App.modoMovil = true;
+        document.getElementById('sidebar').classList.add('oculto');
+        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
+        document.getElementById('vista-movil').classList.remove('oculto');
+    },
+    desactivarModoMovil: () => {
+        App.modoMovil = false;
+        document.getElementById('sidebar').classList.remove('oculto');
+        App.nav('vista-lista');
+    },
+
+    // ABRIR DETALLE MÓVIL (CUANDO ESCANEA UN SOLO CÓDIGO)
     abrirDetalleMovil: (id) => {
         const t = App.datos.find(x => x.id === id); if(!t) return;
+        
         document.getElementById('vista-movil').classList.add('oculto');
         document.getElementById('vista-movil-detalle').classList.remove('oculto');
+        
         document.getElementById('movil-id-db').value = t.id;
         document.getElementById('movil-id').innerText = t.id_troquel;
         document.getElementById('movil-ubi').innerText = t.ubicacion;
         document.getElementById('movil-nombre').innerText = t.nombre;
+        
         let stHtml = `<span style="background:#dcfce7; color:#166534; padding:5px 10px; border-radius:15px; font-weight:bold;">ALMACÉN</span>`;
         if(t.estado==='EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px; font-weight:bold;">PRODUCCIÓN</span>`;
         document.getElementById('movil-estado').innerHTML = stHtml;
     },
-    volverMenuMovil: () => { document.getElementById('vista-movil-detalle').classList.add('oculto'); document.getElementById('vista-movil').classList.remove('oculto'); App.cargarTodo(); },
+
+    volverMenuMovil: () => {
+        document.getElementById('vista-movil-detalle').classList.add('oculto');
+        document.getElementById('vista-movil').classList.remove('oculto');
+        App.cargarTodo(); // Recargar datos al volver
+    },
+
+    // ACCIONES RÁPIDAS MÓVIL
     movilCambiarUbi: async () => {
         const id = document.getElementById('movil-id-db').value;
         const actual = document.getElementById('movil-ubi').innerText;
         const nueva = prompt("Nueva Ubicación:", actual);
         if(nueva && nueva !== actual) {
             const t = App.datos.find(x => x.id == id);
-            const payload = { ...t, ubicacion: nueva }; 
+            // Copiamos todo el objeto para actualizarlo
+            const payload = { 
+                id_troquel: t.id_troquel, ubicacion: nueva, nombre: t.nombre,
+                categoria_id: t.categoria_id, familia_id: t.familia_id, estado: t.estado,
+                tamano_troquel: t.tamano_troquel, tamano_final: t.tamano_final,
+                codigos_articulo: t.codigos_articulo, referencias_ot: t.referencias_ot,
+                observaciones: t.observaciones, archivos: t.archivos
+            };
             await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
             await App.cargarTodo();
             document.getElementById('movil-ubi').innerText = nueva;
+            alert("Ubicación cambiada");
         }
     },
+
     movilCambiarEstado: async (accion) => {
         const id = parseInt(document.getElementById('movil-id-db').value);
         if(!confirm(`¿Marcar como ${accion}?`)) return;
-        await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: [id], accion: accion }) });
+        await fetch('/api/movimientos/lote', { 
+            method: 'POST', headers: {'Content-Type':'application/json'}, 
+            body: JSON.stringify({ ids: [id], accion: accion }) 
+        });
         await App.cargarTodo();
-        App.abrirDetalleMovil(id);
+        App.abrirDetalleMovil(id); // Refrescar visualmente la ficha
     },
+
     movilSubirFoto: async (input) => {
         if(!input.files.length) return;
         const id = document.getElementById('movil-id-db').value;
         const t = App.datos.find(x => x.id == id);
+        
         const fd = new FormData(); fd.append('file', input.files[0]);
         try {
             const res = await fetch('/api/subir_foto', { method: 'POST', body: fd });
@@ -216,20 +195,32 @@ const App = {
                 const data = await res.json();
                 if(!t.archivos) t.archivos = [];
                 t.archivos.push({ url: data.url, nombre: input.files[0].name, tipo: data.tipo });
-                await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(t) });
-                alert("Foto guardada");
+                
+                // Guardar ficha
+                const payload = {
+                    id_troquel: t.id_troquel, ubicacion: t.ubicacion, nombre: t.nombre,
+                    categoria_id: t.categoria_id, familia_id: t.familia_id, estado: t.estado,
+                    tamano_troquel: t.tamano_troquel, tamano_final: t.tamano_final,
+                    codigos_articulo: t.codigos_articulo, referencias_ot: t.referencias_ot,
+                    observaciones: t.observaciones, archivos: t.archivos
+                };
+                await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                alert("Foto añadida");
                 await App.cargarTodo();
             }
         } catch(e) { alert("Error foto"); }
     },
 
-    // --- ESCÁNER ---
+    // 5. ESCÁNER INTELIGENTE (MODIFICADO PARA SOPORTAR MODO 'UNICO')
     toggleScanner: (show=true, modo='LOTE') => {
         const el = document.getElementById('modal-scanner');
         App.modoScanner = modo;
+        
+        // Ajustar interfaz según modo
         const pLote = document.getElementById('panel-lote');
         const bLote = document.getElementById('btns-lote');
         const tit = document.getElementById('titulo-scanner');
+        
         if (modo === 'UNICO') {
             if(pLote) pLote.style.display='none';
             if(bLote) bLote.style.display='none';
@@ -239,6 +230,7 @@ const App = {
             if(bLote) bLote.style.display='flex';
             if(tit) tit.innerText = "📦 Escanear Lote";
         }
+
         if(show) {
             el.classList.remove('oculto'); App.escaneadosLote.clear(); App.renderListaEscaneados();
             App.scanner = new Html5Qrcode("reader");
@@ -248,22 +240,25 @@ const App = {
                 const t = App.datos.find(x => x.id_troquel === txt);
                 if(t) {
                     if (App.modoScanner === 'UNICO') {
+                        // MODO NUEVO: Abrir ficha móvil directa
                         App.toggleScanner(false);
                         if(navigator.vibrate) navigator.vibrate(200);
                         App.abrirDetalleMovil(t.id);
                     } else {
-                        if(!App.escaneadosLote.has(t.id)) { App.escaneadosLote.set(t.id, t); App.renderListaEscaneados(); if(navigator.vibrate) navigator.vibrate(100); }
+                        // MODO LOTE: Añadir a lista
+                        if(!App.escaneadosLote.has(t.id)) { 
+                            App.escaneadosLote.set(t.id, t); 
+                            App.renderListaEscaneados(); 
+                            if(navigator.vibrate) navigator.vibrate(100); 
+                        }
                     }
                     last = txt; t0 = Date.now();
                 }
             });
         } else { el.classList.add('oculto'); if(App.scanner) App.scanner.stop(); }
     },
-    renderListaEscaneados: () => { const div = document.getElementById('lista-escaneados'); div.innerHTML=""; document.getElementById('count-scans').innerText=App.escaneadosLote.size; App.escaneadosLote.forEach((t,id)=>{ div.innerHTML+=`<div class="chip activo" style="background:white; color:black;"><b>${t.id_troquel}</b><span onclick="App.borrarDeLote(${id})" style="color:red; cursor:pointer; margin-left:5px">✕</span></div>`; }); },
-    borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
-    procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
 
-    // --- TABLA PC ---
+    // 6. TABLA PC (SIN CAMBIOS)
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body'); if (!tbody) return;
         const txt = document.getElementById('buscador').value.toLowerCase();
@@ -302,13 +297,7 @@ const App = {
             let fam = App.mapaFam[t.familia_id];
             if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
 
-            let btns = `
-                <button class="btn-icono" onclick="App.verFicha(${t.id})" title="Ver">👁️</button>
-                <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
-                <button class="btn-icono" onclick="App.editar(${t.id})">✏️</button>
-                <button class="btn-icono" onclick="App.generarQR('${t.id_troquel}', '${t.ubicacion}', '${t.nombre.replace(/'/g,"")}')">🖨️</button>
-                <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red">🗑️</button>
-            `;
+            let btns = `<button class="btn-icono" onclick="App.editar(${t.id})">✏️</button><button class="btn-icono" onclick="App.generarQR('${t.id_troquel}', '${t.ubicacion}', '${t.nombre.replace(/'/g,"")}')">🖨️</button><button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red">🗑️</button>`;
             if(App.enPapelera) btns = `<button class="btn-accion" style="background:#22c55e; padding:2px 5px;" onclick="App.restaurar(${t.id})">♻️</button>`;
 
             return `<tr style="${t.estado==='DESCATALOGADO'?'opacity:0.6':''}" onclick="App.verFicha(${t.id})" style="cursor:pointer;">
@@ -320,11 +309,13 @@ const App = {
         }).join('');
     },
 
-    // --- RESTO ---
+    // 7. RESTO DE UTILS (CRUD, ETC)
     crearFamilia: async () => { const n = prompt("Familia:"); if(n) { await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     crearTipo: async () => { const n = prompt("Tipo:"); if(n) { await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
+    
     subirArchivos: async (input) => { 
-        if(!input.files.length) return; const btn = input.parentElement; btn.innerText="⏳";
+        if(!input.files.length) return; 
+        const btn = input.parentElement; btn.innerText="⏳";
         for(let i=0; i<input.files.length; i++) {
             const fd = new FormData(); fd.append('file', input.files[i]);
             const res = await fetch('/api/subir_foto', { method:'POST', body:fd });
@@ -332,10 +323,15 @@ const App = {
         }
         App.renderListaArchivos(); btn.innerText="➕"; input.value="";
     },
-    renderListaArchivos: () => { const div = document.getElementById('lista-archivos'); div.innerHTML=""; App.archivosActuales.forEach((a,i) => div.innerHTML += `<div>${a.nombre} <span onclick="App.quitarArchivo(${i})" style="color:red;cursor:pointer">✕</span></div>`); },
+    renderListaArchivos: () => { 
+        const div = document.getElementById('lista-archivos'); div.innerHTML=""; 
+        App.archivosActuales.forEach((a,i) => div.innerHTML += `<div>${a.nombre} <span onclick="App.quitarArchivo(${i})" style="color:red;cursor:pointer">✕</span></div>`); 
+    },
     quitarArchivo: (i) => { App.archivosActuales.splice(i,1); App.renderListaArchivos(); },
+
     nav: (v) => { document.querySelectorAll('.vista').forEach(x=>x.classList.add('oculto')); document.getElementById(v).classList.remove('oculto'); if(v==='vista-lista') document.getElementById('sidebar').classList.remove('oculto'); },
-    buscarMovil: (txt) => { const d = document.getElementById('resultados-movil'); d.innerHTML = ""; if(txt.length<2)return; const h = App.datos.filter(t => (t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt.toLowerCase())); d.innerHTML = h.slice(0,10).map(t => `<div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); },
+    
+    // Funciones básicas
     nuevoTroquel: () => { document.getElementById('titulo-form').innerText="Nuevo"; document.querySelector('form').reset(); document.getElementById('f-id-db').value=""; App.archivosActuales=[]; App.renderListaArchivos(); if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); App.nav('vista-formulario'); },
     editar: (id) => { 
         const t = App.datos.find(x=>x.id===id); if(!t)return;
@@ -357,6 +353,7 @@ const App = {
         App.nav('vista-formulario');
     },
     volverDesdeForm: () => { if(App.modoMovil) App.activarModoMovil(); else App.nav('vista-lista'); },
+    
     guardarFicha: async (e) => {
         e.preventDefault(); const id = document.getElementById('f-id-db').value;
         const d = { 
@@ -375,30 +372,36 @@ const App = {
         await fetch(id ? `/api/troqueles/${id}` : '/api/troqueles', { method: id?'PUT':'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) });
         await App.cargarTodo(); App.volverDesdeForm();
     },
+    
     calcularSiguienteId: async () => { const c = document.getElementById('f-cat').value; if(c) { try { const r=await fetch(`/api/siguiente_numero?categoria_id=${c}`); const d=await r.json(); document.getElementById('f-matricula').value=d.siguiente; document.getElementById('f-ubicacion').value=d.siguiente; } catch(e){} } },
+    
     setFiltroTipo: (t,b) => { App.filtroTipo=t; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('activo')); b.classList.add('activo'); App.renderTabla(); },
     filtrar: () => { const b=document.getElementById('btn-limpiar'); b.classList.toggle('oculto', document.getElementById('buscador').value===''); App.renderTabla(); },
     limpiarBuscador: () => { document.getElementById('buscador').value=''; App.filtrar(); },
     ordenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
+    
     select: (c,id) => { c.checked ? App.seleccionados.add(id) : App.seleccionados.delete(id); App.updatePanel(); },
     toggleAll: (c) => { document.querySelectorAll('#tabla-body input[type="checkbox"]').forEach(k=>{ k.checked=c.checked; c.checked ? App.seleccionados.add(parseInt(k.value)) : App.seleccionados.delete(parseInt(k.value)); }); App.updatePanel(); },
     updatePanel: () => { const p=document.getElementById('panel-acciones'); if(App.seleccionados.size>0) { p.classList.remove('oculto'); document.getElementById('contador-sel').innerText=App.seleccionados.size; } else p.classList.add('oculto'); },
     limpiarSeleccion: () => { App.seleccionados.clear(); document.getElementById('check-all').checked=false; App.updatePanel(); App.renderTabla(); },
+    
     descatalogar: async (id) => { if(confirm("¿Baja?")) { const t=App.datos.find(x=>x.id===id); t.estado="DESCATALOGADO"; await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(t) }); App.cargarTodo(); } },
     borrar: async (id) => { if(confirm("¿Papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
     restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.cargarTodo(true); },
     verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
+    
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.limpiarSeleccion(); App.cargarTodo(); },
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(); } },
+    
     generarQR: (id, ubi, nom) => { document.getElementById('modal-qr').classList.remove('oculto'); document.getElementById('qr-texto-ubi').innerText = ubi; document.getElementById('qr-texto-id').innerText = id; document.getElementById('qr-texto-desc').innerText = nom; new QRious({ element: document.getElementById('qr-canvas'), value: id, size: 200, padding: 0, level: 'M' }); },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
-    verHistorialTroquel: async (id, mat, nom) => { const m=document.getElementById('modal-historial-unico'); document.getElementById('hist-titulo-mat').innerText=mat; document.getElementById('hist-titulo-nom').innerText=nom; const b=document.getElementById('tabla-historial-unico'); b.innerHTML='<tr><td colspan="3">Cargando...</td></tr>'; m.classList.remove('oculto'); const r=await fetch(`/api/historial?troquel_id=${id}`); const d=await r.json(); b.innerHTML=d.length?d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} > ${h.ubicacion_nueva||'-'}</td></tr>`).join(''):'<tr><td colspan="3">Sin datos</td></tr>'; },
     cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
     exportarCSV: () => { let c="Mat,Ubi,Nom,Est\n"; App.datos.forEach(t=>c+=`${t.id_troquel},${t.ubicacion},${t.nombre},${t.estado}\n`); const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURI(c); a.download='inv.csv'; a.click(); },
-    toggleScanner: (show=true, modo='LOTE') => { const el = document.getElementById('modal-scanner'); App.modoScanner = modo; const pLote = document.getElementById('panel-lote'); const bLote = document.getElementById('btns-lote'); const tit = document.getElementById('titulo-scanner'); if (modo === 'UNICO') { if(pLote) pLote.style.display='none'; if(bLote) bLote.style.display='none'; if(tit) tit.innerText = "🔎 Escanear Un Troquel"; } else { if(pLote) pLote.style.display='block'; if(bLote) bLote.style.display='flex'; if(tit) tit.innerText = "📦 Escanear Lote"; } if(show) { el.classList.remove('oculto'); App.escaneadosLote.clear(); App.renderListaEscaneados(); App.scanner = new Html5Qrcode("reader"); let last = null; let t0 = 0; App.scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, (txt) => { if(txt === last && (Date.now() - t0 < 3000)) return; const t = App.datos.find(x => x.id_troquel === txt); if(t) { if (App.modoScanner === 'UNICO') { App.toggleScanner(false); if(navigator.vibrate) navigator.vibrate(200); App.abrirDetalleMovil(t.id); } else { if(!App.escaneadosLote.has(t.id)) { App.escaneadosLote.set(t.id, t); App.renderListaEscaneados(); if(navigator.vibrate) navigator.vibrate(100); } } last = txt; t0 = Date.now(); } }); } else { el.classList.add('oculto'); if(App.scanner) App.scanner.stop(); } },
-    renderListaEscaneados: () => { const div = document.getElementById('lista-escaneados'); div.innerHTML=""; document.getElementById('count-scans').innerText=App.escaneadosLote.size; App.escaneadosLote.forEach((t,id)=>{ div.innerHTML+=`<div class="chip activo" style="background:white; color:black;"><b>${t.id_troquel}</b><span onclick="App.borrarDeLote(${id})" style="color:red; cursor:pointer; margin-left:5px">✕</span></div>`; }); },
+    
+    renderListaEscaneados: () => { const d=document.getElementById('lista-escaneados'); d.innerHTML=""; document.getElementById('count-scans').innerText=App.escaneadosLote.size; App.escaneadosLote.forEach((t,id)=>{ d.innerHTML+=`<div class="chip activo" style="background:white; color:black;"><b>${t.id_troquel}</b><span onclick="App.borrarDeLote(${id})" style="color:red; cursor:pointer; margin-left:5px">✕</span></div>`; }); },
     borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
-    procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); }
+    procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
+    buscarMovil: (txt) => { const d=document.getElementById('resultados-movil'); d.innerHTML=""; if(txt.length<2)return; const h=App.datos.filter(t=>(t.nombre+t.id_troquel+t.ubicacion).toLowerCase().includes(txt.toLowerCase())); d.innerHTML=h.slice(0,10).map(t=>`<div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); }
 };
 
 window.onload = App.init;
