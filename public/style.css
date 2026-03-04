@@ -1,217 +1,316 @@
 /* =======================================================
-   TEMA: INDUSTRIAL DIE-CUTTING PRO V8
+   TEMA: INDUSTRIAL DIE-CUTTING PRO V8 (DASHBOARD READY)
    ======================================================= */
+
+/* --- 1. VARIABLES GLOBALES --- */
 :root {
-    --bg-app: #f1f5f9; --bg-sidebar: #1e293b; --wood-texture: linear-gradient(135deg, #3d2b1f 0%, #2a1b12 100%);
-    --wood-accent: #d97706; --primary: #0f766e; --text-main: #334155; --border: #cbd5e1;
+    /* Paleta de colores */
+    --bg-app: #f1f5f9; 
+    --bg-sidebar: #1e293b; 
+    --wood-texture: linear-gradient(135deg, #3d2b1f 0%, #1a100a 100%); /* Toque madera más profundo */
+    --wood-accent: #d97706; 
+    --primary: #0f766e; 
+    --primary-hover: #0d5f58;
+    --text-main: #334155; 
+    --text-muted: #64748b;
+    --border: #cbd5e1;
+    --danger: #e11d48;
+    --success: #16a34a;
+    
+    /* Sombras y Efectos */
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    --transition: all 0.2s ease-in-out;
 }
-body { font-family: 'Inter', sans-serif; margin: 0; background-color: var(--bg-app); color: var(--text-main); height: 100vh; overflow: hidden; }
+
+/* --- 2. RESET Y SCROLLBARS PRO --- */
+body { 
+    font-family: 'Inter', system-ui, sans-serif; 
+    margin: 0; 
+    background-color: var(--bg-app); 
+    color: var(--text-main); 
+    height: 100vh; 
+    overflow: hidden; 
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar personalizada tipo Dashboard */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* --- 3. LAYOUT PRINCIPAL --- */
 .erp-layout { display: flex; height: 100%; }
 
-/* SIDEBAR */
-.sidebar { width: 260px; background: var(--wood-texture); color: #e2e8f0; display: flex; flex-direction: column; border-right: 5px solid var(--wood-accent); flex-shrink: 0; transition: all 0.3s; }
-.sidebar-logo { padding: 25px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 15px; font-weight: 900; font-size: 20px; color: #fce7f3; }
-.sidebar-menu { padding: 10px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
-.menu-item { background: rgba(255,255,255,0.03); color: #cbd5e1; border: none; padding: 15px; text-align: left; font-size: 14px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
-.menu-item:hover { background: rgba(255,255,255,0.1); color: white; }
-.menu-item.activo { background: linear-gradient(90deg, rgba(217, 119, 6, 0.2) 0%, transparent 100%); color: var(--wood-accent); border-left: 4px solid var(--wood-accent); }
-.menu-item.destacado-movil { background: #d97706; color: white; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; justify-content: center; margin-bottom: 10px; }
-.menu-divisor { height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0; }
+/* --- SIDEBAR & APP SWITCHER --- */
+.sidebar { 
+    width: 260px; 
+    background: var(--wood-texture); 
+    color: #e2e8f0; 
+    display: flex; 
+    flex-direction: column; 
+    border-right: 4px solid var(--wood-accent); 
+    flex-shrink: 0; 
+    transition: var(--transition); 
+    box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    z-index: 10;
+}
 
-/* CONTENT */
-.main-content { flex-grow: 1; padding: 20px; overflow-y: auto; position: relative; }
-.header-modulo { background: white; padding: 15px 20px; border-radius: 6px; border: 1px solid var(--border); border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.header-modulo h1 { margin: 0; font-size: 20px; text-transform: uppercase; color: #1e293b; }
+/* Selector de App Preparado para el futuro */
+.sidebar-logo { 
+    padding: 20px 25px; 
+    background: rgba(0,0,0,0.4); 
+    border-bottom: 1px solid rgba(255,255,255,0.05); 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    font-weight: 900; 
+    font-size: 18px; 
+    color: #f8fafc; 
+    cursor: pointer;
+    transition: var(--transition);
+}
+.sidebar-logo:hover { background: rgba(0,0,0,0.6); }
+.sidebar-logo span { font-size: 24px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); }
 
-/* ESTILOS MODO MÓVIL (GRID BOTONES GIGANTES) */
+.sidebar-menu { padding: 15px 10px; flex-grow: 1; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; }
+.menu-item { 
+    background: transparent; 
+    color: #cbd5e1; 
+    border: none; 
+    padding: 12px 15px; 
+    text-align: left; 
+    font-size: 14px; 
+    font-weight: 600; 
+    border-radius: 6px; 
+    cursor: pointer; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    transition: var(--transition);
+}
+.menu-item:hover { background: rgba(255,255,255,0.08); color: white; transform: translateX(3px); }
+.menu-item.activo { 
+    background: linear-gradient(90deg, rgba(217, 119, 6, 0.25) 0%, transparent 100%); 
+    color: var(--wood-accent); 
+    border-left: 4px solid var(--wood-accent); 
+    border-radius: 0 6px 6px 0;
+}
+.menu-item.destacado-movil { 
+    background: linear-gradient(135deg, var(--wood-accent), #b45309); 
+    color: white; 
+    font-weight: 900; 
+    box-shadow: var(--shadow-md); 
+    text-align: center; 
+    justify-content: center; 
+    margin-bottom: 10px; 
+}
+.menu-item.destacado-movil:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.menu-divisor { height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0; border-radius: 1px; }
+
+/* --- CONTENIDO PRINCIPAL --- */
+.main-content { flex-grow: 1; padding: 25px; overflow-y: auto; position: relative; background: var(--bg-app); }
+.header-modulo { 
+    background: white; 
+    padding: 15px 20px; 
+    border-radius: 8px; 
+    border: 1px solid var(--border); 
+    border-left: 5px solid var(--primary); 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 20px; 
+    box-shadow: var(--shadow-sm);
+}
+.header-modulo h1 { margin: 0; font-size: 22px; text-transform: uppercase; color: var(--text-main); letter-spacing: -0.5px; }
+
+/* --- 4. COMPONENTES Y CONTROLES --- */
+.filtros-chips { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.chip { 
+    padding: 6px 14px; 
+    background: #fff; 
+    border: 1px solid var(--border); 
+    border-radius: 20px; 
+    font-size: 12px; 
+    font-weight: 700; 
+    color: var(--text-muted); 
+    cursor: pointer; 
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+.chip:hover { border-color: var(--text-muted); }
+.chip.activo { background: var(--bg-sidebar); color: var(--wood-accent); border-color: var(--bg-sidebar); box-shadow: var(--shadow-md); }
+
+input, select, textarea { 
+    width: 100%; 
+    padding: 10px 12px; 
+    border: 2px solid #e2e8f0; 
+    border-radius: 6px; 
+    font-family: 'Inter', sans-serif; 
+    box-sizing: border-box; 
+    transition: var(--transition);
+    background: white;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1); }
+
+/* --- BOTONES --- */
+.btn-accion { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: var(--transition); box-shadow: var(--shadow-sm); }
+.btn-accion:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.btn-accion:active { transform: translateY(1px); }
+
+.btn-secundario { background: white; border: 1px solid var(--border); color: var(--text-main); padding: 10px 18px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: var(--transition); box-shadow: var(--shadow-sm); }
+.btn-secundario:hover { background: #f8fafc; border-color: #94a3b8; }
+.btn-secundario:active { background: #f1f5f9; }
+
+.btn-icono { background: white; border: 1px solid #cbd5e1; padding: 6px 8px; border-radius: 6px; cursor: pointer; margin-right: 4px; transition: var(--transition); font-size: 14px; }
+.btn-icono:hover { background: #f1f5f9; transform: scale(1.05); }
+
+/* --- 5. TABLAS DE DATOS PRO --- */
+.contenedor-tabla { background: white; border: 1px solid var(--border); border-radius: 8px; overflow-x: auto; box-shadow: var(--shadow-sm); }
+.tabla-pro { width: 100%; border-collapse: collapse; min-width: 900px; }
+.tabla-pro th { 
+    background: #f8fafc; 
+    padding: 14px 12px; 
+    text-align: left; 
+    font-size: 12px; 
+    font-weight: 800; 
+    color: var(--text-muted); 
+    border-bottom: 2px solid var(--border); 
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.tabla-pro td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
+.tabla-pro tbody tr { transition: background 0.1s; }
+.tabla-pro tbody tr:hover { background-color: #f8fafc; } /* Ilumina la fila al pasar el ratón */
+.fila-seleccionada td { background-color: #f0fdfa !important; }
+.obs-pildora { background: #e0f2fe; color: #0284c7; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+
+/* Panel acciones masivas (El bloque azul) */
+.panel-acciones { background: #e0f2fe; padding: 12px 15px; border-radius: 8px; border: 1px solid #bae6fd; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: var(--shadow-sm); }
+
+/* --- 6. MODO OPERARIO MÓVIL --- */
 .grid-movil { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
-.btn-gigante { border: none; border-radius: 12px; padding: 30px; font-size: 18px; font-weight: 900; color: white; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: transform 0.1s; }
+.btn-gigante { border: none; border-radius: 12px; padding: 25px; font-size: 18px; font-weight: 900; color: white; cursor: pointer; box-shadow: var(--shadow-md); transition: var(--transition); }
+.btn-gigante:hover { filter: brightness(1.1); box-shadow: var(--shadow-lg); transform: translateY(-2px); }
 .btn-gigante:active { transform: scale(0.98); }
 .btn-gigante.scan { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
 .btn-gigante.nuevo { background: linear-gradient(135deg, #10b981 0%, #047857 100%); }
-.btn-gigante.buscar { background: linear-gradient(135deg, #64748b 0%, #334155 100%); }
 
-.card-movil { background: white; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.card-movil { background: white; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 10px; box-shadow: var(--shadow-sm); transition: var(--transition); cursor: pointer; }
+.card-movil:active { transform: scale(0.98); background: #f8fafc; }
 
-/* CONTROLES PC */
-.filtros-chips { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-.chip { padding: 6px 12px; background: #fff; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 11px; font-weight: 700; color: #64748b; cursor: pointer; }
-.chip.activo { background: #1e293b; color: #d97706; border-color: #1e293b; }
-input, select, textarea { width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 4px; font-family: 'Inter'; box-sizing: border-box; }
-
-/* TABLA */
-.contenedor-tabla { background: white; border: 1px solid var(--border); border-radius: 6px; overflow-x: auto; }
-.tabla-pro { width: 100%; border-collapse: collapse; min-width: 800px; }
-.tabla-pro th { background: #f8fafc; padding: 12px; text-align: left; font-size: 11px; font-weight: 800; color: #64748b; border-bottom: 2px solid var(--border); }
-.tabla-pro td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
-.fila-seleccionada td { background-color: #f0fdfa !important; }
-
-/* PANEL ACCIONES */
-.panel-acciones { background: #e0f2fe; padding: 10px; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-
-/* BOTONES */
-.btn-accion { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 700; cursor: pointer; }
-.btn-secundario { background: white; border: 1px solid #cbd5e1; color: #475569; padding: 8px 16px; border-radius: 4px; font-weight: 700; cursor: pointer; }
-.btn-icono { background: white; border: 1px solid #cbd5e1; padding: 5px; border-radius: 4px; cursor: pointer; margin-right: 3px; }
-
-/* ETIQUETA GODEX */
-.etiqueta-preview { width: 50mm; height: 23mm; background: white; border: 1px dashed #333; margin: 0 auto; display: flex; align-items: center; padding: 0; box-sizing: border-box; overflow: hidden; }
-#qr-canvas { width: 17mm !important; height: 17mm !important; flex-shrink: 0; margin-left: 1.5mm; image-rendering: pixelated; }
-.etiqueta-info { margin-left: 2mm; width: 29mm; height: 21mm; display: flex; flex-direction: column; justify-content: center; overflow: hidden; line-height: 1.1; }
-.etiq-ubi { font-size: 14px; font-weight: 900; color: black; text-transform: uppercase; margin-bottom: 1px; }
-.etiq-id { font-size: 10px; font-family: monospace; font-weight: 700; color: #333; margin-bottom: 2px; }
-.etiq-desc { font-size: 8px; font-weight: 600; color: black; white-space: normal; max-height: 2.2em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-
-/* IMPRESIÓN */
-@media print {
-    @page { size: 50mm 23mm; margin: 0 !important; }
-    html, body { margin: 0 !important; padding: 0 !important; width: 50mm; height: 23mm; background: white; }
-    .erp-layout, .sidebar, .main-content, .modal, .barra-acciones-bulk, .no-print { display: none !important; }
-    #modal-qr { display: block !important; position: static !important; width: 50mm; height: 23mm; overflow: hidden; }
-    .modal-contenido { border: none; padding: 0; margin: 0; width: 50mm; height: 23mm; }
-    .etiqueta-preview { border: none; }
-    #zona-impresion { position: fixed; left: 0; top: 0; width: 50mm; height: 23mm; display: flex; align-items: center; z-index: 9999; }
-    .etiq-ubi { font-size: 12pt !important; } .etiq-id { font-size: 8pt !important; } .etiq-desc { font-size: 7pt !important; }
-}
-
-/* MODALES */
-.oculto { display: none !important; }
-.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; }
-.modal-contenido { background: white; padding: 20px; border-radius: 8px; max-width: 90%; width: 500px; max-height: 90vh; overflow-y: auto; }
-
-/* RESPONSIVE */
-@media (max-width: 768px) {
-    .erp-layout { flex-direction: column; }
-    .sidebar { width: 100%; height: auto; padding-bottom: 10px; }
-    .sidebar-menu { flex-direction: row; overflow-x: auto; padding: 10px; }
-    .menu-item { white-space: nowrap; padding: 10px; font-size: 12px; }
-    .menu-divisor { display: none; }
-    .main-content { padding: 10px; }
-}
-/* ... (MANTÉN TODO LO ANTERIOR) ... */
-
-/* ESTILOS FICHA LECTURA */
-.dato-ficha { margin-bottom: 12px; }
-.dato-ficha label { display: block; font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 2px; }
-.dato-ficha div { font-size: 14px; color: #1e293b; }
-
-.thumb-archivo { 
-    display: flex; flex-direction: column; align-items: center; 
-    border: 1px solid #cbd5e1; border-radius: 4px; overflow: hidden; 
-    background: white; text-decoration: none; color: #334155; 
-    width: 100px; height: 100px; justify-content: center;
-    transition: transform 0.1s;
-}
-.thumb-archivo:hover { transform: scale(1.05); border-color: #0f766e; }
-.thumb-archivo img { max-width: 100%; max-height: 70px; object-fit: contain; }
-.thumb-archivo span { font-size: 10px; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; text-align: center; }
-/* --- AÑADIR AL FINAL DEL ARCHIVO STYLE.CSS --- */
-
-/* ESTILO FICHA LECTURA PC */
-#ver-galeria a {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    width: 80px; height: 80px; border: 1px solid #ddd; border-radius: 4px;
-    text-decoration: none; color: #333; font-size: 10px; overflow: hidden;
-}
-#ver-galeria img { max-width: 100%; max-height: 50px; }
-
-/* ESTILO FICHA MÓVIL */
-#vista-movil-detalle {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-    z-index: 9999; overflow-y: auto;
-}
-/* --- AÑADIR AL FINAL DEL CSS --- */
+#vista-movil-detalle { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; overflow-y: auto; background: var(--bg-app); }
 
 /* MODO KIOSCO (OPERARIO BLOQUEADO) */
-body.kiosk-mode .sidebar { 
-    display: none !important; 
-}
-body.kiosk-mode .btn-salir-kiosco { 
-    display: none !important; 
-}
-body.kiosk-mode .erp-layout {
-    display: block; /* Quita el layout flex para que ocupe todo */
-}
-body.kiosk-mode .main-content {
-    padding: 0;
-}
-/* ================================================================= */
-/* CONFIGURACIÓN ETIQUETA GODEX 50x23mm (NO BORRAR) */
-/* ================================================================= */
+body.kiosk-mode .sidebar { display: none !important; }
+body.kiosk-mode .btn-salir-kiosco { display: none !important; }
+body.kiosk-mode .erp-layout { display: block; }
+body.kiosk-mode .main-content { padding: 0; }
 
-/* Diseño en pantalla (Preview) */
-.etiqueta-preview {
-    width: 50mm;
-    height: 23mm;
-    border: 1px dashed black;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    background: white;
-    padding: 1mm;
+/* --- 7. MODALES FLOTANTES (GLASSMORPHISM) --- */
+.oculto { display: none !important; }
+.modal { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(15, 23, 42, 0.6); 
+    backdrop-filter: blur(4px); /* Efecto cristal desenfocado PRO */
+    z-index: 2000; 
+    display: flex; justify-content: center; align-items: center; 
+    padding: 20px;
     box-sizing: border-box;
 }
-
-.etiqueta-preview canvas {
-    width: 18mm !important;
-    height: 18mm !important;
-    image-rendering: pixelated; /* Para que el QR no salga borroso */
+.modal-contenido { 
+    background: white; 
+    padding: 25px; 
+    border-radius: 12px; 
+    max-width: 90%; 
+    width: 500px; 
+    max-height: 90vh; 
+    overflow-y: auto; 
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); /* Sombra flotante */
+    animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modalPop {
+    0% { transform: scale(0.95) translateY(10px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
-.etiqueta-info {
-    flex: 1;
-    margin-left: 2mm;
-    text-align: left;
-    overflow: hidden;
-    line-height: 1;
+/* Galería de Archivos */
+#ver-galeria a, .thumb-archivo { 
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 85px; height: 85px; border: 1px solid #cbd5e1; border-radius: 6px;
+    text-decoration: none; color: var(--text-main); font-size: 10px; overflow: hidden;
+    background: white; transition: var(--transition); box-shadow: var(--shadow-sm);
+}
+#ver-galeria a:hover, .thumb-archivo:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: var(--shadow-md); color: var(--primary); }
+#ver-galeria img, .thumb-archivo img { max-width: 90%; max-height: 50px; object-fit: contain; }
+.thumb-archivo span { margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; text-align: center; }
+
+/* --- 8. RESPONSIVE DESIGN PC/TABLET/MÓVIL --- */
+@media (max-width: 768px) {
+    .erp-layout { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 4px solid var(--wood-accent); }
+    .sidebar-menu { flex-direction: row; overflow-x: auto; padding: 10px; gap: 10px; }
+    .menu-item { white-space: nowrap; padding: 10px 15px; font-size: 13px; }
+    .menu-item.activo { border-left: none; border-bottom: 4px solid var(--wood-accent); border-radius: 6px 6px 0 0; background: rgba(217, 119, 6, 0.15); }
+    .menu-divisor { display: none; }
+    .main-content { padding: 15px; }
+    .header-modulo { flex-direction: column; gap: 15px; align-items: flex-start; }
+    .header-modulo > div { width: 100%; flex-wrap: wrap; }
 }
 
-.etiq-ubi { font-size: 14px; font-weight: 900; }
-.etiq-id { font-size: 10px; font-family: monospace; font-weight: bold; }
-.etiq-desc { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28mm; }
+/* ================================================================= */
+/* 9. MOTOR DE IMPRESIÓN GODEX 50x23mm (BLINDADO)                    */
+/* ================================================================= */
 
-/* CONFIGURACIÓN DE IMPRESIÓN REAL */
+/* Previsualización en pantalla del PC */
+.etiqueta-preview {
+    width: 50mm; height: 23mm; background: white; 
+    border: 1px dashed var(--text-muted); margin: 0 auto; 
+    display: flex; align-items: center; padding: 1mm; box-sizing: border-box; 
+    box-shadow: var(--shadow-md);
+}
+.etiqueta-preview canvas { width: 17mm !important; height: 17mm !important; flex-shrink: 0; image-rendering: pixelated; }
+.etiqueta-info { margin-left: 2mm; width: 29mm; height: 21mm; display: flex; flex-direction: column; justify-content: center; overflow: hidden; line-height: 1.1; text-align: left; }
+.etiq-ubi { font-size: 12px; font-weight: 900; color: black; text-transform: uppercase; margin-bottom: 1px; }
+.etiq-id { font-size: 10px; font-family: monospace; font-weight: 800; color: #111; margin-bottom: 2px; }
+.etiq-desc { font-size: 7px; font-weight: 600; color: black; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* INSTRUCCIONES ESTRICTAS PARA LA IMPRESORA FÍSICA */
 @media print {
-    @page {
-        size: 50mm 23mm;
-        margin: 0; /* IMPRESCINDIBLE PARA GODEX */
-    }
+    @page { size: 50mm 23mm; margin: 0 !important; }
     
-    body { 
-        margin: 0; 
-        padding: 0; 
-        background: white; 
+    html, body { 
+        margin: 0 !important; padding: 0 !important; 
+        width: 50mm; height: 23mm; background: white; 
     }
 
-    /* Ocultar TODO lo que no sea el modal de QR */
-    .erp-layout, .sidebar, .main-content, .modal, .no-print { 
+    /* Ocultamos absolutamente toda la interfaz gráfica de la App */
+    .erp-layout, .sidebar, .main-content, .modal, .barra-acciones-bulk, .no-print, .header-modulo { 
         display: none !important; 
     }
 
-    /* Mostrar SOLO el modal QR y posicionarlo arriba a la izquierda */
-    #modal-qr {
-        display: block !important;
-        position: fixed;
-        left: 0;
-        top: 0;
-        width: 50mm;
-        height: 23mm;
-        background: white;
-        z-index: 9999;
+    /* Forzamos que solo se dibuje la etiqueta */
+    #modal-qr { 
+        display: block !important; position: fixed !important; 
+        left: 0; top: 0; width: 50mm; height: 23mm; 
+        background: white; z-index: 99999; overflow: hidden; 
     }
-
-    .modal-contenido {
-        box-shadow: none;
-        border: none;
-        padding: 0;
-        margin: 0;
-        width: 100%;
-        height: 100%;
+    
+    .modal-contenido { 
+        border: none !important; padding: 0 !important; margin: 0 !important; 
+        width: 50mm; height: 23mm; box-shadow: none !important; animation: none !important;
     }
-
-    .etiqueta-preview {
-        border: none; /* Quitar borde discontinuo al imprimir */
-        width: 100%;
-        height: 100%;
+    
+    .etiqueta-preview { 
+        border: none !important; width: 100%; height: 100%; margin: 0; padding: 1mm; box-shadow: none !important; 
     }
+    
+    /* Calibración de tintas térmicas (alto contraste) */
+    .etiq-ubi, .etiq-id, .etiq-desc, #qr-texto-arts { color: black !important; filter: contrast(100%); }
+    .etiq-ubi { font-size: 11pt !important; } 
+    .etiq-id { font-size: 9pt !important; } 
+    .etiq-desc { font-size: 6pt !important; }
+    #qr-texto-arts { font-size: 6pt !important; }
 }
