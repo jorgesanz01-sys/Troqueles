@@ -261,21 +261,33 @@ body.kiosk-mode .main-content { padding: 0; }
 }
 
 /* ================================================================= */
-/* 9. MOTOR DE IMPRESIÓN GODEX 50x23mm (BLINDADO)                    */
+/* 9. MOTOR DE IMPRESIÓN GODEX 50x23mm (CORREGIDO)                   */
 /* ================================================================= */
 
-/* Previsualización en pantalla del PC */
+/* Contenedor extra para que el zoom no se salga de la ventana */
+.etiqueta-preview-container {
+    display: flex;
+    justify-content: center;
+    margin: 30px 0 50px 0; 
+}
+
+/* Previsualización en pantalla del PC (Zoom x2.5 para que se lea genial) */
 .etiqueta-preview {
     width: 50mm; height: 23mm; background: white; 
-    border: 1px dashed var(--text-muted); margin: 0 auto; 
+    border: 1px dashed var(--text-muted); margin: 0; 
     display: flex; align-items: center; padding: 1mm; box-sizing: border-box; 
     box-shadow: var(--shadow-md);
+    transform: scale(2.5); /* AUMENTA EL TAMAÑO SOLO EN PANTALLA */
+    transform-origin: top center;
 }
+
 .etiqueta-preview canvas { width: 17mm !important; height: 17mm !important; flex-shrink: 0; image-rendering: pixelated; }
 .etiqueta-info { margin-left: 2mm; width: 29mm; height: 21mm; display: flex; flex-direction: column; justify-content: center; overflow: hidden; line-height: 1.1; text-align: left; }
-.etiq-ubi { font-size: 12px; font-weight: 900; color: black; text-transform: uppercase; margin-bottom: 1px; }
-.etiq-id { font-size: 10px; font-family: monospace; font-weight: 800; color: #111; margin-bottom: 2px; }
-.etiq-desc { font-size: 7px; font-weight: 600; color: black; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+.etiq-ubi { font-size: 11pt; font-weight: 900; color: black; text-transform: uppercase; margin-bottom: 1px; }
+.etiq-id { font-size: 8pt; font-family: monospace; font-weight: 800; color: #111; margin-bottom: 2px; }
+.etiq-desc { font-size: 6.5pt; font-weight: 600; color: black; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.etiq-arts { font-size: 6pt; font-weight: 800; color: var(--primary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* INSTRUCCIONES ESTRICTAS PARA LA IMPRESORA FÍSICA */
 @media print {
@@ -286,31 +298,31 @@ body.kiosk-mode .main-content { padding: 0; }
         width: 50mm; height: 23mm; background: white; 
     }
 
-    /* Ocultamos absolutamente toda la interfaz gráfica de la App */
     .erp-layout, .sidebar, .main-content, .modal, .barra-acciones-bulk, .no-print, .header-modulo { 
         display: none !important; 
     }
 
-    /* Forzamos que solo se dibuje la etiqueta */
     #modal-qr { 
         display: block !important; position: fixed !important; 
         left: 0; top: 0; width: 50mm; height: 23mm; 
         background: white; z-index: 99999; overflow: hidden; 
+        padding: 0 !important;
     }
     
     .modal-contenido { 
         border: none !important; padding: 0 !important; margin: 0 !important; 
         width: 50mm; height: 23mm; box-shadow: none !important; animation: none !important;
+        background: white;
     }
+    
+    .etiqueta-preview-container { margin: 0 !important; display: block; }
     
     .etiqueta-preview { 
-        border: none !important; width: 100%; height: 100%; margin: 0; padding: 1mm; box-shadow: none !important; 
+        border: none !important; width: 50mm; height: 23mm; margin: 0 !important; padding: 1mm !important; 
+        box-shadow: none !important; 
+        transform: none !important; /* QUITA EL ZOOM DE PANTALLA AL IMPRIMIR */
     }
     
-    /* Calibración de tintas térmicas (alto contraste) */
-    .etiq-ubi, .etiq-id, .etiq-desc, #qr-texto-arts { color: black !important; filter: contrast(100%); }
-    .etiq-ubi { font-size: 11pt !important; } 
-    .etiq-id { font-size: 9pt !important; } 
-    .etiq-desc { font-size: 6pt !important; }
-    #qr-texto-arts { font-size: 6pt !important; }
+    /* Forzar a negro puro para que la impresora térmica no haga grises tramados */
+    .etiq-ubi, .etiq-id, .etiq-desc, .etiq-arts { color: black !important; filter: contrast(100%); }
 }
