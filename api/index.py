@@ -121,14 +121,16 @@ async def subir_foto(file: UploadFile = File(...)):
         id_fichero = str(uuid.uuid4())
         nombre_fichero = f"{id_fichero}.{ext}"
         contenido = await file.read()
-        res = supabase.storage.from_("fotos").upload(nombre_fichero, contenido, {"content-type": file.content_type})
         
-        # Validación estricta para que no de falsos positivos
-        if res.status_code != 200:
-            raise Exception("Supabase rechazó la subida (Revisa permisos del Storage)")
-            
+        # Guardamos en la nube (Sin el status_code que daba error)
+        supabase.storage.from_("fotos").upload(
+            nombre_fichero, 
+            contenido, 
+            {"content-type": file.content_type}
+        )
+        
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/fotos/{nombre_fichero}"
-        tipo = "pdf" if "pdf" in file.content_type else "img"
+        tipo = "pdf" if file.content_type and "pdf" in file.content_type else "img"
         return {"url": public_url, "nombre": file.filename, "tipo": tipo}
     except Exception as e: 
         # Ahora sí lanza un error 400 que el frontend detecta como fallo
