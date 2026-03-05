@@ -223,3 +223,17 @@ def limpiar_duplicados():
         supabase.table("troqueles").delete().in_("id", ids_a_borrar).execute()
         
     return {"borrados": len(ids_a_borrar)}
+@app.post("/api/troqueles/backup/restaurar")
+def restaurar_backup(datos: List[Dict[str, Any]]):
+    # Supabase upsert usa la columna 'id' para decidir si actualiza o inserta.
+    # Limpiamos los datos para asegurar que el formato es correcto
+    for d in datos:
+        # Aseguramos que el estado activo sea correcto
+        if "estado_activo" not in d:
+            d["estado_activo"] = "Activo"
+            
+    # La magia del upsert: 
+    # Si encuentra el ID, actualiza la fila. Si no lo encuentra, crea una nueva.
+    res = supabase.table("troqueles").upsert(datos).execute()
+    
+    return {"status": "ok", "procesados": len(datos)}
