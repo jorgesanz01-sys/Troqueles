@@ -72,7 +72,7 @@ const App = {
         } catch (e) { console.error(e); }
     },
 
-    // 3. TABLA PRINCIPAL LIMPIA
+// 3. TABLA PRINCIPAL LIMPIA
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body'); if (!tbody) return;
         const txt = document.getElementById('buscador').value.toLowerCase();
@@ -124,6 +124,7 @@ const App = {
                 `;
             }
 
+            // TRUCO CLAVE AQUÍ: style="white-space: nowrap;" en el último <td>
             return `<tr style="${t.estado==='DESCATALOGADO'?'opacity:0.6':''}" onclick="App.verFicha(${t.id})" style="cursor:pointer;">
                 <td onclick="event.stopPropagation()" class="text-center"><input type="checkbox" value="${t.id}" ${chk} onchange="App.select(this, ${t.id})"></td>
                 <td class="text-center">${bdg}</td><td class="text-center">${st}</td>
@@ -131,7 +132,8 @@ const App = {
                 <td>${t.ubicacion}</td>
                 <td style="color:var(--primary); font-weight:bold;">${t.codigos_articulo || '-'}</td>
                 <td>${t.nombre}</td>
-                <td><small>${fam||'-'}</small></td><td onclick="event.stopPropagation()">${btns}</td>
+                <td><small>${fam||'-'}</small></td>
+                <td onclick="event.stopPropagation()" style="white-space: nowrap;">${btns}</td>
             </tr>`;
         }).join('');
     },

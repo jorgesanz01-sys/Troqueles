@@ -110,7 +110,6 @@ body {
 .menu-item.destacado-movil:hover { background: var(--primary-hover); transform: translateY(-1px); }
 .menu-divisor { height: 1px; background: rgba(255,255,255,0.05); margin: 10px 0; }
 
-/* Títulos de sección en el sidebar */
 .sidebar-titulo {
     padding: 10px 20px 5px 20px;
     font-size: 11px;
@@ -120,7 +119,6 @@ body {
     letter-spacing: 0.5px;
 }
 
-/* Selectores dentro del sidebar */
 .sidebar-select {
     width: 100%;
     background: #0f172a;
@@ -138,7 +136,6 @@ body {
 /* --- CONTENIDO PRINCIPAL --- */
 .main-content { flex-grow: 1; padding: 25px; overflow-y: auto; position: relative; background: var(--bg-app); }
 
-/* Cabecera reducida y limpia */
 .header-modulo { 
     background: white; 
     padding: 10px 20px; 
@@ -154,7 +151,7 @@ body {
 .header-modulo h1 { margin: 0; font-size: 18px; text-transform: uppercase; color: var(--text-main); font-weight: 800; }
 
 /* --- 4. COMPONENTES Y CONTROLES --- */
-.filtros-chips { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.filtros-chips { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
 .chip { 
     padding: 6px 14px; 
     background: #fff; 
@@ -172,7 +169,7 @@ body {
 
 input, select, textarea { 
     width: 100%; 
-    padding: 10px 12px; 
+    padding: 8px 10px; /* Reducido para ser más compacto */
     border: 1px solid #cbd5e1; 
     border-radius: 6px; 
     font-family: 'Inter', sans-serif; 
@@ -183,23 +180,34 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
 
 /* --- BOTONES --- */
-.btn-accion { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: var(--transition); box-shadow: var(--shadow-sm); }
+.btn-accion { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: var(--transition); box-shadow: var(--shadow-sm); }
 .btn-accion:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: var(--shadow-md); }
 .btn-accion:active { transform: translateY(1px); }
 
-.btn-secundario { background: white; border: 1px solid #cbd5e1; color: var(--text-main); padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: var(--transition); box-shadow: var(--shadow-sm); }
+.btn-secundario { background: white; border: 1px solid #cbd5e1; color: var(--text-main); padding: 8px 15px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: var(--transition); box-shadow: var(--shadow-sm); }
 .btn-secundario:hover { background: #f8fafc; border-color: #94a3b8; }
 .btn-secundario:active { background: #f1f5f9; }
 
-.btn-icono { background: white; border: 1px solid #e2e8f0; padding: 6px 8px; border-radius: 6px; cursor: pointer; margin-right: 4px; transition: var(--transition); font-size: 14px; color: var(--text-muted); }
-.btn-icono:hover { background: #f1f5f9; color: var(--primary); border-color: #cbd5e1; }
+/* Botones de acción de la tabla MUY compactos */
+.btn-icono { 
+    background: white; 
+    border: 1px solid #e2e8f0; 
+    padding: 3px 5px; /* Súper reducido */
+    border-radius: 4px; 
+    cursor: pointer; 
+    margin-right: 2px; 
+    transition: var(--transition); 
+    font-size: 13px; 
+    color: var(--text-muted); 
+}
+.btn-icono:hover { background: #f1f5f9; color: var(--primary); border-color: #cbd5e1; transform: scale(1.05); }
 
-/* --- 5. TABLAS DE DATOS PRO --- */
+/* --- 5. TABLAS DE DATOS PRO (ALTA DENSIDAD) --- */
 .contenedor-tabla { background: white; border: 1px solid var(--border); border-radius: 8px; overflow-x: auto; box-shadow: var(--shadow-sm); }
 .tabla-pro { width: 100%; border-collapse: collapse; min-width: 900px; }
 .tabla-pro th { 
     background: #f8fafc; 
-    padding: 12px 15px; 
+    padding: 10px 12px; /* Reducido */
     text-align: left; 
     font-size: 11px; 
     font-weight: 700; 
@@ -208,13 +216,18 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); outlin
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
-.tabla-pro td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
+.tabla-pro td { 
+    padding: 6px 12px; /* MUY COMPACTO: 6px arriba/abajo */
+    border-bottom: 1px solid #f1f5f9; 
+    font-size: 12px; /* Texto un pelín más ajustado */
+    vertical-align: middle; 
+}
 .tabla-pro tbody tr { transition: background 0.1s; }
 .tabla-pro tbody tr:hover { background-color: #f8fafc; }
 .fila-seleccionada td { background-color: #eff6ff !important; }
-.obs-pildora { background: #e0f2fe; color: #0284c7; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.obs-pildora { background: #e0f2fe; color: #0284c7; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; }
 
-.panel-acciones { background: #eff6ff; padding: 12px 15px; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: var(--shadow-sm); }
+.panel-acciones { background: #eff6ff; padding: 10px 15px; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: var(--shadow-sm); }
 
 /* --- 6. MODO OPERARIO MÓVIL --- */
 .grid-movil { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
