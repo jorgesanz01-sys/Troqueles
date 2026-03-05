@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V29 (ESCUDO PURIFICADOR DE DATOS)
+// ERP PACKAGING - LÓGICA V30 (DASHBOARD ESTADÍSTICAS)
 // =============================================================
 
 const App = {
@@ -9,8 +9,7 @@ const App = {
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
     intervaloRefresco: null,
 
-    // 🛡️ NUEVO: El Escudo Purificador de Archivos
-    // Transforma cualquier basura de la base de datos en una lista limpia
+    // 🛡️ Escudo Purificador de Archivos
     parseArchivos: (raw) => {
         if (!raw) return [];
         if (Array.isArray(raw)) return raw;
@@ -27,7 +26,7 @@ const App = {
     },
 
     init: async () => {
-        console.log("Iniciando ERP V29 (Blindado)...");
+        console.log("Iniciando ERP V30 (Dashboard)...");
         try {
             await App.cargarSelects();
             await App.cargarTodo();
@@ -137,7 +136,6 @@ const App = {
 
         tbody.innerHTML = res.map(t => {
             const chk = App.seleccionados.has(t.id) ? 'checked' : '';
-            // USAMOS EL ESCUDO
             const archs = App.parseArchivos(t.archivos);
             const nDocs = archs.length;
             const bdg = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
@@ -178,7 +176,61 @@ const App = {
         }).join('');
     },
 
+    generarDashboardEstadisticas: () => {
+        const container = document.getElementById('dashboard-resumen');
+        if(!container) return;
+
+        let total = App.datos.length;
+        let estAlmacen = 0, estProduccion = 0, estObsoleto = 0;
+        let conteoFamilias = {};
+        let conteoTipos = {};
+
+        // Recorremos los troqueles en memoria
+        App.datos.forEach(t => {
+            if(t.estado === 'EN PRODUCCION') estProduccion++;
+            else if(t.estado === 'DESCATALOGADO') estObsoleto++;
+            else estAlmacen++;
+
+            let fam = App.mapaFam[t.familia_id] || 'Sin Familia';
+            conteoFamilias[fam] = (conteoFamilias[fam] || 0) + 1;
+
+            let cat = App.mapaCat[t.categoria_id] || 'Sin Tipo';
+            conteoTipos[cat] = (conteoTipos[cat] || 0) + 1;
+        });
+
+        const renderLista = (obj) => {
+            return Object.entries(obj)
+                .sort((a,b) => b[1] - a[1]) // De mayor a menor
+                .slice(0, 5) // Top 5
+                .map(x => `<div style="display:flex; justify-content:space-between; border-bottom:1px dashed #e2e8f0; padding:6px 0; font-size:13px;"><span>${x[0]}</span> <strong style="color:#0f766e; background:#f0fdf4; padding:2px 6px; border-radius:10px;">${x[1]}</strong></div>`)
+                .join('');
+        };
+
+        container.innerHTML = `
+            <div style="background:white; padding:20px; border-radius:8px; border:3px solid #0f766e; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                <h3 style="margin:0 0 10px 0; color:#64748b; font-size:13px; font-weight:bold; letter-spacing:1px;">TOTAL INVENTARIO</h3>
+                <div style="font-size:52px; font-weight:900; color:#0f172a; line-height:1;">${total}</div>
+            </div>
+            <div style="background:white; padding:20px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="margin:0 0 15px 0; color:#64748b; font-size:13px; font-weight:bold; letter-spacing:1px;">RESUMEN DE ESTADO</h3>
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:15px;"><span style="color:#166534; font-weight:bold;">✅ En Almacén</span> <strong>${estAlmacen}</strong></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:15px;"><span style="color:#991b1b; font-weight:bold;">🏭 En Producción</span> <strong>${estProduccion}</strong></div>
+                <div style="display:flex; justify-content:space-between; font-size:15px;"><span style="color:#6b7280; font-weight:bold;">⛔ Obsoletos</span> <strong>${estObsoleto}</strong></div>
+            </div>
+            <div style="background:white; padding:20px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="margin:0 0 10px 0; color:#64748b; font-size:13px; font-weight:bold; letter-spacing:1px;">TOP 5 TIPOS</h3>
+                ${renderLista(conteoTipos)}
+            </div>
+            <div style="background:white; padding:20px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="margin:0 0 10px 0; color:#64748b; font-size:13px; font-weight:bold; letter-spacing:1px;">TOP 5 FAMILIAS</h3>
+                ${renderLista(conteoFamilias)}
+            </div>
+        `;
+    },
+
     cargarEstadisticas: async (meses) => {
+        App.generarDashboardEstadisticas();
+        
         const tbody = document.getElementById('tabla-estadisticas');
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando cálculos... ⏳</td></tr>';
         try {
@@ -271,7 +323,6 @@ const App = {
 
         const gal = document.getElementById('ver-galeria'); gal.innerHTML = "";
         
-        // USAMOS EL ESCUDO
         const archs = App.parseArchivos(t.archivos);
         if (archs.length > 0) {
             archs.forEach(arch => {
@@ -324,7 +375,6 @@ const App = {
         const galMovil = document.getElementById('movil-galeria');
         galMovil.innerHTML = "";
         
-        // USAMOS EL ESCUDO
         const archs = App.parseArchivos(t.archivos);
         if (archs.length > 0) {
             archs.forEach(arch => {
@@ -349,7 +399,6 @@ const App = {
         if(nueva && nueva !== actual) {
             const t = App.datos.find(x => x.id == id);
             
-            // Paquete blindado
             const payload = {
                 id_troquel: String(t.id_troquel || ""), ubicacion: String(nueva), nombre: String(t.nombre || ""),
                 categoria_id: parseInt(t.categoria_id) || null, familia_id: parseInt(t.familia_id) || null,
@@ -391,11 +440,9 @@ const App = {
             if(resFoto.ok) {
                 const data = await resFoto.json();
                 
-                // USAMOS EL ESCUDO para extraer los archivos antes de añadir la foto nueva
                 const nuevosArchivos = App.parseArchivos(t.archivos);
                 nuevosArchivos.push({ url: data.url, nombre: input.files[0].name, tipo: data.tipo });
                 
-                // Paquete super blindado forzando textos
                 const payload = {
                     id_troquel: String(t.id_troquel || ""), ubicacion: String(t.ubicacion || ""), nombre: String(t.nombre || ""),
                     categoria_id: parseInt(t.categoria_id) || null, familia_id: parseInt(t.familia_id) || null,
@@ -607,7 +654,6 @@ const App = {
         setVal('f-medidas-madera', t.tamano_troquel||""); setVal('f-medidas-corte', t.tamano_final||"");
         setVal('f-arts', t.codigos_articulo||""); setVal('f-ot', t.referencias_ot||""); setVal('f-obs', t.observaciones||"");
         
-        // USAMOS EL ESCUDO TAMBIÉN PARA EDITAR
         App.archivosActuales = App.parseArchivos(t.archivos);
         
         App.renderListaArchivos();
@@ -619,7 +665,6 @@ const App = {
         e.preventDefault(); const id = document.getElementById('f-id-db').value;
         const getVal = (elId) => { const el = document.getElementById(elId); return el ? el.value : ""; };
         
-        // Paquete blindado para guardar desde PC
         const d = { 
             id_troquel: String(getVal('f-matricula')), ubicacion: String(getVal('f-ubicacion')), nombre: String(getVal('f-nombre')),
             categoria_id: parseInt(getVal('f-cat'))||null, familia_id: parseInt(getVal('f-fam'))||null,
@@ -647,7 +692,6 @@ const App = {
             let dataToSend = t;
             if(!t) { const r = await fetch(`/api/troqueles`); const full = await r.json(); dataToSend = full.find(x => x.id === id); }
             if(dataToSend) {
-                // Blindar
                 dataToSend.estado = "DESCATALOGADO"; 
                 dataToSend.archivos = App.parseArchivos(dataToSend.archivos);
 
