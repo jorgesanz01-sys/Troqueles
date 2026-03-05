@@ -670,7 +670,7 @@ const App = {
             } catch (err) { console.error("Fallo general:", err); alert("❌ Ocurrió un error procesando el archivo."); }
             input.value = ""; 
         }; 
-        reader.readAsText(file, 'UTF-8'); 
+reader.readAsText(file, 'ISO-8859-1');
     },
     
     exportarCSV: () => { 
