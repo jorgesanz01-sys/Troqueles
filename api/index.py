@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import Optional, List, Any, Dict
 from supabase import create_client, Client
 import uuid
+import os
+import tempfile
 from datetime import datetime, timedelta
 
 app = FastAPI()
@@ -65,7 +67,6 @@ def leer_fam(): return supabase.table("familias").select("*").order("nombre").ex
 
 @app.get("/api/historial")
 def leer_historial(troquel_id: Optional[int] = None):
-    # Traemos también los códigos de artículo para el nuevo diseño del historial
     query = supabase.table("historial").select("*, troqueles(nombre, id_troquel, codigos_articulo)")
     if troquel_id: query = query.eq("troquel_id", troquel_id)
     return query.order("fecha_hora", desc=True).limit(80).execute().data
@@ -114,26 +115,39 @@ def crear_cat(d: EntidadAux):
 def crear_fam(d: EntidadAux):
     return supabase.table("familias").insert({"nombre": d.nombre.upper()}).select().execute()
 
+# MÉTODO BLINDADO PARA FOTOS
 @app.post("/api/subir_foto")
 async def subir_foto(file: UploadFile = File(...)):
+    temp_path = None
     try:
         ext = file.filename.split('.')[-1]
         id_fichero = str(uuid.uuid4())
         nombre_fichero = f"{id_fichero}.{ext}"
-        contenido = await file.read()
         
-        # Guardamos en la nube (Sin el status_code que daba error)
-        supabase.storage.from_("fotos").upload(
-            nombre_fichero, 
-            contenido, 
-            {"content-type": file.content_type}
+        # 1. Guardar la foto temporalmente en el servidor
+        temp_path = os.path.join(tempfile.gettempdir(), nombre_fichero)
+        with open(temp_path, "wb") as buffer:
+            contenido = await file.read()
+            buffer.write(contenido)
+            
+        # 2. Subir el archivo desde el disco a Supabase
+        res = supabase.storage.from_("fotos").upload(
+            path=nombre_fichero, 
+            file=temp_path, 
+            file_options={"content-type": file.content_type}
         )
         
+        # 3. Borrar el archivo temporal del disco
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+            
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/fotos/{nombre_fichero}"
         tipo = "pdf" if file.content_type and "pdf" in file.content_type else "img"
         return {"url": public_url, "nombre": file.filename, "tipo": tipo}
     except Exception as e: 
-        # Ahora sí lanza un error 400 que el frontend detecta como fallo
+        # Si falla, limpiamos la basura y devolvemos el error exacto
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/troqueles")
@@ -177,7 +191,6 @@ def mover_lote(d: MovimientoLote):
         st = "EN PRODUCCION" if d.accion == 'SALIDA' else "EN ALMACEN"
         ubi = "PRODUCCION" if d.accion == 'SALIDA' else (d.ubicacion_destino or "ALMACEN")
         
-        # Obtener ubi antigua para el log
         prev = supabase.table("troqueles").select("ubicacion").eq("id", id_db).execute().data
         ubi_old = prev[0]['ubicacion'] if prev else ""
         
@@ -206,7 +219,6 @@ def bulk_destruir(d: BulkIds):
     return supabase.table("troqueles").delete().in_("id", d.ids).execute()
 
 def registrar_log(id_t, accion, orig, dest):
-    # NOTA: Si en Supabase tienes un Trigger que ya hace esto, ignora esta función para no duplicar.
     try: supabase.table("historial").insert({"troquel_id": id_t, "accion": accion, "ubicacion_anterior": orig, "ubicacion_nueva": dest}).execute()
     except: pass
 
