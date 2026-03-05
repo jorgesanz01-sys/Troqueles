@@ -261,68 +261,52 @@ body.kiosk-mode .main-content { padding: 0; }
 }
 
 /* ================================================================= */
-/* 9. MOTOR DE IMPRESIÓN GODEX 50x23mm (CORREGIDO)                   */
+/* 9. VISUALIZACIÓN DE ETIQUETA EN PANTALLA (SIN REGLAS PRINT)       */
 /* ================================================================= */
 
-/* Contenedor extra para que el zoom no se salga de la ventana */
+/* Contenedor que da el margen suficiente para que quepa la etiqueta ampliada */
 .etiqueta-preview-container {
     display: flex;
     justify-content: center;
-    margin: 30px 0 50px 0; 
+    padding: 40px 0; /* Sustituimos margen por padding para no romper el scroll */
+    min-height: 120px; /* Asegura un espacio mínimo reservado */
 }
 
-/* Previsualización en pantalla del PC (Zoom x2.5 para que se lea genial) */
+/* Previsualización limpia y proporcionada, sin transformaciones problemáticas */
 .etiqueta-preview {
-    width: 50mm; height: 23mm; background: white; 
-    border: 1px dashed var(--text-muted); margin: 0; 
-    display: flex; align-items: center; padding: 1mm; box-sizing: border-box; 
-    box-shadow: var(--shadow-md);
-    transform: scale(2.5); /* AUMENTA EL TAMAÑO SOLO EN PANTALLA */
-    transform-origin: top center;
+    width: 250px; /* Tamaño fijo pero proporcional (5x) a los 50mm */
+    height: 115px; /* Proporcional (5x) a los 23mm */
+    background: white; 
+    border: 2px dashed #94a3b8; 
+    display: flex; 
+    align-items: center; 
+    padding: 5px; 
+    box-sizing: border-box; 
+    box-shadow: var(--shadow-sm);
 }
 
-.etiqueta-preview canvas { width: 17mm !important; height: 17mm !important; flex-shrink: 0; image-rendering: pixelated; }
-.etiqueta-info { margin-left: 2mm; width: 29mm; height: 21mm; display: flex; flex-direction: column; justify-content: center; overflow: hidden; line-height: 1.1; text-align: left; }
-
-.etiq-ubi { font-size: 11pt; font-weight: 900; color: black; text-transform: uppercase; margin-bottom: 1px; }
-.etiq-id { font-size: 8pt; font-family: monospace; font-weight: 800; color: #111; margin-bottom: 2px; }
-.etiq-desc { font-size: 6.5pt; font-weight: 600; color: black; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.etiq-arts { font-size: 6pt; font-weight: 800; color: var(--primary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* INSTRUCCIONES ESTRICTAS PARA LA IMPRESORA FÍSICA */
-@media print {
-    @page { size: 50mm 23mm; margin: 0 !important; }
-    
-    html, body { 
-        margin: 0 !important; padding: 0 !important; 
-        width: 50mm; height: 23mm; background: white; 
-    }
-
-    .erp-layout, .sidebar, .main-content, .modal, .barra-acciones-bulk, .no-print, .header-modulo { 
-        display: none !important; 
-    }
-
-    #modal-qr { 
-        display: block !important; position: fixed !important; 
-        left: 0; top: 0; width: 50mm; height: 23mm; 
-        background: white; z-index: 99999; overflow: hidden; 
-        padding: 0 !important;
-    }
-    
-    .modal-contenido { 
-        border: none !important; padding: 0 !important; margin: 0 !important; 
-        width: 50mm; height: 23mm; box-shadow: none !important; animation: none !important;
-        background: white;
-    }
-    
-    .etiqueta-preview-container { margin: 0 !important; display: block; }
-    
-    .etiqueta-preview { 
-        border: none !important; width: 50mm; height: 23mm; margin: 0 !important; padding: 1mm !important; 
-        box-shadow: none !important; 
-        transform: none !important; /* QUITA EL ZOOM DE PANTALLA AL IMPRIMIR */
-    }
-    
-    /* Forzar a negro puro para que la impresora térmica no haga grises tramados */
-    .etiq-ubi, .etiq-id, .etiq-desc, .etiq-arts { color: black !important; filter: contrast(100%); }
+.etiqueta-preview canvas { 
+    width: 85px !important; 
+    height: 85px !important; 
+    flex-shrink: 0; 
+    image-rendering: pixelated; 
 }
+
+.etiqueta-info { 
+    margin-left: 10px; 
+    width: 145px; 
+    height: 100px; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    overflow: hidden; 
+    line-height: 1.2; 
+    text-align: left; 
+}
+
+.etiq-ubi { font-size: 18px; font-weight: 900; color: #1e293b; text-transform: uppercase; margin-bottom: 2px; }
+.etiq-id { font-size: 13px; font-family: monospace; font-weight: 800; color: #334155; margin-bottom: 4px; }
+.etiq-desc { font-size: 11px; font-weight: 600; color: #475569; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 2px; }
+.etiq-arts { font-size: 10px; font-weight: 800; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Nota: Eliminado el @media print porque app.js ya genera su propio documento HTML para imprimir */
