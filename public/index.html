@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ERP V27 | Gestión Total y Papelera</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
@@ -21,6 +21,20 @@
                 <button class="menu-item" onclick="App.abrirGestionAux()">⚙️ Familias/Tipos</button>
                 <button class="menu-item" onclick="App.nav('vista-historial', this); App.cargarHistorial()">📝 Historial General</button>
                 <button class="menu-item" onclick="App.nav('vista-estadisticas', this); App.cargarEstadisticas(12)">📈 Estadísticas / Inactivos</button>
+                
+                <div class="menu-divisor"></div>
+                <div class="sidebar-titulo">🛠️ GESTIÓN DE DATOS</div>
+                
+                <button class="menu-item" onclick="App.exportarCSV()">📥 Descargar a Excel</button>
+                
+                <div style="padding: 5px 20px;">
+                    <select id="select-import-tipo" class="sidebar-select">
+                        <option value="">Tipo al importar...</option>
+                    </select>
+                </div>
+                <button class="menu-item" onclick="document.getElementById('input-csv').click()">📤 Importar CSV</button>
+                <input type="file" id="input-csv" accept=".csv" style="display:none;" onchange="App.procesarImportacion(this)">
+                
                 <div class="menu-divisor"></div>
                 <button class="menu-item" onclick="App.verPapelera()" style="color:#ef4444;">🗑️ Papelera</button>
             </nav>
@@ -30,20 +44,9 @@
             <section id="vista-lista" class="vista">
                 <div class="header-modulo">
                     <h1 id="titulo-lista">Inventario</h1>
-                    
-                    <div id="herramientas-normales" style="display:flex; gap:10px; align-items:center;">
-                        <select id="select-import-tipo" style="padding:10px; border-radius:5px; border:2px solid #0f766e; color:#0f766e; font-weight:bold; outline:none; cursor:pointer;">
-                            <option value="">Tipo al importar (Opcional)...</option>
-                        </select>
 
-                        <button class="btn-secundario" onclick="document.getElementById('input-csv').click()" style="border-color:#0f766e; color:#0f766e;">📤 Importar CSV</button>
-                        <input type="file" id="input-csv" accept=".csv" style="display:none;" onchange="App.procesarImportacion(this)">
-                        
-                        <button class="btn-secundario" onclick="App.exportarCSV()">📥 Excel CSV</button>
-                    </div>
-
-                    <div id="herramientas-papelera" class="oculto" style="display:flex; gap:10px; padding:10px; background:#fee2e2; border-radius:8px; border: 1px solid #f87171;">
-                        <button class="btn-secundario" onclick="App.salirPapelera()" style="background:white;">🔙 Volver al Inventario</button>
+                    <div id="herramientas-papelera" class="oculto" style="display:flex; gap:10px; padding:8px 15px; background:#fee2e2; border-radius:6px; border: 1px solid #f87171;">
+                        <button class="btn-secundario" onclick="App.salirPapelera()" style="background:white;">🔙 Volver</button>
                         <div style="width:2px; background:#f87171; margin:0 5px;"></div>
                         <button class="btn-accion" style="background:#22c55e;" onclick="App.restaurarTodoPapelera()">♻️ Restaurar TODO</button>
                         <button class="btn-accion" style="background:#b91c1c;" onclick="App.vaciarPapelera()">🔥 Vaciar Papelera</button>
