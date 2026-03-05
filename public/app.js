@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V27 (APP LIMPIA Y DETALLE MÓVIL FULL)
+// ERP PACKAGING - LÓGICA V28 (TIEMPO REAL + HISTORIAL LIMPIO)
 // =============================================================
 
 const App = {
@@ -7,18 +7,39 @@ const App = {
     mapaCat: {}, mapaFam: {}, columnaOrden: 'id_troquel', ordenAsc: true,
     scanner: null, modoMovil: false, modoScanner: 'LOTE', 
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
+    intervaloRefresco: null,
 
     init: async () => {
-        console.log("Iniciando ERP V27 (Estilo JSD)...");
+        console.log("Iniciando ERP V28...");
         try {
             await App.cargarSelects();
             await App.cargarTodo();
+            
+            // Iniciar "Tiempo Real Silencioso" cada 8 segundos
+            App.iniciarTiempoReal();
+
             const params = new URLSearchParams(window.location.search);
             if (params.get('modo') === 'operario') {
                 document.body.classList.add('kiosk-mode');
                 App.activarModoMovil();
             }
         } catch(e) { console.error("Error iniciando app:", e); }
+    },
+
+    iniciarTiempoReal: () => {
+        if(App.intervaloRefresco) clearInterval(App.intervaloRefresco);
+        App.intervaloRefresco = setInterval(async () => {
+            // Solo recarga silenciosamente si estamos en la vista de lista normal (no editando ni en historial)
+            if(!document.getElementById('vista-lista').classList.contains('oculto') && !App.enPapelera && !App.modoMovil) {
+                try {
+                    const res = await fetch(`/api/troqueles?ver_papelera=false`);
+                    if (res.ok) {
+                        App.datos = await res.json() || [];
+                        App.renderTabla(); // RenderTabla mantiene los 'check' marcados mágicamente
+                    }
+                } catch(e) {}
+            }
+        }, 8000);
     },
 
     cargarTodo: async (papelera = false) => {
@@ -161,28 +182,65 @@ const App = {
             }).join('');
         } catch (e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar las estadísticas</td></tr>'; }
     },
+
+    // --- NUEVO FORMATO DE HISTORIAL MÁS LIMPIO ---
+    cargarHistorial: async () => { 
+        const r = await fetch('/api/historial'); 
+        const d = await r.json(); 
+        document.getElementById('tabla-historial').innerHTML = d.map(h => {
+            const t = h.troqueles || {};
+            return `<tr>
+                <td><small style="color:#64748b;">${new Date(h.fecha_hora).toLocaleString()}</small></td>
+                <td style="font-weight:bold; color:#0f766e;">${t.id_troquel || '?'}</td>
+                <td>${t.nombre || 'Desconocido'}</td>
+                <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                <td><span style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">${h.ubicacion_anterior || '-'}</span> ➔ <span style="background:#dcfce7; padding:2px 6px; border-radius:4px;">${h.ubicacion_nueva || '-'}</span></td>
+            </tr>`;
+        }).join(''); 
+        
+        // Ajustar las cabeceras de la tabla general para que encajen
+        const thead = document.querySelector('#vista-historial thead tr');
+        if(thead) {
+            thead.innerHTML = `<th>Fecha/Hora</th><th>Matrícula</th><th>Descripción</th><th>Código</th><th>Origen ➔ Destino</th>`;
+        }
+    },
+
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico');
         const tbody = document.getElementById('tabla-historial-unico');
         document.getElementById('hist-titulo-mat').innerText = mat;
         document.getElementById('hist-titulo-nom').innerText = nom;
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 40px; font-size: 18px;">Cargando historial de movimientos... ⏳</td></tr>';
+        
+        // Ajustar las cabeceras del modal de historia única
+        const theadUnico = document.querySelector('#modal-historial-unico thead tr');
+        if(theadUnico) {
+            theadUnico.innerHTML = `<th style="padding:15px;">Fecha/Hora</th><th style="padding:15px;">Matrícula</th><th style="padding:15px;">Código</th><th style="padding:15px;">Origen ➔ Destino</th>`;
+        }
+
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 40px; font-size: 18px;">Cargando movimientos... ⏳</td></tr>';
         modal.classList.remove('oculto');
+        
         try {
             const res = await fetch(`/api/historial?troquel_id=${id}`);
             if (res.ok) {
                 const data = await res.json();
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 40px; font-size: 18px;">No hay movimientos registrados para este troquel.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 40px; font-size: 18px;">No hay movimientos registrados.</td></tr>';
                 } else {
                     tbody.innerHTML = data.map(h => {
-                        const descripcion = h.troqueles && h.troqueles.nombre ? h.troqueles.nombre : nom;
-                        return `<tr><td style="font-weight:600;">${new Date(h.fecha_hora).toLocaleString()}</td><td>${descripcion}</td><td style="font-weight:bold; color:${h.accion.includes('SALIDA') ? '#dc2626' : '#16a34a'}">${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`;
+                        const t = h.troqueles || {};
+                        return `<tr>
+                            <td><small style="color:#64748b;">${new Date(h.fecha_hora).toLocaleString()}</small></td>
+                            <td style="font-weight:bold; color:#0f766e;">${t.id_troquel || mat}</td>
+                            <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                            <td><span style="background:#f1f5f9; padding:4px 8px; border-radius:4px;">${h.ubicacion_anterior || '-'}</span> ➔ <span style="background:#dcfce7; padding:4px 8px; border-radius:4px; font-weight:bold;">${h.ubicacion_nueva || '-'}</span></td>
+                        </tr>`;
                     }).join('');
                 }
             }
         } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-red">Error al cargar la información.</td></tr>'; }
     },
+
     verFicha: (id) => {
         const t = App.datos.find(x => x.id === id); if (!t) return;
         document.getElementById('ver-matricula').innerText = t.id_troquel || "-";
@@ -262,14 +320,12 @@ const App = {
     },
     volverMenuMovil: () => { document.getElementById('vista-movil-detalle').classList.add('oculto'); document.getElementById('vista-movil').classList.remove('oculto'); App.cargarTodo(); },
     
-    // FUNCIONES MÓVIL CORREGIDAS
     movilCambiarUbi: async () => {
         const id = document.getElementById('movil-id-db').value;
         const actual = document.getElementById('movil-ubi').innerText;
         const nueva = prompt("Nueva Ubicación:", actual);
         if(nueva && nueva !== actual) {
             const t = App.datos.find(x => x.id == id);
-            // Creamos un paquete limpio
             const payload = {
                 id_troquel: t.id_troquel || "", ubicacion: nueva, nombre: t.nombre || "",
                 categoria_id: t.categoria_id || null, familia_id: t.familia_id || null,
@@ -303,14 +359,12 @@ const App = {
         console.log("Subiendo foto...");
         
         try {
-            // 1. Subir a Supabase
             const resFoto = await fetch('/api/subir_foto', { method: 'POST', body: fd });
             if(resFoto.ok) {
                 const data = await resFoto.json();
                 const nuevosArchivos = t.archivos ? [...t.archivos] : [];
                 nuevosArchivos.push({ url: data.url, nombre: input.files[0].name, tipo: data.tipo });
                 
-                // 2. Paquete limpio
                 const payload = {
                     id_troquel: t.id_troquel || "", ubicacion: t.ubicacion || "", nombre: t.nombre || "",
                     categoria_id: t.categoria_id || null, familia_id: t.familia_id || null,
@@ -320,7 +374,6 @@ const App = {
                     archivos: nuevosArchivos
                 };
                 
-                // 3. Guardar en DB
                 const resDb = await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
                 
                 if(resDb.ok) {
@@ -527,8 +580,7 @@ const App = {
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.limpiarSeleccion(); App.cargarTodo(); },
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(); } },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
-    cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
-    
+
     imprimirEtiquetasGodex: (items) => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
         
@@ -550,13 +602,8 @@ const App = {
         printWindow.document.close();
         
         const modalQr = document.getElementById('modal-qr');
-        if (modalQr) {
-            modalQr.classList.add('oculto');
-        }
-
-        setTimeout(() => { 
-            printWindow.print(); 
-        }, 800);
+        if (modalQr) { modalQr.classList.add('oculto'); }
+        setTimeout(() => { printWindow.print(); }, 800);
     },
     
     imprimirLoteQRs: () => { if(App.seleccionados.size === 0) return; const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); App.imprimirEtiquetasGodex(itemsToPrint); App.limpiarSeleccion(); },
@@ -577,18 +624,15 @@ const App = {
     },
 
     limpiarDuplicadosExactos: async () => {
-        if(confirm("⚠️ ¿Estás seguro? Esto escaneará toda tu base de datos y borrará los troqueles que sean COPIAS EXACTAS (misma matrícula, misma descripción, mismo tipo, etc.).")) {
+        if(confirm("⚠️ ¿Estás seguro? Esto escaneará toda tu base de datos y borrará los troqueles que sean COPIAS EXACTAS.")) {
             const btn = document.getElementById('btn-limpiar-dup');
             if(btn) btn.innerText = "⏳ Limpiando Base de Datos...";
             try {
                 const res = await fetch('/api/mantenimiento/limpiar_duplicados', { method: 'DELETE' });
                 const data = await res.json();
-                alert(`✅ Limpieza completada.\n\nSe han pulverizado ${data.borrados} troqueles que estaban repetidos y eran idénticos.`);
+                alert(`✅ Limpieza completada.\n\nSe han pulverizado ${data.borrados} troqueles que estaban repetidos.`);
                 await App.cargarTodo();
-            } catch(e) {
-                alert("❌ Ocurrió un error al limpiar los duplicados.");
-                console.error(e);
-            }
+            } catch(e) { alert("❌ Ocurrió un error al limpiar los duplicados."); }
             if(btn) btn.innerText = "🧹 Borrar Duplicados Exactos de la BD";
             document.getElementById('modal-aux').classList.add('oculto');
         }
@@ -739,7 +783,8 @@ const App = {
 
                 if(res.ok) {
                     alert("✅ Base de datos restaurada con éxito.");
-                    location.reload(); 
+                    // Forzamos cargar sin recargar la página entera
+                    App.cargarTodo(); 
                 } else {
                     alert("❌ Error al subir el backup al servidor.");
                 }

@@ -53,7 +53,6 @@ def leer_troqueles(ver_papelera: bool = False):
     if ver_papelera: 
         query = query.eq("estado_activo", "Eliminado")
     else: 
-        # CORRECCIÓN: Evitamos que devuelva vacío por registros antiguos que tengan NULL
         query = query.or_("estado_activo.eq.Activo,estado_activo.is.null")
         
     return query.order("id_troquel", desc=True).execute().data
@@ -66,9 +65,10 @@ def leer_fam(): return supabase.table("familias").select("*").order("nombre").ex
 
 @app.get("/api/historial")
 def leer_historial(troquel_id: Optional[int] = None):
-    query = supabase.table("historial").select("*, troqueles(nombre, id_troquel)")
+    # Traemos también los códigos de artículo para el nuevo diseño del historial
+    query = supabase.table("historial").select("*, troqueles(nombre, id_troquel, codigos_articulo)")
     if troquel_id: query = query.eq("troquel_id", troquel_id)
-    return query.order("fecha_hora", desc=True).limit(50).execute().data
+    return query.order("fecha_hora", desc=True).limit(80).execute().data
 
 @app.get("/api/siguiente_numero")
 def siguiente_numero(categoria_id: int):
@@ -121,11 +121,18 @@ async def subir_foto(file: UploadFile = File(...)):
         id_fichero = str(uuid.uuid4())
         nombre_fichero = f"{id_fichero}.{ext}"
         contenido = await file.read()
-        supabase.storage.from_("fotos").upload(nombre_fichero, contenido, {"content-type": file.content_type})
+        res = supabase.storage.from_("fotos").upload(nombre_fichero, contenido, {"content-type": file.content_type})
+        
+        # Validación estricta para que no de falsos positivos
+        if res.status_code != 200:
+            raise Exception("Supabase rechazó la subida (Revisa permisos del Storage)")
+            
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/fotos/{nombre_fichero}"
         tipo = "pdf" if "pdf" in file.content_type else "img"
         return {"url": public_url, "nombre": file.filename, "tipo": tipo}
-    except Exception as e: return {"error": str(e)}
+    except Exception as e: 
+        # Ahora sí lanza un error 400 que el frontend detecta como fallo
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/troqueles")
 def crear_troquel(t: TroquelData):
@@ -133,7 +140,7 @@ def crear_troquel(t: TroquelData):
     d["estado_activo"] = "Activo"
     if not d["ubicacion"]: d["ubicacion"] = d["id_troquel"]
     res = supabase.table("troqueles").insert(d).execute()
-    if res.data: registrar_log(res.data[0]['id'], "CREACION", "NUEVO", d["ubicacion"])
+    if res.data: registrar_log(res.data[0]['id'], "ALTA", "-", d["ubicacion"])
     return res
 
 @app.post("/api/troqueles/importar")
@@ -149,7 +156,7 @@ def editar_troquel(id_db: int, t: TroquelData):
     prev = supabase.table("troqueles").select("ubicacion").eq("id", id_db).execute().data
     ubi_old = prev[0]['ubicacion'] if prev else ""
     res = supabase.table("troqueles").update(t.dict()).eq("id", id_db).execute()
-    if ubi_old != t.ubicacion: registrar_log(id_db, "CAMBIO UBICACION", ubi_old, t.ubicacion)
+    if ubi_old != t.ubicacion: registrar_log(id_db, "MOVIDO", ubi_old, t.ubicacion)
     return res
 
 @app.delete("/api/troqueles/{id_db}")
@@ -167,8 +174,13 @@ def mover_lote(d: MovimientoLote):
     for id_db in d.ids:
         st = "EN PRODUCCION" if d.accion == 'SALIDA' else "EN ALMACEN"
         ubi = "PRODUCCION" if d.accion == 'SALIDA' else (d.ubicacion_destino or "ALMACEN")
+        
+        # Obtener ubi antigua para el log
+        prev = supabase.table("troqueles").select("ubicacion").eq("id", id_db).execute().data
+        ubi_old = prev[0]['ubicacion'] if prev else ""
+        
         supabase.table("troqueles").update({"estado": st, "ubicacion": ubi}).eq("id", id_db).execute()
-        registrar_log(id_db, d.accion, "?", ubi)
+        registrar_log(id_db, d.accion, ubi_old, ubi)
     return {"ok": True}
 
 @app.put("/api/troqueles/bulk/familia")
@@ -192,7 +204,8 @@ def bulk_destruir(d: BulkIds):
     return supabase.table("troqueles").delete().in_("id", d.ids).execute()
 
 def registrar_log(id_t, accion, orig, dest):
-    try: supabase.table("historial").insert({"troquel_id": id_t, "accion": accion, "tipo_movimiento": accion, "ubicacion_anterior": orig, "ubicacion_nueva": dest}).execute()
+    # NOTA: Si en Supabase tienes un Trigger que ya hace esto, ignora esta función para no duplicar.
+    try: supabase.table("historial").insert({"troquel_id": id_t, "accion": accion, "ubicacion_anterior": orig, "ubicacion_nueva": dest}).execute()
     except: pass
 
 @app.delete("/api/mantenimiento/limpiar_duplicados")
@@ -200,44 +213,30 @@ def limpiar_duplicados():
     todos = supabase.table("troqueles").select("*").execute().data
     vistos = set()
     ids_a_borrar = []
-    
     for t in todos:
         huella = (
-            str(t.get("id_troquel") or "").strip().upper(),
-            str(t.get("ubicacion") or "").strip().upper(),
-            str(t.get("nombre") or "").strip().upper(),
-            t.get("categoria_id"),
-            t.get("familia_id"),
-            str(t.get("codigos_articulo") or "").strip().upper(),
-            str(t.get("referencias_ot") or "").strip().upper(),
-            str(t.get("tamano_troquel") or "").strip().upper(),
-            str(t.get("tamano_final") or "").strip().upper(),
-            str(t.get("observaciones") or "").strip().upper()
+            str(t.get("id_troquel") or "").strip().upper(), str(t.get("ubicacion") or "").strip().upper(),
+            str(t.get("nombre") or "").strip().upper(), t.get("categoria_id"), t.get("familia_id"),
+            str(t.get("codigos_articulo") or "").strip().upper(), str(t.get("referencias_ot") or "").strip().upper(),
+            str(t.get("tamano_troquel") or "").strip().upper(), str(t.get("tamano_final") or "").strip().upper()
         )
-        if huella in vistos: 
-            ids_a_borrar.append(t["id"])
-        else: 
-            vistos.add(huella)
+        if huella in vistos: ids_a_borrar.append(t["id"])
+        else: vistos.add(huella)
             
-    if ids_a_borrar:
-        supabase.table("troqueles").delete().in_("id", ids_a_borrar).execute()
-        
+    if ids_a_borrar: supabase.table("troqueles").delete().in_("id", ids_a_borrar).execute()
     return {"borrados": len(ids_a_borrar)}
 
 @app.post("/api/troqueles/backup/restaurar")
 def restaurar_backup(datos: List[Dict[str, Any]]):
-    # LIMPIEZA CRÍTICA PARA EL BACKUP (Evita errores de sintaxis)
     campos_validos = {
         "id", "id_troquel", "nombre", "ubicacion", "estado", "estado_activo",
         "codigos_articulo", "referencias_ot", "categoria_id", "familia_id",
         "tamano_troquel", "tamano_final", "observaciones", "archivos", "created_at"
     }
-    
     datos_limpios = []
     for d in datos:
         limpio = {k: v for k, v in d.items() if k in campos_validos}
-        if "estado_activo" not in limpio: 
-            limpio["estado_activo"] = "Activo"
+        if "estado_activo" not in limpio: limpio["estado_activo"] = "Activo"
         datos_limpios.append(limpio)
             
     res = supabase.table("troqueles").upsert(datos_limpios).execute()
