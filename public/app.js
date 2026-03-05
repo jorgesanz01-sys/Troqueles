@@ -666,27 +666,49 @@ const App = {
         reader.readAsText(file, 'ISO-8859-1');
     },
     
-    exportarCSV: () => { 
-        let c = "Matricula;Ubicacion;Descripcion;Tipo;OT;Articulos;Madera;Corte;Observaciones;Estado\n"; 
-        App.datos.forEach(t => {
-            const nomLimpio = (t.nombre || "").replace(/;/g, ',').replace(/\r?\n/g, ' ');
-            const tipoNom = App.mapaCat[t.categoria_id] || "";
-            const ot = (t.referencias_ot || "").replace(/;/g, ',');
-            const arts = (t.codigos_articulo || "").replace(/;/g, ',');
-            const mad = (t.tamano_troquel || "").replace(/;/g, ',');
-            const cor = (t.tamano_final || "").replace(/;/g, ',');
-            const obs = (t.observaciones || "").replace(/;/g, ',').replace(/\r?\n/g, ' ');
-            
-            let estadoExcel = 'ALMACEN';
-            if(t.estado === 'EN PRODUCCION') estadoExcel = 'PRODUCCION';
-            if(t.estado === 'DESCATALOGADO') estadoExcel = 'OBSOLETO';
+// --- SISTEMA DE BACKUP PRO ---
+    exportarCopiaSeguridad: () => {
+        // Exportamos los datos puros (App.datos) que ya incluyen URLs, IDs, etc.
+        const dataStr = JSON.stringify(App.datos, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const a = document.createElement('a');
+        const fecha = new Date().toISOString().split('T')[0];
+        a.href = URL.createObjectURL(blob);
+        a.download = `BACKUP_TROQUELES_${fecha}.json`;
+        a.click();
+        alert("✅ Copia de seguridad total generada con éxito.");
+    },
 
-            c += `${t.id_troquel};${t.ubicacion};${nomLimpio};${tipoNom};${ot};${arts};${mad};${cor};${obs};${estadoExcel}\n`;
-        }); 
-        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), c], {type: "text/csv;charset=utf-8"});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
-        a.download = 'inventario_troqueles.csv'; a.click(); 
-    }
-};
+    restaurarCopiaSeguridad: async (input) => {
+        const file = input.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const backupData = JSON.parse(e.target.result);
+                if(!Array.isArray(backupData)) throw new Error("Formato inválido");
+
+                if(!confirm(`⚠️ Se van a procesar ${backupData.length} troqueles. Los que ya existan se actualizarán y los nuevos se añadirán. ¿Continuar?`)) return;
+
+                // Enviamos al backend para un procesamiento seguro
+                const res = await fetch('/api/troqueles/backup/restaurar', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(backupData)
+                });
+
+                if(res.ok) {
+                    const info = await res.json();
+                    alert(`✅ Restauración completada:\n- Procesados: ${info.procesados}`);
+                    App.cargarTodo();
+                }
+            } catch (err) {
+                alert("❌ Error: El archivo no es una copia de seguridad válida.");
+            }
+            input.value = "";
+        };
+        reader.readAsText(file);
+    },
 
 window.onload = App.init;

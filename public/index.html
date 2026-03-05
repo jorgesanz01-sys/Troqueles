@@ -23,9 +23,14 @@
                 <button class="menu-item" onclick="App.nav('vista-estadisticas', this); App.cargarEstadisticas(12)">📈 Estadísticas / Inactivos</button>
                 
                 <div class="menu-divisor"></div>
-                <div class="sidebar-titulo">🛠️ GESTIÓN DE DATOS</div>
-                
-                <button class="menu-item" onclick="App.exportarCSV()">📥 Descargar a Excel</button>
+                <div class="sidebar-titulo">🛡️ COPIAS DE SEGURIDAD</div>
+                <button class="menu-item" onclick="App.exportarCopiaSeguridad()">💾 Crear Copia Total (JSON)</button>
+                <button class="menu-item" onclick="document.getElementById('input-backup').click()">🔄 Restaurar Copia</button>
+                <input type="file" id="input-backup" accept=".json" style="display:none;" onchange="App.restaurarCopiaSeguridad(this)">
+
+            <div class="menu-divisor"></div>
+            <div class="sidebar-titulo">📤 EXCEL (Solo lectura)</div>
+                <button class="menu-item" onclick="App.exportarCSV()">📥 Descargar Excel CSV</button>
                 
                 <div style="padding: 5px 20px;">
                     <select id="select-import-tipo" class="sidebar-select">
