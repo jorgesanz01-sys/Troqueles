@@ -301,19 +301,23 @@
             
             <div id="modal-scanner" class="modal oculto" style="background:black;"><div class="modal-contenido" style="background:#1e293b; color:white; width:100%; height:100%; max-width:none; border:none; display:flex; flex-direction:column;"><div style="padding:10px; display:flex; justify-content:space-between;"><h3 id="titulo-scanner">📸 Escáner</h3><button class="btn-secundario" onclick="App.toggleScanner(false)" style="background:transparent; color:white; border:1px solid white;">✕ Cerrar</button></div><div id="reader" style="flex:1; background:black;"></div><div id="panel-lote" style="height:35%; background:#0f172a; padding:10px; overflow-y:auto;"><div style="display:flex; justify-content:space-between;"><span>Leídos: <strong id="count-scans">0</strong></span></div><div id="lista-escaneados" style="display:flex; flex-wrap:wrap; gap:10px;"></div></div><div id="btns-lote" style="padding:15px; display:flex; gap:10px; justify-content:center; background:#0f172a;"><button class="btn-accion" style="background:#e11d48; width:50%; padding:15px;" onclick="App.procesarEscaneo('SALIDA')">A PRODUCCIÓN</button><button class="btn-accion" style="background:#16a34a; width:50%; padding:15px;" onclick="App.procesarEscaneo('RETORNO')">DEVOLVER</button></div></div></div>
             
-            <div id="modal-qr" class="modal oculto">
+<div id="modal-qr" class="modal oculto">
                 <div class="modal-contenido text-center">
-                    <h3 style="margin-top:0;">Previsualización de Etiqueta</h3>
-                    <div id="zona-impresion" class="etiqueta-preview" style="margin:20px auto; border: 2px dashed #cbd5e1; padding: 15px; display:inline-block; max-width: 300px;">
-                        <canvas id="qr-canvas"></canvas>
-                        <div class="etiqueta-info">
-                            <div id="qr-texto-ubi" class="etiq-ubi" style="font-weight:bold; font-size:18px; color:#475569;"></div>
-                            <div id="qr-texto-id" class="etiq-id" style="font-weight:900; font-size:24px;"></div>
-                            <div id="qr-texto-desc" class="etiq-desc" style="font-size:14px; color:#64748b; margin-top: 5px;"></div>
-                            <div id="qr-texto-arts" style="font-size:14px; color:#0f766e; font-weight: bold; margin-top: 5px; display:none;"></div>
+                    <h3 class="no-print" style="margin-top:0; color:#0f172a;">Vista Previa Etiqueta</h3>
+                    
+                    <div class="etiqueta-preview-container">
+                        <div id="zona-impresion" class="etiqueta-preview">
+                            <canvas id="qr-canvas"></canvas>
+                            <div class="etiqueta-info">
+                                <div id="qr-texto-ubi" class="etiq-ubi"></div>
+                                <div id="qr-texto-id" class="etiq-id"></div>
+                                <div id="qr-texto-desc" class="etiq-desc"></div>
+                                <div id="qr-texto-arts" class="etiq-arts" style="display:none;"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="modal-botones no-print" style="margin-top: 20px;">
+
+                    <div class="modal-botones no-print" style="margin-top: 30px;">
                         <button class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cancelar</button>
                         <button class="btn-accion" id="btn-imprimir-qr-unico" style="background:#0f766e;">🖨️ Imprimir en Godex</button>
                     </div>
