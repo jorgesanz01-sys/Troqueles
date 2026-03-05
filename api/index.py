@@ -43,7 +43,6 @@ class BulkUpdate(BaseModel):
     ids: List[int]
     valor_id: int
 
-# NUEVO: MODELO PARA BORRADOS MASIVOS
 class BulkIds(BaseModel):
     ids: List[int]
 
@@ -51,8 +50,12 @@ class BulkIds(BaseModel):
 @app.get("/api/troqueles")
 def leer_troqueles(ver_papelera: bool = False):
     query = supabase.table("troqueles").select("*")
-    if ver_papelera: query = query.eq("estado_activo", "Eliminado")
-    else: query = query.neq("estado_activo", "Eliminado")
+    if ver_papelera: 
+        query = query.eq("estado_activo", "Eliminado")
+    else: 
+        # CORRECCIÓN: Evitamos que devuelva vacío por registros antiguos que tengan NULL
+        query = query.or_("estado_activo.eq.Activo,estado_activo.is.null")
+        
     return query.order("id_troquel", desc=True).execute().data
 
 @app.get("/api/categorias")
@@ -176,7 +179,6 @@ def bulk_fam(d: BulkUpdate):
 def bulk_cat(d: BulkUpdate):
     return supabase.table("troqueles").update({"categoria_id": d.valor_id}).in_("id", d.ids).execute()
 
-# --- NUEVOS CONTROLADORES MASIVOS ---
 @app.post("/api/troqueles/bulk/papelera")
 def bulk_papelera(d: BulkIds):
     return supabase.table("troqueles").update({"estado_activo": "Eliminado"}).in_("id", d.ids).execute()
@@ -187,7 +189,6 @@ def bulk_restaurar(d: BulkIds):
 
 @app.post("/api/troqueles/bulk/destruir")
 def bulk_destruir(d: BulkIds):
-    # Destruye los troqueles de la base de datos permanentemente
     return supabase.table("troqueles").delete().in_("id", d.ids).execute()
 
 def registrar_log(id_t, accion, orig, dest):
@@ -218,22 +219,26 @@ def limpiar_duplicados():
         else: 
             vistos.add(huella)
             
-    # OPTIMIZACIÓN: Borramos todos los duplicados de golpe usando .in_()
     if ids_a_borrar:
         supabase.table("troqueles").delete().in_("id", ids_a_borrar).execute()
         
     return {"borrados": len(ids_a_borrar)}
+
 @app.post("/api/troqueles/backup/restaurar")
 def restaurar_backup(datos: List[Dict[str, Any]]):
-    # Supabase upsert usa la columna 'id' para decidir si actualiza o inserta.
-    # Limpiamos los datos para asegurar que el formato es correcto
-    for d in datos:
-        # Aseguramos que el estado activo sea correcto
-        if "estado_activo" not in d:
-            d["estado_activo"] = "Activo"
-            
-    # La magia del upsert: 
-    # Si encuentra el ID, actualiza la fila. Si no lo encuentra, crea una nueva.
-    res = supabase.table("troqueles").upsert(datos).execute()
+    # LIMPIEZA CRÍTICA PARA EL BACKUP (Evita errores de sintaxis)
+    campos_validos = {
+        "id", "id_troquel", "nombre", "ubicacion", "estado", "estado_activo",
+        "codigos_articulo", "referencias_ot", "categoria_id", "familia_id",
+        "tamano_troquel", "tamano_final", "observaciones", "archivos", "created_at"
+    }
     
-    return {"status": "ok", "procesados": len(datos)}
+    datos_limpios = []
+    for d in datos:
+        limpio = {k: v for k, v in d.items() if k in campos_validos}
+        if "estado_activo" not in limpio: 
+            limpio["estado_activo"] = "Activo"
+        datos_limpios.append(limpio)
+            
+    res = supabase.table("troqueles").upsert(datos_limpios).execute()
+    return {"status": "ok", "procesados": len(datos_limpios)}

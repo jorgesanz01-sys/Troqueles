@@ -10,13 +10,15 @@ const App = {
 
     init: async () => {
         console.log("Iniciando ERP V27 (Estilo JSD)...");
-        await App.cargarSelects();
-        await App.cargarTodo();
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('modo') === 'operario') {
-            document.body.classList.add('kiosk-mode');
-            App.activarModoMovil();
-        }
+        try {
+            await App.cargarSelects();
+            await App.cargarTodo();
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('modo') === 'operario') {
+                document.body.classList.add('kiosk-mode');
+                App.activarModoMovil();
+            }
+        } catch(e) { console.error("Error iniciando app:", e); }
     },
 
     cargarTodo: async (papelera = false) => {
@@ -24,7 +26,7 @@ const App = {
             App.enPapelera = papelera;
             const res = await fetch(`/api/troqueles?ver_papelera=${papelera}`);
             if (res.ok) {
-                App.datos = await res.json();
+                App.datos = await res.json() || [];
                 App.limpiarSeleccion(); 
                 App.renderTabla();
                 
@@ -113,7 +115,6 @@ const App = {
             let fam = App.mapaFam[t.familia_id];
             if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
 
-            // BOTONES LIMPIOS: Reloj, QR y Papelera
             let btns = `
                 <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
                 <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir Etiqueta">🖨️</button>
@@ -223,7 +224,6 @@ const App = {
         App.editar(id);
     },
 
-    // MÓVIL - SÚPER FICHA COMPLETA
     activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
     desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
     abrirDetalleMovil: (id) => {
@@ -236,7 +236,6 @@ const App = {
         document.getElementById('movil-ubi').innerText = t.ubicacion;
         document.getElementById('movil-nombre').innerText = t.nombre;
         
-        // Info detallada volcada al móvil
         document.getElementById('movil-tipo').innerText = App.mapaCat[t.categoria_id] || '-';
         document.getElementById('movil-familia').innerText = App.mapaFam[t.familia_id] || '-';
         document.getElementById('movil-madera').innerText = t.tamano_troquel || '-';
@@ -495,13 +494,11 @@ const App = {
             return;
         }
 
-        // CSS con UBI: acortado
         let html = `<!DOCTYPE html><html><head><title>Impresión Godex 50x23</title><style>@page { size: 50mm 23mm; margin: 0; } body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } .label { width: 50mm; height: 23mm; box-sizing: border-box; padding: 1mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } .qr { width: 19mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 18mm; height: 18mm; } .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } .ubi { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 3px; color: black; text-transform: uppercase; } .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 2px; } .arts { font-size: 6pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } @media screen { body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; } .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; } .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; } } @media print { .no-print { display: none !important; } }</style></head><body><button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex</button>`;
         
         items.forEach(t => {
             const qr = new QRious({ value: t.id.toString(), size: 150, level: 'M' });
             const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
-            // Inyectamos UBI: aquí
             html += `<div class="label"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div>`;
         });
         html += `</body></html>`;
@@ -666,17 +663,19 @@ const App = {
         reader.readAsText(file, 'ISO-8859-1');
     },
     
-// --- SISTEMA DE BACKUP PRO ---
+    // --- SISTEMA DE BACKUP PRO ---
     exportarCopiaSeguridad: () => {
-        // Exportamos los datos puros (App.datos) que ya incluyen URLs, IDs, etc.
+        if(App.datos.length === 0) {
+            alert("No hay datos para exportar.");
+            return;
+        }
         const dataStr = JSON.stringify(App.datos, null, 2);
         const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        const fecha = new Date().toISOString().split('T')[0];
-        a.href = URL.createObjectURL(blob);
-        a.download = `BACKUP_TROQUELES_${fecha}.json`;
+        a.href = url;
+        a.download = `BACKUP_TOTAL_${new Date().toISOString().split('T')[0]}.json`;
         a.click();
-        alert("✅ Copia de seguridad total generada con éxito.");
     },
 
     restaurarCopiaSeguridad: async (input) => {
@@ -687,11 +686,8 @@ const App = {
         reader.onload = async (e) => {
             try {
                 const backupData = JSON.parse(e.target.result);
-                if(!Array.isArray(backupData)) throw new Error("Formato inválido");
+                if(!confirm(`Se van a restaurar/actualizar ${backupData.length} troqueles. ¿Estás seguro?`)) return;
 
-                if(!confirm(`⚠️ Se van a procesar ${backupData.length} troqueles. Los que ya existan se actualizarán y los nuevos se añadirán. ¿Continuar?`)) return;
-
-                // Enviamos al backend para un procesamiento seguro
                 const res = await fetch('/api/troqueles/backup/restaurar', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -699,16 +695,19 @@ const App = {
                 });
 
                 if(res.ok) {
-                    const info = await res.json();
-                    alert(`✅ Restauración completada:\n- Procesados: ${info.procesados}`);
-                    App.cargarTodo();
+                    alert("✅ Base de datos restaurada con éxito.");
+                    location.reload(); 
+                } else {
+                    alert("❌ Error al subir el backup al servidor.");
                 }
             } catch (err) {
-                alert("❌ Error: El archivo no es una copia de seguridad válida.");
+                alert("❌ El archivo no tiene un formato JSON válido.");
             }
-            input.value = "";
         };
         reader.readAsText(file);
-    },
+    }
+    
+// ¡AQUÍ ESTÁ LA LLAVE QUE FALTABA PARA CERRAR EL OBJETO APP! 👇
+};
 
 window.onload = App.init;
