@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V27 (PAPELERA MASIVA Y ARTÍCULO VISIBLE)
+// ERP PACKAGING - LÓGICA V27 (APP LIMPIA Y DETALLE MÓVIL FULL)
 // =============================================================
 
 const App = {
@@ -9,7 +9,7 @@ const App = {
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
 
     init: async () => {
-        console.log("Iniciando ERP V27 (Papelera y Artículos)...");
+        console.log("Iniciando ERP V27 (Estilo JSD)...");
         await App.cargarSelects();
         await App.cargarTodo();
         const params = new URLSearchParams(window.location.search);
@@ -25,20 +25,15 @@ const App = {
             const res = await fetch(`/api/troqueles?ver_papelera=${papelera}`);
             if (res.ok) {
                 App.datos = await res.json();
-                App.limpiarSeleccion(); // Limpia selecciones al cambiar de pantalla
+                App.limpiarSeleccion(); 
                 App.renderTabla();
                 
                 document.getElementById('titulo-lista').innerText = papelera ? "🗑️ PAPELERA" : "Inventario Activo";
                 
-                // Muestra u oculta los paneles superiores según estemos en papelera o no
-                const divHerramientasNormales = document.getElementById('herramientas-normales');
                 const divHerramientasPapelera = document.getElementById('herramientas-papelera');
-                
                 if (papelera) { 
-                    if(divHerramientasNormales) divHerramientasNormales.classList.add('oculto');
                     if(divHerramientasPapelera) divHerramientasPapelera.classList.remove('oculto'); 
                 } else { 
-                    if(divHerramientasNormales) divHerramientasNormales.classList.remove('oculto');
                     if(divHerramientasPapelera) divHerramientasPapelera.classList.add('oculto'); 
                 }
             }
@@ -73,11 +68,11 @@ const App = {
             llenar('f-cat', cats, 'Tipo...'); llenar('bulk-tipo', cats, 'Asignar Tipo...');
             llenar('f-fam', fams, 'Familia...'); llenar('bulk-familia', fams, 'Asignar Familia...');
             llenar('filtro-familia', fams, ''); 
-            llenar('select-import-tipo', cats, 'Tipo al importar (Opcional)...');
+            llenar('select-import-tipo', cats, 'Tipo al importar...');
         } catch (e) { console.error(e); }
     },
 
-    // 3. TABLA PRINCIPAL
+    // 3. TABLA PRINCIPAL LIMPIA
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body'); if (!tbody) return;
         const txt = document.getElementById('buscador').value.toLowerCase();
@@ -108,23 +103,20 @@ const App = {
             const nDocs = (t.archivos && t.archivos.length) || 0;
             const bdg = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
             
-            let col = '#166534', bg = '#dcfce7';
-            if(t.estado==='EN PRODUCCION') { col='#991b1b'; bg='#fee2e2'; }
+            let col = 'var(--success)', bg = '#dcfce7';
+            if(t.estado==='EN PRODUCCION') { col='var(--danger)'; bg='#fee2e2'; }
             if(t.estado==='DESCATALOGADO') { col='#6b7280'; bg='#f3f4f6'; }
-            const st = `<span style="background:${bg}; color:${col}; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:800;">${t.estado||'ALMACÉN'}</span>`;
+            const st = `<span style="background:${bg}; color:${col}; padding:3px 8px; border-radius:10px; font-size:10px; font-weight:800;">${t.estado||'ALMACÉN'}</span>`;
 
             let fam = App.mapaFam[t.familia_id];
             if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
 
-            // Botones normales
+            // Botones reducidos: Solo Reloj, QR y Papelera
             let btns = `
-                <button class="btn-icono" onclick="App.verFicha(${t.id})" title="Ver Ficha">👁️</button>
                 <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
-                <button class="btn-icono" onclick="App.editar(${t.id})" title="Editar">✏️</button>
                 <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir Etiqueta">🖨️</button>
                 <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red" title="A la papelera">🗑️</button>
             `;
-            // Si estamos en papelera, enseñamos Restaurar o Destruir
             if(App.enPapelera) {
                 btns = `
                     <button class="btn-accion" style="background:#22c55e; padding:2px 5px; margin-right:5px;" onclick="App.restaurar(${t.id})" title="Restaurar">♻️</button>
@@ -135,16 +127,15 @@ const App = {
             return `<tr style="${t.estado==='DESCATALOGADO'?'opacity:0.6':''}" onclick="App.verFicha(${t.id})" style="cursor:pointer;">
                 <td onclick="event.stopPropagation()" class="text-center"><input type="checkbox" value="${t.id}" ${chk} onchange="App.select(this, ${t.id})"></td>
                 <td class="text-center">${bdg}</td><td class="text-center">${st}</td>
-                <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td>
+                <td style="font-weight:900; color:var(--text-main);">${t.id_troquel}</td>
                 <td>${t.ubicacion}</td>
-                <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                <td style="color:var(--primary); font-weight:bold;">${t.codigos_articulo || '-'}</td>
                 <td>${t.nombre}</td>
                 <td><small>${fam||'-'}</small></td><td onclick="event.stopPropagation()">${btns}</td>
             </tr>`;
         }).join('');
     },
 
-    // ESTADÍSTICAS
     cargarEstadisticas: async (meses) => {
         const tbody = document.getElementById('tabla-estadisticas');
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando cálculos... ⏳</td></tr>';
@@ -229,21 +220,42 @@ const App = {
         App.editar(id);
     },
 
-    // MÓVIL
+    // MÓVIL - AHORA CON TODOS LOS DATOS
     activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
     desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
     abrirDetalleMovil: (id) => {
         const t = App.datos.find(x => x.id === id); if(!t) return;
         document.getElementById('vista-movil').classList.add('oculto');
         document.getElementById('vista-movil-detalle').classList.remove('oculto');
+        
+        // Info principal
         document.getElementById('movil-id-db').value = t.id;
         document.getElementById('movil-id').innerText = t.id_troquel;
         document.getElementById('movil-ubi').innerText = t.ubicacion;
         document.getElementById('movil-nombre').innerText = t.nombre;
         
-        // Muestra el artículo en el móvil
-        document.getElementById('movil-arts').innerText = t.codigos_articulo ? `Art: ${t.codigos_articulo}` : '';
+        // Info Detallada Añadida
+        document.getElementById('movil-tipo').innerText = App.mapaCat[t.categoria_id] || '-';
+        document.getElementById('movil-familia').innerText = App.mapaFam[t.familia_id] || '-';
+        document.getElementById('movil-madera').innerText = t.tamano_troquel || '-';
+        document.getElementById('movil-corte').innerText = t.tamano_final || '-';
+        document.getElementById('movil-ot').innerText = t.referencias_ot || '-';
+        document.getElementById('movil-arts').innerText = t.codigos_articulo || 'Sin artículos';
+        document.getElementById('movil-obs').innerText = t.observaciones || 'Sin observaciones.';
 
+        // Galería de fotos y documentos en el móvil
+        const galMovil = document.getElementById('movil-galeria');
+        galMovil.innerHTML = "";
+        if (t.archivos && t.archivos.length > 0) {
+            t.archivos.forEach(arch => {
+                const icon = arch.tipo === 'pdf' ? '📄' : `<img src="${arch.url}" style="height:40px; border-radius:4px; border:1px solid #cbd5e1;">`;
+                galMovil.innerHTML += `<a href="${arch.url}" target="_blank" style="margin-right:5px; text-decoration:none; display:inline-block; text-align:center; color:#334155;">${icon}</a>`;
+            });
+        } else {
+            galMovil.innerHTML = "<span style='color:#94a3b8; font-size:12px;'>No hay archivos adjuntos</span>";
+        }
+
+        // Estado visual
         let stHtml = `<span style="background:#dcfce7; color:#166534; padding:5px 10px; border-radius:15px; font-weight:bold;">ALMACÉN</span>`;
         if(t.estado==='EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px; font-weight:bold;">PRODUCCIÓN</span>`;
         document.getElementById('movil-estado').innerHTML = stHtml;
@@ -282,6 +294,7 @@ const App = {
                 await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(t) });
                 alert("Foto guardada");
                 await App.cargarTodo();
+                App.abrirDetalleMovil(id); // Recarga la vista para mostrar la foto nueva
             }
         } catch(e) { alert("Error foto"); }
     },
@@ -344,7 +357,6 @@ const App = {
             p.classList.remove('oculto'); 
             document.getElementById('contador-sel').innerText = App.seleccionados.size; 
             
-            // Si estamos en papelera, mostramos botones de destruir/restaurar. Si no, botones normales.
             if(App.enPapelera) {
                 document.getElementById('acciones-normales').style.display = 'none';
                 document.getElementById('acciones-papelera').style.display = 'inline-flex';
@@ -486,12 +498,13 @@ const App = {
             return;
         }
 
+        // AHORA IMPRIME "UBI:" EN VEZ DE "UBICACIÓN" PARA AHORRAR ESPACIO
         let html = `<!DOCTYPE html><html><head><title>Impresión Godex 50x23</title><style>@page { size: 50mm 23mm; margin: 0; } body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } .label { width: 50mm; height: 23mm; box-sizing: border-box; padding: 1mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } .qr { width: 19mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 18mm; height: 18mm; } .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } .ubi { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 3px; color: black; text-transform: uppercase; } .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 2px; } .arts { font-size: 6pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } @media screen { body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; } .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; } .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; } } @media print { .no-print { display: none !important; } }</style></head><body><button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex</button>`;
         
         items.forEach(t => {
             const qr = new QRious({ value: t.id.toString(), size: 150, level: 'M' });
             const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
-            html += `<div class="label"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBICACIÓN ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div>`;
+            html += `<div class="label"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div>`;
         });
         html += `</body></html>`;
         
@@ -515,7 +528,7 @@ const App = {
         document.getElementById('modal-qr').classList.remove('oculto'); 
         
         document.getElementById('qr-texto-id').innerText = "TROQUEL " + t.id_troquel; 
-        document.getElementById('qr-texto-ubi').innerText = "UBICACIÓN " + (t.ubicacion || '-'); 
+        document.getElementById('qr-texto-ubi').innerText = "UBI: " + (t.ubicacion || '-'); 
         document.getElementById('qr-texto-desc').innerText = t.nombre; 
         
         const elArts = document.getElementById('qr-texto-arts');

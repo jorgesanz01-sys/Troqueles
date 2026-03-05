@@ -105,7 +105,7 @@
                                 <th onclick="App.ordenar('codigos_articulo')" style="cursor:pointer;">Artículo ↕️</th>
                                 <th onclick="App.ordenar('nombre')" style="cursor:pointer;">Descripción ↕️</th>
                                 <th onclick="App.ordenar('familia')" style="cursor:pointer;">Familia ↕️</th>
-                                <th width="140">Acciones</th>
+                                <th width="90">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tabla-body"></tbody>
@@ -203,24 +203,45 @@
 
             <section id="vista-movil-detalle" class="vista oculto" style="padding:10px; background:#f8fafc; min-height:100vh;">
                 <button class="btn-secundario" onclick="App.volverMenuMovil()" style="width:100%; margin-bottom:15px; padding:15px;">⬅️ Volver</button>
-                <div style="background:white; border:2px solid #0f766e; border-radius:8px; padding:20px; text-align:center; margin-bottom:20px;">
-                    <div style="font-size:12px; color:#64748b;">MATRÍCULA</div>
-                    <div id="movil-id" style="font-size:40px; font-weight:900; color:#0f766e;">-</div>
+                
+                <div style="background:white; border:2px solid #2563eb; border-radius:8px; padding:20px; text-align:center; margin-bottom:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div style="font-size:12px; color:#64748b; font-weight:bold;">MATRÍCULA</div>
+                    <div id="movil-id" style="font-size:40px; font-weight:900; color:#1e293b;">-</div>
                     <div style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
-                        <div style="font-size:12px; color:#64748b;">UBICACIÓN</div>
-                        <div id="movil-ubi" style="font-size:24px; font-weight:800;">-</div>
+                        <div style="font-size:12px; color:#64748b; font-weight:bold;">UBICACIÓN</div>
+                        <div id="movil-ubi" style="font-size:28px; font-weight:900; color:#2563eb;">-</div>
                     </div>
-                    <div id="movil-nombre" style="margin-top:10px; font-weight:600;">-</div>
-                    <div id="movil-arts" style="font-size:16px; color:#0369a1; font-weight:bold; margin-top:5px;"></div>
-                    <div id="movil-estado" style="margin-top:10px;"></div>
+                    <div id="movil-nombre" style="margin-top:15px; font-weight:700; font-size:16px;">-</div>
+                    <div id="movil-estado" style="margin-top:15px;"></div>
                 </div>
+
+                <div style="background:white; border:1px solid #cbd5e1; border-radius:8px; padding:15px; margin-bottom:20px; font-size:14px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 12px;">
+                        <div style="background:#f8fafc; padding:8px; border-radius:6px;"><b>Tipo:</b> <span id="movil-tipo"></span></div>
+                        <div style="background:#f8fafc; padding:8px; border-radius:6px;"><b>Familia:</b> <span id="movil-familia"></span></div>
+                        <div style="background:#f8fafc; padding:8px; border-radius:6px;"><b>Madera:</b> <span id="movil-madera"></span></div>
+                        <div style="background:#f8fafc; padding:8px; border-radius:6px;"><b>Corte:</b> <span id="movil-corte"></span></div>
+                    </div>
+                    
+                    <div style="margin-bottom: 10px;"><b>OT:</b> <span id="movil-ot" style="background:#f1f5f9; padding:4px 8px; border-radius:4px; font-weight:bold;"></span></div>
+                    <div style="margin-bottom: 10px;"><b>Artículos:</b> <span id="movil-arts" style="color:#0369a1; font-weight:bold;"></span></div>
+                    <div style="margin-bottom: 15px;"><b>Observaciones:</b> 
+                        <div id="movil-obs" style="background:#fef3c7; border-left:3px solid #f59e0b; padding:8px; margin-top:4px; border-radius: 0 4px 4px 0;"></div>
+                    </div>
+                    
+                    <div style="border-top:1px solid #e2e8f0; padding-top:15px;">
+                        <b style="color:#64748b;">📎 Documentos / Fotos:</b>
+                        <div id="movil-galeria" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
+                    </div>
+                </div>
+
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                    <button class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:10px;" onclick="App.movilCambiarUbi()">📍 Ubi</button>
-                    <label class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:10px; display:flex; align-items:center; justify-content:center;">
-                        📷 Foto <input type="file" accept="image/*" capture="environment" onchange="App.movilSubirFoto(this)" style="display:none;">
+                    <button class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:15px; font-size:16px;" onclick="App.movilCambiarUbi()">📍 Cambiar Ubi</button>
+                    <label class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:15px; display:flex; align-items:center; justify-content:center; font-size:16px;">
+                        📷 Subir Foto <input type="file" accept="image/*" capture="environment" onchange="App.movilSubirFoto(this)" style="display:none;">
                     </label>
-                    <button class="btn-gigante" style="background:#e11d48; color:white; padding:15px;" onclick="App.movilCambiarEstado('SALIDA')">🏭 SALIDA</button>
-                    <button class="btn-gigante" style="background:#16a34a; color:white; padding:15px;" onclick="App.movilCambiarEstado('RETORNO')">✅ ENTRADA</button>
+                    <button class="btn-gigante" style="background:var(--danger); color:white; padding:15px; font-size:16px;" onclick="App.movilCambiarEstado('SALIDA')">🏭 SALIDA (Prod.)</button>
+                    <button class="btn-gigante" style="background:var(--success); color:white; padding:15px; font-size:16px;" onclick="App.movilCambiarEstado('RETORNO')">✅ ENTRADA (Alm.)</button>
                 </div>
                 <input type="hidden" id="movil-id-db">
             </section>
@@ -322,7 +343,7 @@
 
                     <div class="modal-botones no-print" style="margin-top: 30px;">
                         <button class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cancelar</button>
-                        <button class="btn-accion" id="btn-imprimir-qr-unico" style="background:#0f766e;">🖨️ Imprimir en Godex</button>
+                        <button class="btn-accion" id="btn-imprimir-qr-unico" style="background:var(--primary);">🖨️ Imprimir en Godex</button>
                     </div>
                 </div>
             </div>
