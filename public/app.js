@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V28 (TIEMPO REAL + HISTORIAL LIMPIO)
+// ERP PACKAGING - LÓGICA V29 (ESCUDO PURIFICADOR DE DATOS)
 // =============================================================
 
 const App = {
@@ -9,13 +9,29 @@ const App = {
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
     intervaloRefresco: null,
 
+    // 🛡️ NUEVO: El Escudo Purificador de Archivos
+    // Transforma cualquier basura de la base de datos en una lista limpia
+    parseArchivos: (raw) => {
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === 'string') {
+            if (raw.trim() === "") return [];
+            if (raw.trim().startsWith('[')) {
+                try { 
+                    const parsed = JSON.parse(raw);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch(e) { return []; }
+            }
+        }
+        return [];
+    },
+
     init: async () => {
-        console.log("Iniciando ERP V28...");
+        console.log("Iniciando ERP V29 (Blindado)...");
         try {
             await App.cargarSelects();
             await App.cargarTodo();
             
-            // Iniciar "Tiempo Real Silencioso" cada 8 segundos
             App.iniciarTiempoReal();
 
             const params = new URLSearchParams(window.location.search);
@@ -29,13 +45,12 @@ const App = {
     iniciarTiempoReal: () => {
         if(App.intervaloRefresco) clearInterval(App.intervaloRefresco);
         App.intervaloRefresco = setInterval(async () => {
-            // Solo recarga silenciosamente si estamos en la vista de lista normal (no editando ni en historial)
             if(!document.getElementById('vista-lista').classList.contains('oculto') && !App.enPapelera && !App.modoMovil) {
                 try {
                     const res = await fetch(`/api/troqueles?ver_papelera=false`);
                     if (res.ok) {
                         App.datos = await res.json() || [];
-                        App.renderTabla(); // RenderTabla mantiene los 'check' marcados mágicamente
+                        App.renderTabla(); 
                     }
                 } catch(e) {}
             }
@@ -122,7 +137,9 @@ const App = {
 
         tbody.innerHTML = res.map(t => {
             const chk = App.seleccionados.has(t.id) ? 'checked' : '';
-            const nDocs = (t.archivos && t.archivos.length) || 0;
+            // USAMOS EL ESCUDO
+            const archs = App.parseArchivos(t.archivos);
+            const nDocs = archs.length;
             const bdg = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
             
             let col = 'var(--success)', bg = '#dcfce7';
@@ -183,7 +200,6 @@ const App = {
         } catch (e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar las estadísticas</td></tr>'; }
     },
 
-    // --- NUEVO FORMATO DE HISTORIAL MÁS LIMPIO ---
     cargarHistorial: async () => { 
         const r = await fetch('/api/historial'); 
         const d = await r.json(); 
@@ -198,7 +214,6 @@ const App = {
             </tr>`;
         }).join(''); 
         
-        // Ajustar las cabeceras de la tabla general para que encajen
         const thead = document.querySelector('#vista-historial thead tr');
         if(thead) {
             thead.innerHTML = `<th>Fecha/Hora</th><th>Matrícula</th><th>Descripción</th><th>Código</th><th>Origen ➔ Destino</th>`;
@@ -211,7 +226,6 @@ const App = {
         document.getElementById('hist-titulo-mat').innerText = mat;
         document.getElementById('hist-titulo-nom').innerText = nom;
         
-        // Ajustar las cabeceras del modal de historia única
         const theadUnico = document.querySelector('#modal-historial-unico thead tr');
         if(theadUnico) {
             theadUnico.innerHTML = `<th style="padding:15px;">Fecha/Hora</th><th style="padding:15px;">Matrícula</th><th style="padding:15px;">Código</th><th style="padding:15px;">Origen ➔ Destino</th>`;
@@ -256,12 +270,17 @@ const App = {
         document.getElementById('ver-id-oculto').value = t.id;
 
         const gal = document.getElementById('ver-galeria'); gal.innerHTML = "";
-        if (t.archivos && t.archivos.length > 0) {
-            t.archivos.forEach(arch => {
+        
+        // USAMOS EL ESCUDO
+        const archs = App.parseArchivos(t.archivos);
+        if (archs.length > 0) {
+            archs.forEach(arch => {
                 const icon = arch.tipo === 'pdf' ? '📄' : `<img src="${arch.url}" style="height:50px;">`;
                 gal.innerHTML += `<a href="${arch.url}" target="_blank" style="margin-right:10px; text-decoration:none; display:inline-block; text-align:center;">${icon}<br><small>${arch.nombre.substring(0,10)}</small></a>`;
             });
-        } else gal.innerHTML = "<span style='color:#999'>Sin archivos adjuntos</span>";
+        } else {
+            gal.innerHTML = "<span style='color:#999'>Sin archivos adjuntos</span>";
+        }
         
         let btnPrint = document.getElementById('btn-print-ficha');
         if(!btnPrint) {
@@ -304,8 +323,11 @@ const App = {
 
         const galMovil = document.getElementById('movil-galeria');
         galMovil.innerHTML = "";
-        if (t.archivos && t.archivos.length > 0) {
-            t.archivos.forEach(arch => {
+        
+        // USAMOS EL ESCUDO
+        const archs = App.parseArchivos(t.archivos);
+        if (archs.length > 0) {
+            archs.forEach(arch => {
                 const icon = arch.tipo === 'pdf' ? '📄' : `<img src="${arch.url}" style="height:40px; border-radius:4px; border:1px solid #cbd5e1;">`;
                 galMovil.innerHTML += `<a href="${arch.url}" target="_blank" style="margin-right:5px; text-decoration:none; display:inline-block; text-align:center; color:#334155;">${icon}</a>`;
             });
@@ -326,19 +348,25 @@ const App = {
         const nueva = prompt("Nueva Ubicación:", actual);
         if(nueva && nueva !== actual) {
             const t = App.datos.find(x => x.id == id);
+            
+            // Paquete blindado
             const payload = {
-                id_troquel: t.id_troquel || "", ubicacion: nueva, nombre: t.nombre || "",
-                categoria_id: t.categoria_id || null, familia_id: t.familia_id || null,
-                tamano_troquel: t.tamano_troquel || "", tamano_final: t.tamano_final || "",
-                codigos_articulo: t.codigos_articulo || "", referencias_ot: t.referencias_ot || "",
-                observaciones: t.observaciones || "", estado: t.estado || "EN ALMACEN",
-                archivos: t.archivos || []
+                id_troquel: String(t.id_troquel || ""), ubicacion: String(nueva), nombre: String(t.nombre || ""),
+                categoria_id: parseInt(t.categoria_id) || null, familia_id: parseInt(t.familia_id) || null,
+                tamano_troquel: String(t.tamano_troquel || ""), tamano_final: String(t.tamano_final || ""),
+                codigos_articulo: String(t.codigos_articulo || ""), referencias_ot: String(t.referencias_ot || ""),
+                observaciones: String(t.observaciones || ""), estado: String(t.estado || "EN ALMACEN"),
+                archivos: App.parseArchivos(t.archivos)
             };
+            
             const res = await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
             if(res.ok) {
                 await App.cargarTodo();
                 document.getElementById('movil-ubi').innerText = nueva;
-            } else { alert("❌ Error al guardar la ubicación en la Base de Datos."); }
+            } else {
+                const err = await res.text();
+                alert(`❌ Error al guardar la ubicación.\nServidor dice: ${err}`); 
+            }
         }
     },
     
@@ -362,15 +390,18 @@ const App = {
             const resFoto = await fetch('/api/subir_foto', { method: 'POST', body: fd });
             if(resFoto.ok) {
                 const data = await resFoto.json();
-                const nuevosArchivos = t.archivos ? [...t.archivos] : [];
+                
+                // USAMOS EL ESCUDO para extraer los archivos antes de añadir la foto nueva
+                const nuevosArchivos = App.parseArchivos(t.archivos);
                 nuevosArchivos.push({ url: data.url, nombre: input.files[0].name, tipo: data.tipo });
                 
+                // Paquete super blindado forzando textos
                 const payload = {
-                    id_troquel: t.id_troquel || "", ubicacion: t.ubicacion || "", nombre: t.nombre || "",
-                    categoria_id: t.categoria_id || null, familia_id: t.familia_id || null,
-                    tamano_troquel: t.tamano_troquel || "", tamano_final: t.tamano_final || "",
-                    codigos_articulo: t.codigos_articulo || "", referencias_ot: t.referencias_ot || "",
-                    observaciones: t.observaciones || "", estado: t.estado || "EN ALMACEN",
+                    id_troquel: String(t.id_troquel || ""), ubicacion: String(t.ubicacion || ""), nombre: String(t.nombre || ""),
+                    categoria_id: parseInt(t.categoria_id) || null, familia_id: parseInt(t.familia_id) || null,
+                    tamano_troquel: String(t.tamano_troquel || ""), tamano_final: String(t.tamano_final || ""),
+                    codigos_articulo: String(t.codigos_articulo || ""), referencias_ot: String(t.referencias_ot || ""),
+                    observaciones: String(t.observaciones || ""), estado: String(t.estado || "EN ALMACEN"),
                     archivos: nuevosArchivos
                 };
                 
@@ -381,13 +412,15 @@ const App = {
                     await App.cargarTodo();
                     App.abrirDetalleMovil(id);
                 } else {
-                    alert("❌ La foto se subió, pero el sistema la rechazó al intentar guardarla en la ficha.");
+                    const errorBackend = await resDb.text();
+                    alert(`❌ La foto subió, pero la Base de Datos la rechazó.\n\nError técnico: ${errorBackend}`);
                 }
             } else {
-                alert("❌ Error subiendo la imagen a la nube.");
+                const errUpload = await resFoto.json();
+                alert(`❌ Error subiendo la imagen a Supabase:\n${errUpload.detail || 'Desconocido'}`);
             }
         } catch(e) { 
-            alert("❌ Error general al procesar la foto."); 
+            alert("❌ Error general de red al procesar la foto."); 
             console.error(e); 
         }
         
@@ -505,8 +538,41 @@ const App = {
 
     verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
     
-    crearFamilia: async () => { const n = prompt("Familia:"); if(n) { await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
-    crearTipo: async () => { const n = prompt("Tipo:"); if(n) { await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
+    crearFamilia: async () => { 
+        const n = prompt("Nombre de la nueva Familia:"); 
+        if(n) { 
+            try {
+                const res = await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); 
+                if(res.ok) {
+                    const data = await res.json();
+                    await App.cargarSelects(); 
+                    if(data && data.length > 0) {
+                        const el = document.getElementById('f-fam');
+                        if(el) el.value = data[0].id;
+                    }
+                    alert(`✅ Familia "${n.toUpperCase()}" creada con éxito.`);
+                } else alert("❌ Error al crear la familia.");
+            } catch(e) { alert("❌ Error de red."); }
+        } 
+    },
+    crearTipo: async () => { 
+        const n = prompt("Nombre del nuevo Tipo:"); 
+        if(n) { 
+            try {
+                const res = await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); 
+                if(res.ok) {
+                    const data = await res.json();
+                    await App.cargarSelects(); 
+                    if(data && data.length > 0) {
+                        const el = document.getElementById('f-cat');
+                        if(el) el.value = data[0].id;
+                        App.calcularSiguienteId();
+                    }
+                    alert(`✅ Tipo "${n.toUpperCase()}" creado.`);
+                } else alert("❌ Error al crear el tipo.");
+            } catch(e) { alert("❌ Error de red."); }
+        } 
+    },
     subirArchivos: async (input) => { 
         if(!input.files.length) return; const btn = input.parentElement; btn.innerText="⏳";
         for(let i=0; i<input.files.length; i++) {
@@ -540,7 +606,10 @@ const App = {
         setVal('f-nombre', t.nombre); setVal('f-cat', t.categoria_id||""); setVal('f-fam', t.familia_id||"");
         setVal('f-medidas-madera', t.tamano_troquel||""); setVal('f-medidas-corte', t.tamano_final||"");
         setVal('f-arts', t.codigos_articulo||""); setVal('f-ot', t.referencias_ot||""); setVal('f-obs', t.observaciones||"");
-        App.archivosActuales = (t.archivos && Array.isArray(t.archivos)) ? t.archivos : [];
+        
+        // USAMOS EL ESCUDO TAMBIÉN PARA EDITAR
+        App.archivosActuales = App.parseArchivos(t.archivos);
+        
         App.renderListaArchivos();
         if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); 
         App.nav('vista-formulario');
@@ -549,15 +618,23 @@ const App = {
     guardarFicha: async (e) => {
         e.preventDefault(); const id = document.getElementById('f-id-db').value;
         const getVal = (elId) => { const el = document.getElementById(elId); return el ? el.value : ""; };
+        
+        // Paquete blindado para guardar desde PC
         const d = { 
-            id_troquel: getVal('f-matricula'), ubicacion: getVal('f-ubicacion'), nombre: getVal('f-nombre'),
+            id_troquel: String(getVal('f-matricula')), ubicacion: String(getVal('f-ubicacion')), nombre: String(getVal('f-nombre')),
             categoria_id: parseInt(getVal('f-cat'))||null, familia_id: parseInt(getVal('f-fam'))||null,
-            tamano_troquel: getVal('f-medidas-madera'), tamano_final: getVal('f-medidas-corte'),
-            codigos_articulo: getVal('f-arts'), referencias_ot: getVal('f-ot'),
-            observaciones: getVal('f-obs'), archivos: App.archivosActuales
+            tamano_troquel: String(getVal('f-medidas-madera')), tamano_final: String(getVal('f-medidas-corte')),
+            codigos_articulo: String(getVal('f-arts')), referencias_ot: String(getVal('f-ot')),
+            observaciones: String(getVal('f-obs')), archivos: App.archivosActuales
         };
-        await fetch(id ? `/api/troqueles/${id}` : '/api/troqueles', { method: id?'PUT':'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) });
-        await App.cargarTodo(); App.volverDesdeForm();
+        
+        const res = await fetch(id ? `/api/troqueles/${id}` : '/api/troqueles', { method: id?'PUT':'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) });
+        if(!res.ok) {
+             const err = await res.text();
+             alert(`❌ Error guardando ficha en BD:\n${err}`);
+        } else {
+             await App.cargarTodo(); App.volverDesdeForm();
+        }
     },
     calcularSiguienteId: async () => { const c = document.getElementById('f-cat').value; if(c) { try { const r=await fetch(`/api/siguiente_numero?categoria_id=${c}`); const d=await r.json(); document.getElementById('f-matricula').value=d.siguiente; document.getElementById('f-ubicacion').value=d.siguiente; } catch(e){} } },
     setFiltroTipo: (t,b) => { App.filtroTipo=t; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('activo')); b.classList.add('activo'); App.renderTabla(); },
@@ -570,7 +647,10 @@ const App = {
             let dataToSend = t;
             if(!t) { const r = await fetch(`/api/troqueles`); const full = await r.json(); dataToSend = full.find(x => x.id === id); }
             if(dataToSend) {
+                // Blindar
                 dataToSend.estado = "DESCATALOGADO"; 
+                dataToSend.archivos = App.parseArchivos(dataToSend.archivos);
+
                 await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dataToSend) }); 
                 await App.cargarTodo(); 
                 if(!document.getElementById('vista-estadisticas').classList.contains('oculto')) App.cargarEstadisticas(document.getElementById('select-inactividad').value);
@@ -750,7 +830,6 @@ const App = {
         reader.readAsText(file, 'ISO-8859-1');
     },
     
-    // --- SISTEMA DE BACKUP PRO ---
     exportarCopiaSeguridad: () => {
         if(App.datos.length === 0) {
             alert("No hay datos para exportar.");
@@ -783,7 +862,6 @@ const App = {
 
                 if(res.ok) {
                     alert("✅ Base de datos restaurada con éxito.");
-                    // Forzamos cargar sin recargar la página entera
                     App.cargarTodo(); 
                 } else {
                     alert("❌ Error al subir el backup al servidor.");
