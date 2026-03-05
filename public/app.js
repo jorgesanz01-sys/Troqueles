@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V30 (DASHBOARD ESTADÍSTICAS)
+// ERP PACKAGING - LÓGICA V30 (SCROLL MOVIL + FAMILIAS BLINDADAS)
 // =============================================================
 
 const App = {
@@ -9,7 +9,6 @@ const App = {
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
     intervaloRefresco: null,
 
-    // 🛡️ Escudo Purificador de Archivos
     parseArchivos: (raw) => {
         if (!raw) return [];
         if (Array.isArray(raw)) return raw;
@@ -26,7 +25,7 @@ const App = {
     },
 
     init: async () => {
-        console.log("Iniciando ERP V30 (Dashboard)...");
+        console.log("Iniciando ERP...");
         try {
             await App.cargarSelects();
             await App.cargarTodo();
@@ -185,7 +184,6 @@ const App = {
         let conteoFamilias = {};
         let conteoTipos = {};
 
-        // Recorremos los troqueles en memoria
         App.datos.forEach(t => {
             if(t.estado === 'EN PRODUCCION') estProduccion++;
             else if(t.estado === 'DESCATALOGADO') estObsoleto++;
@@ -200,8 +198,8 @@ const App = {
 
         const renderLista = (obj) => {
             return Object.entries(obj)
-                .sort((a,b) => b[1] - a[1]) // De mayor a menor
-                .slice(0, 5) // Top 5
+                .sort((a,b) => b[1] - a[1])
+                .slice(0, 5)
                 .map(x => `<div style="display:flex; justify-content:space-between; border-bottom:1px dashed #e2e8f0; padding:6px 0; font-size:13px;"><span>${x[0]}</span> <strong style="color:#0f766e; background:#f0fdf4; padding:2px 6px; border-radius:10px;">${x[1]}</strong></div>`)
                 .join('');
         };
@@ -585,6 +583,7 @@ const App = {
 
     verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
     
+    // FUNCIONES CREAR BLINDADAS CON AVISOS DE ERROR CLAROS
     crearFamilia: async () => { 
         const n = prompt("Nombre de la nueva Familia:"); 
         if(n) { 
@@ -598,10 +597,14 @@ const App = {
                         if(el) el.value = data[0].id;
                     }
                     alert(`✅ Familia "${n.toUpperCase()}" creada con éxito.`);
-                } else alert("❌ Error al crear la familia.");
-            } catch(e) { alert("❌ Error de red."); }
+                } else {
+                    const err = await res.json();
+                    alert(`❌ Error al crear la familia:\n${err.detail || 'Error desconocido'}`);
+                }
+            } catch(e) { alert("❌ Error de red al intentar crear la familia."); }
         } 
     },
+    
     crearTipo: async () => { 
         const n = prompt("Nombre del nuevo Tipo:"); 
         if(n) { 
@@ -616,10 +619,14 @@ const App = {
                         App.calcularSiguienteId();
                     }
                     alert(`✅ Tipo "${n.toUpperCase()}" creado.`);
-                } else alert("❌ Error al crear el tipo.");
-            } catch(e) { alert("❌ Error de red."); }
+                } else {
+                    const err = await res.json();
+                    alert(`❌ Error al crear el tipo:\n${err.detail || 'Error desconocido'}`);
+                }
+            } catch(e) { alert("❌ Error de red al intentar crear el tipo."); }
         } 
     },
+    
     subirArchivos: async (input) => { 
         if(!input.files.length) return; const btn = input.parentElement; btn.innerText="⏳";
         for(let i=0; i<input.files.length; i++) {
@@ -643,7 +650,15 @@ const App = {
         }
         if(v==='vista-lista') document.getElementById('sidebar').classList.remove('oculto'); 
     },
-    buscarMovil: (txt) => { const d = document.getElementById('resultados-movil'); d.innerHTML = ""; if(txt.length<2)return; const h = App.datos.filter(t => (t.nombre+t.id_troquel+(t.ubicacion||"")).toLowerCase().includes(txt.toLowerCase())); d.innerHTML = h.slice(0,10).map(t => `<div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); },
+    
+    // BUSCADOR MÓVIL AMPLIADO A 50 RESULTADOS
+    buscarMovil: (txt) => { 
+        const d = document.getElementById('resultados-movil'); d.innerHTML = ""; 
+        if(txt.length<2) return; 
+        const h = App.datos.filter(t => (t.nombre+t.id_troquel+(t.ubicacion||"")).toLowerCase().includes(txt.toLowerCase())); 
+        d.innerHTML = h.slice(0,50).map(t => `<div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); 
+    },
+    
     nuevoTroquel: () => { document.getElementById('titulo-form').innerText="Nuevo"; document.querySelector('form').reset(); document.getElementById('f-id-db').value=""; App.archivosActuales=[]; App.renderListaArchivos(); if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); App.nav('vista-formulario'); },
     editar: (id) => { 
         const t = App.datos.find(x=>x.id===id); if(!t)return;

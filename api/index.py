@@ -109,13 +109,19 @@ def troqueles_inactivos(meses: int = 12):
 # --- POST/PUT ---
 @app.post("/api/categorias")
 def crear_cat(d: EntidadAux):
-    # AÑADIDO EL .data AQUÍ PARA SOLUCIONAR EL ERROR 500
-    return supabase.table("categorias").insert({"nombre": d.nombre.upper()}).select().execute().data
+    try:
+        res = supabase.table("categorias").insert({"nombre": d.nombre.upper()}).execute()
+        return res.data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/familias")
 def crear_fam(d: EntidadAux):
-    # AÑADIDO EL .data AQUÍ PARA SOLUCIONAR EL ERROR 500
-    return supabase.table("familias").insert({"nombre": d.nombre.upper()}).select().execute().data
+    try:
+        res = supabase.table("familias").insert({"nombre": d.nombre.upper()}).execute()
+        return res.data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/subir_foto")
 async def subir_foto(file: UploadFile = File(...)):

@@ -40,7 +40,6 @@
                 <input type="file" id="input-csv" accept=".csv" style="display:none;" onchange="App.procesarImportacion(this)">
                 
                 <div class="menu-divisor"></div>
-                
                 <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
             </nav>
         </aside>
@@ -124,7 +123,7 @@
                 </div>
 
                 <div id="dashboard-resumen" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px;">
-                    </div>
+                </div>
 
                 <div class="header-modulo" style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
                     <h2>⏳ Control de Obsolescencia</h2>
@@ -199,7 +198,7 @@
                 </div>
             </section>
 
-            <section id="vista-movil" class="vista oculto" style="padding:10px;">
+            <section id="vista-movil" class="vista oculto" style="padding:15px; height:100dvh; overflow-y:auto; padding-bottom:120px; box-sizing:border-box;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                     <h1 style="margin:0; font-size:28px;">🦺 Operario</h1> 
                 </div>
@@ -368,6 +367,6 @@
         </main>
     </div>
     
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
 </body>
 </html>
