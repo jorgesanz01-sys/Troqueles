@@ -169,7 +169,7 @@ body {
 
 input, select, textarea { 
     width: 100%; 
-    padding: 8px 10px; /* Reducido para ser más compacto */
+    padding: 8px 10px; 
     border: 1px solid #cbd5e1; 
     border-radius: 6px; 
     font-family: 'Inter', sans-serif; 
@@ -192,7 +192,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); outlin
 .btn-icono { 
     background: white; 
     border: 1px solid #e2e8f0; 
-    padding: 3px 5px; /* Súper reducido */
+    padding: 3px 5px; 
     border-radius: 4px; 
     cursor: pointer; 
     margin-right: 2px; 
@@ -207,7 +207,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); outlin
 .tabla-pro { width: 100%; border-collapse: collapse; min-width: 900px; }
 .tabla-pro th { 
     background: #f8fafc; 
-    padding: 10px 12px; /* Reducido */
+    padding: 10px 12px; 
     text-align: left; 
     font-size: 11px; 
     font-weight: 700; 
@@ -217,9 +217,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); outlin
     letter-spacing: 0.5px;
 }
 .tabla-pro td { 
-    padding: 6px 12px; /* MUY COMPACTO: 6px arriba/abajo */
+    padding: 6px 12px; 
     border-bottom: 1px solid #f1f5f9; 
-    font-size: 12px; /* Texto un pelín más ajustado */
+    font-size: 12px; 
     vertical-align: middle; 
 }
 .tabla-pro tbody tr { transition: background 0.1s; }

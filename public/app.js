@@ -72,7 +72,7 @@ const App = {
         } catch (e) { console.error(e); }
     },
 
-// 3. TABLA PRINCIPAL LIMPIA
+    // 3. TABLA PRINCIPAL LIMPIA
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body'); if (!tbody) return;
         const txt = document.getElementById('buscador').value.toLowerCase();
@@ -103,15 +103,26 @@ const App = {
             const nDocs = (t.archivos && t.archivos.length) || 0;
             const bdg = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
             
+            // LÓGICA DE ESTADOS ACORTADOS
             let col = 'var(--success)', bg = '#dcfce7';
-            if(t.estado==='EN PRODUCCION') { col='var(--danger)'; bg='#fee2e2'; }
-            if(t.estado==='DESCATALOGADO') { col='#6b7280'; bg='#f3f4f6'; }
-            const st = `<span style="background:${bg}; color:${col}; padding:3px 8px; border-radius:10px; font-size:10px; font-weight:800;">${t.estado||'ALMACÉN'}</span>`;
+            let textoEstado = 'ALMACÉN';
+            
+            if(t.estado === 'EN PRODUCCION') { 
+                col = 'var(--danger)'; 
+                bg = '#fee2e2'; 
+                textoEstado = 'PRODUCCIÓN'; 
+            }
+            if(t.estado === 'DESCATALOGADO') { 
+                col = '#6b7280'; 
+                bg = '#f3f4f6'; 
+                textoEstado = 'OBSOLETO'; 
+            }
+
+            const st = `<span style="background:${bg}; color:${col}; padding:3px 8px; border-radius:10px; font-size:10px; font-weight:800; letter-spacing:0.5px;">${textoEstado}</span>`;
 
             let fam = App.mapaFam[t.familia_id];
             if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
 
-            // Botones reducidos: Solo Reloj, QR y Papelera
             let btns = `
                 <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
                 <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir Etiqueta">🖨️</button>
@@ -124,7 +135,6 @@ const App = {
                 `;
             }
 
-            // TRUCO CLAVE AQUÍ: style="white-space: nowrap;" en el último <td>
             return `<tr style="${t.estado==='DESCATALOGADO'?'opacity:0.6':''}" onclick="App.verFicha(${t.id})" style="cursor:pointer;">
                 <td onclick="event.stopPropagation()" class="text-center"><input type="checkbox" value="${t.id}" ${chk} onchange="App.select(this, ${t.id})"></td>
                 <td class="text-center">${bdg}</td><td class="text-center">${st}</td>
@@ -222,7 +232,7 @@ const App = {
         App.editar(id);
     },
 
-    // MÓVIL - AHORA CON TODOS LOS DATOS
+    // MÓVIL
     activarModoMovil: () => { App.modoMovil = true; document.getElementById('sidebar').classList.add('oculto'); document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto')); document.getElementById('vista-movil').classList.remove('oculto'); },
     desactivarModoMovil: () => { App.modoMovil = false; document.getElementById('sidebar').classList.remove('oculto'); App.nav('vista-lista'); },
     abrirDetalleMovil: (id) => {
@@ -230,13 +240,11 @@ const App = {
         document.getElementById('vista-movil').classList.add('oculto');
         document.getElementById('vista-movil-detalle').classList.remove('oculto');
         
-        // Info principal
         document.getElementById('movil-id-db').value = t.id;
         document.getElementById('movil-id').innerText = t.id_troquel;
         document.getElementById('movil-ubi').innerText = t.ubicacion;
         document.getElementById('movil-nombre').innerText = t.nombre;
         
-        // Info Detallada Añadida
         document.getElementById('movil-tipo').innerText = App.mapaCat[t.categoria_id] || '-';
         document.getElementById('movil-familia').innerText = App.mapaFam[t.familia_id] || '-';
         document.getElementById('movil-madera').innerText = t.tamano_troquel || '-';
@@ -245,7 +253,6 @@ const App = {
         document.getElementById('movil-arts').innerText = t.codigos_articulo || 'Sin artículos';
         document.getElementById('movil-obs').innerText = t.observaciones || 'Sin observaciones.';
 
-        // Galería de fotos y documentos en el móvil
         const galMovil = document.getElementById('movil-galeria');
         galMovil.innerHTML = "";
         if (t.archivos && t.archivos.length > 0) {
@@ -257,9 +264,10 @@ const App = {
             galMovil.innerHTML = "<span style='color:#94a3b8; font-size:12px;'>No hay archivos adjuntos</span>";
         }
 
-        // Estado visual
+        // Estado visual acortado
         let stHtml = `<span style="background:#dcfce7; color:#166534; padding:5px 10px; border-radius:15px; font-weight:bold;">ALMACÉN</span>`;
-        if(t.estado==='EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px; font-weight:bold;">PRODUCCIÓN</span>`;
+        if(t.estado === 'EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px; font-weight:bold;">PRODUCCIÓN</span>`;
+        if(t.estado === 'DESCATALOGADO') stHtml = `<span style="background:#f3f4f6; color:#6b7280; padding:5px 10px; border-radius:15px; font-weight:bold;">OBSOLETO</span>`;
         document.getElementById('movil-estado').innerHTML = stHtml;
     },
     volverMenuMovil: () => { document.getElementById('vista-movil-detalle').classList.add('oculto'); document.getElementById('vista-movil').classList.remove('oculto'); App.cargarTodo(); },
@@ -296,7 +304,7 @@ const App = {
                 await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(t) });
                 alert("Foto guardada");
                 await App.cargarTodo();
-                App.abrirDetalleMovil(id); // Recarga la vista para mostrar la foto nueva
+                App.abrirDetalleMovil(id);
             }
         } catch(e) { alert("Error foto"); }
     },
@@ -349,7 +357,6 @@ const App = {
     borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
     procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
 
-    // SELECCIÓN Y PANELES
     select: (c,id) => { c.checked ? App.seleccionados.add(id) : App.seleccionados.delete(id); App.updatePanel(); },
     toggleAll: (c) => { document.querySelectorAll('#tabla-body input[type="checkbox"]').forEach(k=>{ k.checked=c.checked; c.checked ? App.seleccionados.add(parseInt(k.value)) : App.seleccionados.delete(parseInt(k.value)); }); App.updatePanel(); },
     
@@ -372,7 +379,6 @@ const App = {
     },
     limpiarSeleccion: () => { App.seleccionados.clear(); const chk = document.getElementById('check-all'); if(chk) chk.checked=false; App.updatePanel(); App.renderTabla(); },
     
-    // --- NUEVAS FUNCIONES DE PAPELERA Y BORRADO MASIVO ---
     borrar: async (id) => { if(confirm("¿Mover a la papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
     restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.cargarTodo(true); },
     
@@ -413,7 +419,6 @@ const App = {
 
     verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
     
-    // UTILS VARIOS
     crearFamilia: async () => { const n = prompt("Familia:"); if(n) { await fetch('/api/familias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     crearTipo: async () => { const n = prompt("Tipo:"); if(n) { await fetch('/api/categorias', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nombre:n}) }); App.cargarSelects(); } },
     subirArchivos: async (input) => { 
@@ -491,7 +496,6 @@ const App = {
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
     cargarHistorial: async () => { const r=await fetch('/api/historial'); const d=await r.json(); document.getElementById('tabla-historial').innerHTML=d.map(h=>`<tr><td>${new Date(h.fecha_hora).toLocaleString()}</td><td>${h.troqueles?.nombre}</td><td>${h.accion}</td><td>${h.ubicacion_anterior||'-'} -> ${h.ubicacion_nueva||'-'}</td></tr>`).join(''); },
     
-    // --- MAGIA GODEX ---
     imprimirEtiquetasGodex: (items) => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
         
@@ -500,7 +504,6 @@ const App = {
             return;
         }
 
-        // AHORA IMPRIME "UBI:" EN VEZ DE "UBICACIÓN" PARA AHORRAR ESPACIO
         let html = `<!DOCTYPE html><html><head><title>Impresión Godex 50x23</title><style>@page { size: 50mm 23mm; margin: 0; } body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } .label { width: 50mm; height: 23mm; box-sizing: border-box; padding: 1mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } .qr { width: 19mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 18mm; height: 18mm; } .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } .ubi { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 3px; color: black; text-transform: uppercase; } .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 2px; } .arts { font-size: 6pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } @media screen { body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; } .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; } .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; } } @media print { .no-print { display: none !important; } }</style></head><body><button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex</button>`;
         
         items.forEach(t => {
@@ -680,8 +683,13 @@ const App = {
             const mad = (t.tamano_troquel || "").replace(/;/g, ',');
             const cor = (t.tamano_final || "").replace(/;/g, ',');
             const obs = (t.observaciones || "").replace(/;/g, ',').replace(/\r?\n/g, ' ');
+            
+            // AHORA EN EL EXCEL TAMBIÉN SALDRÁ "OBSOLETO" EN VEZ DEL TEXTO INTERNO
+            let estadoExcel = 'ALMACEN';
+            if(t.estado === 'EN PRODUCCION') estadoExcel = 'PRODUCCION';
+            if(t.estado === 'DESCATALOGADO') estadoExcel = 'OBSOLETO';
 
-            c += `${t.id_troquel};${t.ubicacion};${nomLimpio};${tipoNom};${ot};${arts};${mad};${cor};${obs};${t.estado}\n`;
+            c += `${t.id_troquel};${t.ubicacion};${nomLimpio};${tipoNom};${ot};${arts};${mad};${cor};${obs};${estadoExcel}\n`;
         }); 
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), c], {type: "text/csv;charset=utf-8"});
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 

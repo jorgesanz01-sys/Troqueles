@@ -57,11 +57,11 @@
                 
                 <div style="display:flex; gap:15px; margin-bottom:15px; align-items:center; flex-wrap:wrap;">
                     <select id="filtro-familia" onchange="App.filtrar()" style="width:200px; padding:8px;"><option value="TODAS">Todas las Familias</option></select>
-                    <select id="filtro-estado" onchange="App.filtrar()" style="width:150px; padding:8px;">
+                    <select id="filtro-estado" onchange="App.filtrar()" style="width:130px; padding:8px;">
                         <option value="TODOS">Todos Estados</option>
-                        <option value="EN ALMACEN">En Almacén</option>
-                        <option value="EN PRODUCCION">En Producción</option>
-                        <option value="DESCATALOGADO">Descatalogados</option>
+                        <option value="EN ALMACEN">Almacén</option>
+                        <option value="EN PRODUCCION">Producción</option>
+                        <option value="DESCATALOGADO">Obsoletos</option>
                     </select>
                     <div class="caja-buscador" style="flex:1; position:relative;">
                         <input type="text" id="buscador" placeholder="Buscar por Nombre, Artículo o Matrícula..." oninput="App.filtrar()" style="width:100%;">
