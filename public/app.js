@@ -458,7 +458,7 @@ const App = {
     setFiltroTipo: (t,b) => { App.filtroTipo=t; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('activo')); b.classList.add('activo'); App.renderTabla(); },
     filtrar: () => { const b=document.getElementById('btn-limpiar'); b.classList.toggle('oculto', document.getElementById('buscador').value===''); App.renderTabla(); },
     limpiarBuscador: () => { document.getElementById('buscador').value=''; App.filtrar(); },
-    ordenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
+    ordenOrdenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
     descatalogar: async (id) => { 
         if(confirm("¿Estás seguro de que deseas marcar este troquel como DESCATALOGADO?")) { 
             const t = App.datos.find(x => x.id === id); 
@@ -480,18 +480,39 @@ const App = {
     // --- MAGIA GODEX ---
     imprimirEtiquetasGodex: (items) => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
+        
+        // 1. Control de bloqueo de pop-ups
+        if (!printWindow) {
+            alert("⚠️ El navegador bloqueó la previsualización. Por favor, permite las ventanas emergentes (pop-ups) para esta web e inténtalo de nuevo.");
+            return;
+        }
+
         let html = `<!DOCTYPE html><html><head><title>Impresión Godex 50x23</title><style>@page { size: 50mm 23mm; margin: 0; } body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } .label { width: 50mm; height: 23mm; box-sizing: border-box; padding: 1mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } .qr { width: 19mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 18mm; height: 18mm; } .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 10pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } .ubi { font-size: 7.5pt; font-weight: bold; line-height: 1; margin-bottom: 2px; color: black; } .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; } .arts { font-size: 5.5pt; font-weight: bold; margin-top: 1px; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } @media screen { body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; } .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; } .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; } } @media print { .no-print { display: none !important; } }</style></head><body><button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex</button>`;
+        
         items.forEach(t => {
             const qr = new QRious({ value: t.id.toString(), size: 150, level: 'M' });
             const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
             html += `<div class="label"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">${t.id_troquel}</div><div class="ubi">Ubi: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div>`;
         });
         html += `</body></html>`;
+        
         printWindow.document.write(html);
         printWindow.document.close();
-        setTimeout(() => { printWindow.print(); }, 800);
+        
+        // 2. Ocultamos el modal que ha lanzado el usuario para que recupere el control de la pantalla base
+        const modalQr = document.getElementById('modal-qr');
+        if (modalQr) {
+            modalQr.classList.add('oculto');
+        }
+
+        // 3. Ejecutamos el print de forma segura sin bloquear el hilo
+        setTimeout(() => { 
+            printWindow.print(); 
+        }, 800);
     },
+    
     imprimirLoteQRs: () => { if(App.seleccionados.size === 0) return; const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); App.imprimirEtiquetasGodex(itemsToPrint); App.limpiarSeleccion(); },
+    
     generarQR: (id_db) => { 
         const t = App.datos.find(x => x.id === id_db); if(!t) return;
         document.getElementById('modal-qr').classList.remove('oculto'); 
@@ -501,6 +522,8 @@ const App = {
         const elArts = document.getElementById('qr-texto-arts');
         if(elArts) { if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } else { elArts.style.display = "none"; } }
         new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
+        
+        // Asignamos la función de imprimir al botón de dentro del modal
         document.getElementById('btn-imprimir-qr-unico').onclick = () => { App.imprimirEtiquetasGodex([t]); };
     },
 
