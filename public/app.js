@@ -261,18 +261,31 @@ const App = {
         document.getElementById('movil-estado').innerHTML = stHtml;
     },
     volverMenuMovil: () => { document.getElementById('vista-movil-detalle').classList.add('oculto'); document.getElementById('vista-movil').classList.remove('oculto'); App.cargarTodo(); },
+    
+    // FUNCIONES MÓVIL CORREGIDAS
     movilCambiarUbi: async () => {
         const id = document.getElementById('movil-id-db').value;
         const actual = document.getElementById('movil-ubi').innerText;
         const nueva = prompt("Nueva Ubicación:", actual);
         if(nueva && nueva !== actual) {
             const t = App.datos.find(x => x.id == id);
-            const payload = { ...t, ubicacion: nueva }; 
-            await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-            await App.cargarTodo();
-            document.getElementById('movil-ubi').innerText = nueva;
+            // Creamos un paquete limpio
+            const payload = {
+                id_troquel: t.id_troquel || "", ubicacion: nueva, nombre: t.nombre || "",
+                categoria_id: t.categoria_id || null, familia_id: t.familia_id || null,
+                tamano_troquel: t.tamano_troquel || "", tamano_final: t.tamano_final || "",
+                codigos_articulo: t.codigos_articulo || "", referencias_ot: t.referencias_ot || "",
+                observaciones: t.observaciones || "", estado: t.estado || "EN ALMACEN",
+                archivos: t.archivos || []
+            };
+            const res = await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            if(res.ok) {
+                await App.cargarTodo();
+                document.getElementById('movil-ubi').innerText = nueva;
+            } else { alert("❌ Error al guardar la ubicación en la Base de Datos."); }
         }
     },
+    
     movilCambiarEstado: async (accion) => {
         const id = parseInt(document.getElementById('movil-id-db').value);
         if(!confirm(`¿Marcar como ${accion}?`)) return;
@@ -280,24 +293,54 @@ const App = {
         await App.cargarTodo();
         App.abrirDetalleMovil(id);
     },
+    
     movilSubirFoto: async (input) => {
         if(!input.files.length) return;
         const id = document.getElementById('movil-id-db').value;
         const t = App.datos.find(x => x.id == id);
         const fd = new FormData(); fd.append('file', input.files[0]);
+        
+        console.log("Subiendo foto...");
+        
         try {
-            const res = await fetch('/api/subir_foto', { method: 'POST', body: fd });
-            if(res.ok) {
-                const data = await res.json();
-                if(!t.archivos) t.archivos = [];
-                t.archivos.push({ url: data.url, nombre: input.files[0].name, tipo: data.tipo });
-                await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(t) });
-                alert("Foto guardada");
-                await App.cargarTodo();
-                App.abrirDetalleMovil(id);
+            // 1. Subir a Supabase
+            const resFoto = await fetch('/api/subir_foto', { method: 'POST', body: fd });
+            if(resFoto.ok) {
+                const data = await resFoto.json();
+                const nuevosArchivos = t.archivos ? [...t.archivos] : [];
+                nuevosArchivos.push({ url: data.url, nombre: input.files[0].name, tipo: data.tipo });
+                
+                // 2. Paquete limpio
+                const payload = {
+                    id_troquel: t.id_troquel || "", ubicacion: t.ubicacion || "", nombre: t.nombre || "",
+                    categoria_id: t.categoria_id || null, familia_id: t.familia_id || null,
+                    tamano_troquel: t.tamano_troquel || "", tamano_final: t.tamano_final || "",
+                    codigos_articulo: t.codigos_articulo || "", referencias_ot: t.referencias_ot || "",
+                    observaciones: t.observaciones || "", estado: t.estado || "EN ALMACEN",
+                    archivos: nuevosArchivos
+                };
+                
+                // 3. Guardar en DB
+                const resDb = await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                
+                if(resDb.ok) {
+                    alert("✅ Foto guardada y enlazada correctamente.");
+                    await App.cargarTodo();
+                    App.abrirDetalleMovil(id);
+                } else {
+                    alert("❌ La foto se subió, pero el sistema la rechazó al intentar guardarla en la ficha.");
+                }
+            } else {
+                alert("❌ Error subiendo la imagen a la nube.");
             }
-        } catch(e) { alert("Error foto"); }
+        } catch(e) { 
+            alert("❌ Error general al procesar la foto."); 
+            console.error(e); 
+        }
+        
+        input.value = "";
     },
+    
     toggleScanner: (show=true, modo='LOTE') => {
         const el = document.getElementById('modal-scanner');
         App.modoScanner = modo;
@@ -706,8 +749,6 @@ const App = {
         };
         reader.readAsText(file);
     }
-    
-// ¡AQUÍ ESTÁ LA LLAVE QUE FALTABA PARA CERRAR EL OBJETO APP! 👇
 };
 
 window.onload = App.init;
