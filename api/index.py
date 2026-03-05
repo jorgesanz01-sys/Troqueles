@@ -213,10 +213,13 @@ def limpiar_duplicados():
             str(t.get("tamano_final") or "").strip().upper(),
             str(t.get("observaciones") or "").strip().upper()
         )
-        if huella in vistos: ids_a_borrar.append(t["id"])
-        else: vistos.add(huella)
+        if huella in vistos: 
+            ids_a_borrar.append(t["id"])
+        else: 
+            vistos.add(huella)
             
-    for id_borrar in ids_a_borrar:
-        supabase.table("troqueles").delete().eq("id", id_borrar).execute()
+    # OPTIMIZACIÓN: Borramos todos los duplicados de golpe usando .in_()
+    if ids_a_borrar:
+        supabase.table("troqueles").delete().in_("id", ids_a_borrar).execute()
         
     return {"borrados": len(ids_a_borrar)}
