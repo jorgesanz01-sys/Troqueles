@@ -109,13 +109,14 @@ def troqueles_inactivos(meses: int = 12):
 # --- POST/PUT ---
 @app.post("/api/categorias")
 def crear_cat(d: EntidadAux):
-    return supabase.table("categorias").insert({"nombre": d.nombre.upper()}).select().execute()
+    # AÑADIDO EL .data AQUÍ PARA SOLUCIONAR EL ERROR 500
+    return supabase.table("categorias").insert({"nombre": d.nombre.upper()}).select().execute().data
 
 @app.post("/api/familias")
 def crear_fam(d: EntidadAux):
-    return supabase.table("familias").insert({"nombre": d.nombre.upper()}).select().execute()
+    # AÑADIDO EL .data AQUÍ PARA SOLUCIONAR EL ERROR 500
+    return supabase.table("familias").insert({"nombre": d.nombre.upper()}).select().execute().data
 
-# MÉTODO BLINDADO PARA FOTOS
 @app.post("/api/subir_foto")
 async def subir_foto(file: UploadFile = File(...)):
     temp_path = None
@@ -124,20 +125,17 @@ async def subir_foto(file: UploadFile = File(...)):
         id_fichero = str(uuid.uuid4())
         nombre_fichero = f"{id_fichero}.{ext}"
         
-        # 1. Guardar la foto temporalmente en el servidor
         temp_path = os.path.join(tempfile.gettempdir(), nombre_fichero)
         with open(temp_path, "wb") as buffer:
             contenido = await file.read()
             buffer.write(contenido)
             
-        # 2. Subir el archivo desde el disco a Supabase
         res = supabase.storage.from_("fotos").upload(
             path=nombre_fichero, 
             file=temp_path, 
             file_options={"content-type": file.content_type}
         )
         
-        # 3. Borrar el archivo temporal del disco
         if os.path.exists(temp_path):
             os.remove(temp_path)
             
@@ -145,7 +143,6 @@ async def subir_foto(file: UploadFile = File(...)):
         tipo = "pdf" if file.content_type and "pdf" in file.content_type else "img"
         return {"url": public_url, "nombre": file.filename, "tipo": tipo}
     except Exception as e: 
-        # Si falla, limpiamos la basura y devolvemos el error exacto
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
         raise HTTPException(status_code=400, detail=str(e))

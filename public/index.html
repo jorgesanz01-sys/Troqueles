@@ -15,12 +15,13 @@
             <div class="sidebar-logo"><span>🏭</span><h2>ERP V27</h2></div>
             <nav class="sidebar-menu">
                 <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
-                <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
                 <div class="menu-divisor"></div>
                 <button class="menu-item" onclick="App.nuevoTroquel()">➕ Nuevo Troquel</button>
                 <button class="menu-item" onclick="App.abrirGestionAux()">⚙️ Familias/Tipos</button>
                 <button class="menu-item" onclick="App.nav('vista-historial', this); App.cargarHistorial()">📝 Historial General</button>
                 <button class="menu-item" onclick="App.nav('vista-estadisticas', this); App.cargarEstadisticas(12)">📈 Estadísticas / Inactivos</button>
+                
+                <button class="menu-item" onclick="App.verPapelera()" style="color:#ef4444;">🗑️ Papelera</button>
                 
                 <div class="menu-divisor"></div>
                 <div class="sidebar-titulo">🛡️ COPIAS DE SEGURIDAD</div>
@@ -29,9 +30,7 @@
                 <input type="file" id="input-backup" accept=".json" style="display:none;" onchange="App.restaurarCopiaSeguridad(this)">
 
             <div class="menu-divisor"></div>
-            <div class="sidebar-titulo">📤 EXCEL (Solo lectura)</div>
-                <button class="menu-item" onclick="App.exportarCSV()">📥 Descargar Excel CSV</button>
-                
+            <div class="sidebar-titulo">📤 IMPORTAR EXCEL</div>
                 <div style="padding: 5px 20px;">
                     <select id="select-import-tipo" class="sidebar-select">
                         <option value="">Tipo al importar...</option>
@@ -41,7 +40,8 @@
                 <input type="file" id="input-csv" accept=".csv" style="display:none;" onchange="App.procesarImportacion(this)">
                 
                 <div class="menu-divisor"></div>
-                <button class="menu-item" onclick="App.verPapelera()" style="color:#ef4444;">🗑️ Papelera</button>
+                
+                <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
             </nav>
         </aside>
 
