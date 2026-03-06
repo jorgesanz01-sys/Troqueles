@@ -8,42 +8,64 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    
+    <style>
+        #sidebar { transition: width 0.3s ease; position: relative; overflow-x: hidden; }
+        #sidebar.colapsado { width: 75px !important; }
+        #sidebar.colapsado .menu-text { display: none !important; }
+        #sidebar.colapsado .sidebar-titulo { display: none !important; }
+        #sidebar.colapsado .sidebar-logo h2 { display: none !important; }
+        #sidebar.colapsado .sidebar-logo img { max-height: 35px !important; transition: max-height 0.3s; }
+        #sidebar.colapsado .menu-item { justify-content: center; padding: 15px 0; font-size: 20px; }
+        
+        .btn-toggle-sidebar {
+            position: absolute; top: 15px; right: 15px;
+            background: rgba(255,255,255,0.1); border: none; color: white;
+            font-size: 16px; cursor: pointer; transition: 0.3s;
+            border-radius: 4px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+        }
+        .btn-toggle-sidebar:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
+        #sidebar.colapsado .btn-toggle-sidebar { right: 22px; }
+    </style>
 </head>
 <body>
     <div class="erp-layout">
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-logo" style="display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 10px 0;">
-                <img src="logo-edelvives.png" alt="Logo Edelvives" style="max-height: 30px; width: auto; object-fit: contain;">
-                <h2 style="font-size: 18px; margin: 0; color: white;">Gestión de Troqueles</h2>
+            <button class="btn-toggle-sidebar" onclick="App.toggleSidebar()" title="Plegar/Desplegar Menú">☰</button>
+            
+            <div class="sidebar-logo" style="display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 30px 0 10px 0;">
+                <img src="logo-edelvives.png" alt="Logo Edelvives" style="max-height: 60px; width: auto; object-fit: contain; transition: max-height 0.3s;">
+                <h2 class="menu-text" style="font-size: 18px; margin: 0; color: white;">Gestión de Troqueles</h2>
             </div>
+            
             <nav class="sidebar-menu">
-                <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
+                <button class="menu-item activo" onclick="App.nav('vista-lista', this)" title="Inventario PC">📊 <span class="menu-text">Inventario PC</span></button>
                 <div class="menu-divisor"></div>
-                <button class="menu-item" onclick="App.nuevoTroquel()">➕ Nuevo Troquel</button>
-                <button class="menu-item" onclick="App.abrirGestionAux()">⚙️ Familias/Tipos</button>
-                <button class="menu-item" onclick="App.nav('vista-historial', this); App.cargarHistorial()">📝 Historial General</button>
-                <button class="menu-item" onclick="App.nav('vista-estadisticas', this); App.cargarEstadisticas(12)">📈 Estadísticas / Inactivos</button>
+                <button class="menu-item" onclick="App.nuevoTroquel()" title="Nuevo Troquel">➕ <span class="menu-text">Nuevo Troquel</span></button>
+                <button class="menu-item" onclick="App.abrirGestionAux()" title="Familias/Tipos">⚙️ <span class="menu-text">Familias/Tipos</span></button>
+                <button class="menu-item" onclick="App.nav('vista-historial', this); App.cargarHistorial()" title="Historial General">📝 <span class="menu-text">Historial General</span></button>
+                <button class="menu-item" onclick="App.nav('vista-estadisticas', this); App.cargarEstadisticas(12)" title="Dashboard y Estadísticas">📈 <span class="menu-text">Estadísticas / Inactivos</span></button>
                 
-                <button class="menu-item" onclick="App.verPapelera()" style="color:#ef4444;">🗑️ Papelera</button>
+                <button class="menu-item" onclick="App.verPapelera()" style="color:#ef4444;" title="Papelera">🗑️ <span class="menu-text">Papelera</span></button>
                 
                 <div class="menu-divisor"></div>
-                <div class="sidebar-titulo">🛡️ COPIAS DE SEGURIDAD</div>
-                <button class="menu-item" onclick="App.exportarCopiaSeguridad()">💾 Crear Copia Total (JSON)</button>
-                <button class="menu-item" onclick="document.getElementById('input-backup').click()">🔄 Restaurar Copia</button>
+                <div class="sidebar-titulo menu-text">🛡️ COPIAS DE SEGURIDAD</div>
+                <button class="menu-item" onclick="App.exportarCopiaSeguridad()" title="Crear Copia (JSON)">💾 <span class="menu-text">Crear Copia Total (JSON)</span></button>
+                <button class="menu-item" onclick="document.getElementById('input-backup').click()" title="Restaurar Copia">🔄 <span class="menu-text">Restaurar Copia</span></button>
                 <input type="file" id="input-backup" accept=".json" style="display:none;" onchange="App.restaurarCopiaSeguridad(this)">
 
             <div class="menu-divisor"></div>
-            <div class="sidebar-titulo">📤 IMPORTAR EXCEL</div>
-                <div style="padding: 5px 20px;">
+            <div class="sidebar-titulo menu-text">📤 IMPORTAR EXCEL</div>
+                <div style="padding: 5px 20px;" class="menu-text">
                     <select id="select-import-tipo" class="sidebar-select">
                         <option value="">Tipo al importar...</option>
                     </select>
                 </div>
-                <button class="menu-item" onclick="document.getElementById('input-csv').click()">📤 Importar CSV</button>
+                <button class="menu-item" onclick="document.getElementById('input-csv').click()" title="Importar CSV">📤 <span class="menu-text">Importar CSV</span></button>
                 <input type="file" id="input-csv" accept=".csv" style="display:none;" onchange="App.procesarImportacion(this)">
                 
                 <div class="menu-divisor"></div>
-                <button class="menu-item destacado-movil" onclick="App.activarModoMovil()">📱 MODO OPERARIO</button>
+                <button class="menu-item destacado-movil" onclick="App.activarModoMovil()" title="MODO OPERARIO">📱 <span class="menu-text">MODO OPERARIO</span></button>
             </nav>
         </aside>
 
@@ -417,6 +439,6 @@
         </main>
     </div>
     
-    <script src="app.js?v=8"></script>
+    <script src="app.js?v=9"></script>
 </body>
 </html>

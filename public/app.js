@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V33 (FULLSCREEN AÑADIDO)
+// ERP PACKAGING - LÓGICA V34 (SIDEBAR DESPLEGABLE + PANTALLA COMPLETA)
 // =============================================================
 
 const App = {
@@ -9,7 +9,11 @@ const App = {
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
     intervaloRefresco: null,
 
-    // NUEVO: Función para alternar Pantalla Completa
+    // 🪄 MAGIA DEL MENÚ Y PANTALLA COMPLETA
+    toggleSidebar: () => {
+        document.getElementById('sidebar').classList.toggle('colapsado');
+    },
+
     toggleFullScreen: () => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(err => {
