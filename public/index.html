@@ -7,6 +7,21 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     
+    <script>
+        if (window.location.search.includes('modo=operario')) {
+            // Oculta el PC y muestra el Móvil ANTES de que la pantalla se dibuje
+            document.write('<style id="anti-parpadeo">#sidebar, #vista-lista { display: none !important; } #vista-movil { display: block !important; }</style>');
+            
+            // Cuando la app termina de arrancar, quitamos este escudo para no interferir con tu navegación
+            window.addEventListener('load', function() {
+                setTimeout(function() {
+                    var escudo = document.getElementById('anti-parpadeo');
+                    if (escudo) escudo.remove();
+                }, 100);
+            });
+        }
+    </script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -315,7 +330,7 @@
                 </div>
             </section>
 
-            <section id="vista-movil-detalle" class="vista oculto" style="padding:10px; background:#f8fafc; height:100dvh; overflow-y:auto; overflow-x:hidden; padding-bottom:120px; width:100%;">
+            <section id="vista-movil-detalle" class="vista oculto" style="padding:15px; background:#f8fafc; height:100dvh; overflow-y:auto; overflow-x:hidden; padding-bottom:120px; width:100%;">
                 <button class="btn-secundario" onclick="App.volverMenuMovil()" style="width:100%; margin-bottom:10px; padding:12px;">⬅️ Volver</button>
                 
                 <div style="background:white; border:2px solid #2563eb; border-radius:8px; padding:10px; text-align:center; margin-bottom:10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;">
