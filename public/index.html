@@ -4,24 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PACKAGING | Gestión de Troqueles</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     
     <style>
+        /* MAGIA DEL MENÚ DESPLEGABLE */
         #sidebar { transition: width 0.3s ease; position: relative; overflow-x: hidden; }
         #sidebar.colapsado { width: 75px !important; }
         #sidebar.colapsado .menu-text { display: none !important; }
         #sidebar.colapsado .sidebar-titulo { display: none !important; }
         #sidebar.colapsado .sidebar-logo h2 { display: none !important; }
-        
-        /* AÑADIDO MAX-WIDTH PARA QUE EL LOGO NO SE CORTE 👇 */
-        #sidebar.colapsado .sidebar-logo img { 
-            max-height: 30px !important; 
-            max-width: 50px !important; 
-            transition: all 0.3s ease; 
-        }
+        #sidebar.colapsado .sidebar-logo img { max-height: 30px !important; max-width: 50px !important; transition: all 0.3s ease; }
         
         .btn-toggle-sidebar {
             position: absolute; top: 15px; right: 15px;
@@ -31,6 +29,26 @@
         }
         .btn-toggle-sidebar:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
         #sidebar.colapsado .btn-toggle-sidebar { right: 22px; }
+
+        /* MODO OSCURO (DARK MODE) */
+        body.dark-mode { background-color: #0f172a; color: #f8fafc; }
+        body.dark-mode .main-content { background-color: #1e293b; color: #f8fafc; }
+        body.dark-mode .header-modulo { color: #f8fafc; border-bottom-color: #334155; }
+        body.dark-mode .tabla-pro th { background-color: #334155; color: white; }
+        body.dark-mode .tabla-pro td { background-color: #1e293b; color: #e2e8f0; border-bottom: 1px solid #334155; }
+        body.dark-mode .tabla-pro tr:hover td { background-color: #0f172a; }
+        body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #334155; color: white; border-color: #475569; }
+        body.dark-mode .panel-formulario { background-color: #1e293b; border-color: #334155; }
+        body.dark-mode .modal-contenido { background-color: #1e293b; color: white; }
+        body.dark-mode div[style*="background:white"] { background-color: #1e293b !important; border-color: #334155 !important; }
+        body.dark-mode div[style*="background:#f8fafc"] { background-color: #334155 !important; }
+        body.dark-mode div[style*="background:#f0fdf4"] { background-color: #064e3b !important; border-color: #047857 !important; }
+        body.dark-mode span[style*="color:#0f172a"] { color: #f8fafc !important; }
+        body.dark-mode h2[style*="color:#0f172a"] { color: #f8fafc !important; }
+        body.dark-mode .btn-secundario { background: #334155 !important; color: white !important; border-color: #475569 !important; }
+        
+        /* TOASTS (NOTIFICACIONES) */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -42,6 +60,7 @@
                 <img src="logo-edelvives.png" alt="Logo Edelvives" style="max-height: 30px; max-width: 90%; width: auto; object-fit: contain; transition: all 0.3s ease;">
                 <h2 class="menu-text" style="font-size: 18px; margin: 0; color: white;">Gestión de Troqueles</h2>
             </div>
+
             
             <nav class="sidebar-menu">
                 <button class="menu-item activo" onclick="App.nav('vista-lista', this)" title="Inventario PC">📊 <span class="menu-text">Inventario PC</span></button>
@@ -86,9 +105,10 @@
                             <button class="btn-accion" style="background:#b91c1c;" onclick="App.vaciarPapelera()">🔥 Vaciar Papelera</button>
                         </div>
                     </div>
-                    <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; display:flex; align-items:center; gap:8px;" title="Alternar Pantalla Completa">
-                        🔲 Pantalla Completa
-                    </button>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size:18px;" title="Modo Noche/Día">🌙</button>
+                        <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; display:flex; align-items:center; gap:8px;" title="Alternar Pantalla Completa">🔲 Pantalla Completa</button>
+                    </div>
                 </div>
 
                 <div class="filtros-chips" id="chips-tipos"></div>
@@ -157,9 +177,10 @@
             <section id="vista-estadisticas" class="vista oculto">
                 <div class="header-modulo" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                     <h1 style="margin: 0;">📈 Dashboard y Estadísticas</h1>
-                    <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; display:flex; align-items:center; gap:8px;" title="Alternar Pantalla Completa">
-                        🔲 Pantalla Completa
-                    </button>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size:18px;" title="Modo Noche/Día">🌙</button>
+                        <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; display:flex; align-items:center; gap:8px;">🔲 Pantalla Completa</button>
+                    </div>
                 </div>
 
                 <div id="dashboard-resumen" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px;">
@@ -276,7 +297,10 @@
             <section id="vista-movil" class="vista oculto" style="padding:15px; height:100dvh; overflow-y:auto; padding-bottom:120px; box-sizing:border-box;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                     <h1 style="margin:0; font-size:28px;">🦺 Operario</h1> 
-                    <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size: 20px; padding: 10px;" title="Pantalla Completa">🔲</button>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size: 20px; padding: 10px;" title="Modo Noche/Día">🌙</button>
+                        <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size: 20px; padding: 10px;" title="Pantalla Completa">🔲</button>
+                    </div>
                 </div>
                 <div class="grid-movil" style="grid-template-columns: 1fr 1fr;">
                     <button class="btn-gigante" style="background:#0f766e;" onclick="App.toggleScanner(true, 'UNICO')">🔎 CONSULTAR QR</button>
@@ -444,6 +468,8 @@
         </main>
     </div>
     
-    <script src="app.js?v=10"></script>
+    <div id="toast-container"></div>
+    
+    <script src="app.js?v=11"></script>
 </body>
 </html>

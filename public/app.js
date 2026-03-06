@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V34 (SIDEBAR DESPLEGABLE + PANTALLA COMPLETA)
+// ERP PACKAGING - LÓGICA V35 (TOASTS, BEEP, DARK MODE, OPTIMIZACIÓN FOTOS)
 // =============================================================
 
 const App = {
@@ -9,21 +9,95 @@ const App = {
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
     intervaloRefresco: null,
 
-    // 🪄 MAGIA DEL MENÚ Y PANTALLA COMPLETA
-    toggleSidebar: () => {
-        document.getElementById('sidebar').classList.toggle('colapsado');
+    // 🌟 NUEVO: NOTIFICACIONES FLOTANTES (TOASTS)
+    mostrarToast: (msj, tipo = 'exito') => {
+        const container = document.getElementById('toast-container');
+        if(!container) return;
+        const toast = document.createElement('div');
+        const color = tipo === 'exito' ? '#16a34a' : '#e11d48';
+        toast.style.cssText = `background: ${color}; color: white; padding: 15px 25px; border-radius: 8px; margin-top: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-weight: bold; opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateX(50px); border-left: 5px solid rgba(255,255,255,0.5);`;
+        toast.innerHTML = tipo === 'exito' ? `✅ ${msj}` : `⚠️ ${msj}`;
+        container.appendChild(toast);
+        
+        setTimeout(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(0)'; }, 10);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(50px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
     },
 
-    toggleFullScreen: () => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.log(`Error al intentar pantalla completa: ${err.message}`);
-            });
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
+    // 🌟 NUEVO: SONIDO DE ESCÁNER (BEEP)
+    reproducirBeep: (exito = true) => {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            if(exito) {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+            } else {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
             }
-        }
+        } catch(e) { console.log("Audio no soportado"); }
+    },
+
+    // 🌟 NUEVO: COMPRESIÓN DE FOTOS EN CLIENTE
+    comprimirImagen: (file) => {
+        return new Promise((resolve) => {
+            if(!file.type.startsWith('image/')) return resolve(file); // Si es PDF, lo dejamos igual
+            
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = event => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1200; // Ancho máximo
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > MAX_WIDTH) {
+                        height = Math.round((height * MAX_WIDTH) / width);
+                        width = MAX_WIDTH;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Comprimir a JPEG con 70% de calidad
+                    canvas.toBlob(blob => {
+                        resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg' }));
+                    }, 'image/jpeg', 0.7);
+                }
+            }
+        });
+    },
+
+    // 🌟 NUEVO: MODO OSCURO (DARK MODE)
+    toggleDarkMode: () => {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('erp_dark_mode', isDark);
+    },
+
+    toggleSidebar: () => { document.getElementById('sidebar').classList.toggle('colapsado'); },
+    toggleFullScreen: () => {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => {});
+        else if (document.exitFullscreen) document.exitFullscreen();
     },
 
     parseArchivos: (raw) => {
@@ -43,6 +117,12 @@ const App = {
 
     init: async () => {
         console.log("Iniciando ERP...");
+        
+        // Comprobar si tenía el Modo Oscuro guardado
+        if(localStorage.getItem('erp_dark_mode') === 'true') {
+            document.body.classList.add('dark-mode');
+        }
+
         try {
             await App.cargarSelects();
             await App.cargarTodo();
@@ -284,11 +364,11 @@ const App = {
         const tbody = document.getElementById('tabla-estadisticas-usados');
         
         if(!fInicio || !fFin) {
-            alert("Por favor, selecciona fecha de inicio y fecha de fin.");
+            App.mostrarToast("Selecciona fecha de inicio y fin.", "error");
             return;
         }
         if(fInicio > fFin) {
-            alert("La fecha de inicio no puede ser posterior a la de fin.");
+            App.mostrarToast("La fecha de inicio no puede ser posterior a la de fin.", "error");
             return;
         }
 
@@ -482,9 +562,10 @@ const App = {
             if(res.ok) {
                 await App.cargarTodo();
                 document.getElementById('movil-ubi').innerText = nueva;
+                App.mostrarToast("Ubicación actualizada correctamente.");
             } else {
                 const err = await res.text();
-                alert(`❌ Error al guardar la ubicación.\nServidor dice: ${err}`); 
+                App.mostrarToast(`Error al guardar la ubicación: ${err}`, "error"); 
             }
         }
     },
@@ -493,6 +574,7 @@ const App = {
         const id = parseInt(document.getElementById('movil-id-db').value);
         if(!confirm(`¿Marcar como ${accion}?`)) return;
         await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: [id], accion: accion }) });
+        App.mostrarToast(`Troquel movido a ${accion}.`);
         await App.cargarTodo();
         App.abrirDetalleMovil(id);
     },
@@ -501,17 +583,21 @@ const App = {
         if(!input.files.length) return;
         const id = document.getElementById('movil-id-db').value;
         const t = App.datos.find(x => x.id == id);
-        const fd = new FormData(); fd.append('file', input.files[0]);
         
-        console.log("Subiendo foto...");
+        App.mostrarToast("Comprimiendo y subiendo foto... ⏳", "exito");
         
         try {
+            // COMPRESIÓN DE IMAGEN ANTES DE ENVIAR
+            const archivoOptimo = await App.comprimirImagen(input.files[0]);
+            const fd = new FormData(); 
+            fd.append('file', archivoOptimo);
+            
             const resFoto = await fetch('/api/subir_foto', { method: 'POST', body: fd });
             if(resFoto.ok) {
                 const data = await resFoto.json();
                 
                 const nuevosArchivos = App.parseArchivos(t.archivos);
-                nuevosArchivos.push({ url: data.url, nombre: input.files[0].name, tipo: data.tipo });
+                nuevosArchivos.push({ url: data.url, nombre: archivoOptimo.name, tipo: data.tipo });
                 
                 const payload = {
                     id_troquel: String(t.id_troquel || ""), ubicacion: String(t.ubicacion || ""), nombre: String(t.nombre || ""),
@@ -525,22 +611,21 @@ const App = {
                 const resDb = await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
                 
                 if(resDb.ok) {
-                    alert("✅ Foto guardada y enlazada correctamente.");
+                    App.mostrarToast("Foto guardada correctamente.");
                     await App.cargarTodo();
                     App.abrirDetalleMovil(id);
                 } else {
                     const errorBackend = await resDb.text();
-                    alert(`❌ La foto subió, pero la Base de Datos la rechazó.\n\nError técnico: ${errorBackend}`);
+                    App.mostrarToast(`La foto subió, pero BD falló: ${errorBackend}`, "error");
                 }
             } else {
                 const errUpload = await resFoto.json();
-                alert(`❌ Error subiendo la imagen a Supabase:\n${errUpload.detail || 'Desconocido'}`);
+                App.mostrarToast(`Error subiendo imagen: ${errUpload.detail}`, "error");
             }
         } catch(e) { 
-            alert("❌ Error general de red al procesar la foto."); 
+            App.mostrarToast("Error general de red al procesar la foto.", "error"); 
             console.error(e); 
         }
-        
         input.value = "";
     },
     
@@ -570,17 +655,21 @@ const App = {
                 const t = App.datos.find(x => x.id.toString() === txt);
                 if(t) {
                     if (App.modoScanner === 'UNICO') {
+                        App.reproducirBeep(true); // BEEP de éxito
                         App.toggleScanner(false);
                         if(navigator.vibrate) navigator.vibrate(200);
                         App.abrirDetalleMovil(t.id);
                     } else {
                         if(!App.escaneadosLote.has(t.id)) { 
+                            App.reproducirBeep(true); // BEEP de éxito
                             App.escaneadosLote.set(t.id, t); 
                             App.renderListaEscaneados(); 
                             if(navigator.vibrate) navigator.vibrate(100); 
                         }
                     }
                     last = txt; t0 = Date.now();
+                } else {
+                    App.reproducirBeep(false); // BEEP de error (troquel no existe)
                 }
             });
         } else { el.classList.add('oculto'); if(App.scanner) App.scanner.stop(); }
@@ -615,42 +704,42 @@ const App = {
     },
     limpiarSeleccion: () => { App.seleccionados.clear(); const chk = document.getElementById('check-all'); if(chk) chk.checked=false; App.updatePanel(); App.renderTabla(); },
     
-    borrar: async (id) => { if(confirm("¿Mover a la papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.cargarTodo(); } },
-    restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.cargarTodo(true); },
+    borrar: async (id) => { if(confirm("¿Mover a la papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.mostrarToast("Enviado a papelera."); App.cargarTodo(); } },
+    restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.mostrarToast("Restaurado."); App.cargarTodo(true); },
     
     borrarLote: async () => {
         if(!confirm(`¿Mover ${App.seleccionados.size} troqueles a la papelera?`)) return;
         await fetch('/api/troqueles/bulk/papelera', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados) }) });
-        App.limpiarSeleccion(); App.cargarTodo();
+        App.limpiarSeleccion(); App.mostrarToast("Lote enviado a papelera."); App.cargarTodo();
     },
     restaurarLote: async () => {
         await fetch('/api/troqueles/bulk/restaurar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados) }) });
-        App.limpiarSeleccion(); App.cargarTodo(true);
+        App.limpiarSeleccion(); App.mostrarToast("Lote restaurado."); App.cargarTodo(true);
     },
     destruirLote: async () => {
         if(!confirm(`¡PELIGRO! ¿Eliminar permanentemente ${App.seleccionados.size} troqueles?\nEsta acción NO se puede deshacer.`)) return;
         await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados) }) });
-        App.limpiarSeleccion(); App.cargarTodo(true);
+        App.limpiarSeleccion(); App.mostrarToast("Lote destruido."); App.cargarTodo(true);
     },
     destruirUnico: async (id) => {
         if(confirm("¡PELIGRO! ¿Eliminar este troquel para siempre? No podrás recuperarlo.")) {
             await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: [id] }) });
-            App.cargarTodo(true);
+            App.mostrarToast("Troquel destruido."); App.cargarTodo(true);
         }
     },
     vaciarPapelera: async () => {
-        if(App.datos.length === 0) { alert("La papelera ya está vacía."); return; }
+        if(App.datos.length === 0) { App.mostrarToast("La papelera ya está vacía.", "error"); return; }
         if(!confirm("⚠️ ¡PELIGRO EXTREMO! ⚠️\n\n¿Estás seguro de que quieres eliminar TODOS los troqueles de la papelera?\nSe borrarán para siempre y no hay marcha atrás.")) return;
         
         const todosIds = App.datos.map(t => t.id);
         await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: todosIds }) });
-        App.cargarTodo(true);
+        App.mostrarToast("Papelera vaciada por completo."); App.cargarTodo(true);
     },
     restaurarTodoPapelera: async () => {
         if(App.datos.length === 0) return;
         const todosIds = App.datos.map(t => t.id);
         await fetch('/api/troqueles/bulk/restaurar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: todosIds }) });
-        App.cargarTodo(true);
+        App.mostrarToast("Todo restaurado."); App.cargarTodo(true);
     },
 
     verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
@@ -667,12 +756,12 @@ const App = {
                         const el = document.getElementById('f-fam');
                         if(el) el.value = data[0].id;
                     }
-                    alert(`✅ Familia "${n.toUpperCase()}" creada con éxito.`);
+                    App.mostrarToast(`Familia "${n.toUpperCase()}" creada con éxito.`);
                 } else {
                     const err = await res.json();
-                    alert(`❌ Error al crear la familia:\n${err.detail || 'Error desconocido'}`);
+                    App.mostrarToast(`Error al crear familia: ${err.detail}`, "error");
                 }
-            } catch(e) { alert("❌ Error de red al intentar crear la familia."); }
+            } catch(e) { App.mostrarToast("Error de red al intentar crear la familia.", "error"); }
         } 
     },
     
@@ -689,27 +778,28 @@ const App = {
                         if(el) el.value = data[0].id;
                         App.calcularSiguienteId();
                     }
-                    alert(`✅ Tipo "${n.toUpperCase()}" creado.`);
+                    App.mostrarToast(`Tipo "${n.toUpperCase()}" creado.`);
                 } else {
                     const err = await res.json();
-                    alert(`❌ Error al crear el tipo:\n${err.detail || 'Error desconocido'}`);
+                    App.mostrarToast(`Error al crear tipo: ${err.detail}`, "error");
                 }
-            } catch(e) { alert("❌ Error de red al intentar crear el tipo."); }
+            } catch(e) { App.mostrarToast("Error de red al intentar crear el tipo.", "error"); }
         } 
     },
     
     subirArchivos: async (input) => { 
         if(!input.files.length) return; const btn = input.parentElement; btn.innerText="⏳";
         for(let i=0; i<input.files.length; i++) {
-            const fd = new FormData(); fd.append('file', input.files[i]);
+            const archivoOptimo = await App.comprimirImagen(input.files[i]);
+            const fd = new FormData(); fd.append('file', archivoOptimo);
             const res = await fetch('/api/subir_foto', { method:'POST', body:fd });
-            if(res.ok) { const d = await res.json(); App.archivosActuales.push({ url: d.url, nombre: input.files[i].name, tipo: d.tipo }); }
+            if(res.ok) { const d = await res.json(); App.archivosActuales.push({ url: d.url, nombre: archivoOptimo.name, tipo: d.tipo }); }
         }
-        App.renderListaArchivos(); btn.innerText="➕"; input.value="";
+        App.renderListaArchivos(); btn.innerText="➕ Subir Archivo"; input.value="";
     },
     renderListaArchivos: () => { 
         const div = document.getElementById('lista-archivos'); div.innerHTML=""; 
-        App.archivosActuales.forEach((a,i) => div.innerHTML += `<div>${a.nombre} <span onclick="App.quitarArchivo(${i})" style="color:red;cursor:pointer">✕</span></div>`); 
+        App.archivosActuales.forEach((a,i) => div.innerHTML += `<div>${a.nombre} <span onclick="App.quitarArchivo(${i})" style="color:red;cursor:pointer; font-weight:bold;"> ✕</span></div>`); 
     },
     quitarArchivo: (i) => { App.archivosActuales.splice(i,1); App.renderListaArchivos(); },
     nav: (v, btnElement) => { 
@@ -761,8 +851,9 @@ const App = {
         const res = await fetch(id ? `/api/troqueles/${id}` : '/api/troqueles', { method: id?'PUT':'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) });
         if(!res.ok) {
              const err = await res.text();
-             alert(`❌ Error guardando ficha en BD:\n${err}`);
+             App.mostrarToast(`Error guardando ficha en BD: ${err}`, "error");
         } else {
+             App.mostrarToast("Ficha guardada con éxito.");
              await App.cargarTodo(); App.volverDesdeForm();
         }
     },
@@ -797,101 +888,49 @@ const App = {
                 dataToSend.archivos = App.parseArchivos(dataToSend.archivos);
 
                 await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dataToSend) }); 
+                App.mostrarToast("Troquel descatalogado.");
                 await App.cargarTodo(); 
                 if(!document.getElementById('vista-estadisticas').classList.contains('oculto')) App.cargarEstadisticas(document.getElementById('select-inactividad').value);
             }
         } 
     },
-    moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.limpiarSeleccion(); App.cargarTodo(); },
-    asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(); } },
+    moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.mostrarToast("Lote movido."); App.limpiarSeleccion(); App.cargarTodo(); },
+    asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.mostrarToast("Asignación masiva completada."); App.limpiarSeleccion(); App.cargarTodo(); } },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
 
     imprimirEtiquetasGodex: (items, tamano = '50x23') => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
-        
-        if (!printWindow) {
-            alert("⚠️ El navegador bloqueó la previsualización. Por favor, permite las ventanas emergentes (pop-ups) para esta web e inténtalo de nuevo.");
-            return;
-        }
-
-        let css = '';
-        let qrSize = 150;
-
+        if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
+        let css = ''; let qrSize = 150;
         if (tamano === '100x70') {
             qrSize = 300;
-            css = `
-                @page { size: 100mm 70mm; margin: 0; } 
-                body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } 
-                .label { width: 100mm; height: 70mm; box-sizing: border-box; padding: 3mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } 
-                .qr { width: 40mm; display: flex; justify-content: center; align-items: center; } 
-                .qr img { width: 38mm; height: 38mm; } 
-                .text { width: 55mm; padding-left: 2mm; display: flex; flex-direction: column; justify-content: center; } 
-                .mat { font-size: 18pt; font-weight: 900; line-height: 1.1; margin-bottom: 6px; color: black; } 
-                .ubi { font-size: 16pt; font-weight: 900; line-height: 1.1; margin-bottom: 6px; color: black; text-transform: uppercase; } 
-                .nom { font-size: 11pt; line-height: 1.2; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; margin-bottom: 6px; } 
-                .arts { font-size: 10pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-            `;
+            css = `@page{size:100mm 70mm;margin:0} body{margin:0;padding:0;font-family:'Arial',sans-serif;background:#fff} .label{width:100mm;height:70mm;box-sizing:border-box;padding:3mm;display:flex;align-items:center;justify-content:space-between;page-break-after:always;overflow:hidden} .qr{width:40mm;display:flex;justify-content:center;align-items:center} .qr img{width:38mm;height:38mm} .text{width:55mm;padding-left:2mm;display:flex;flex-direction:column;justify-content:center} .mat{font-size:18pt;font-weight:900;line-height:1.1;margin-bottom:6px;color:black} .ubi{font-size:16pt;font-weight:900;line-height:1.1;margin-bottom:6px;color:black;text-transform:uppercase} .nom{font-size:11pt;line-height:1.2;color:black;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;margin-bottom:6px} .arts{font-size:10pt;font-weight:bold;color:#333;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}`;
         } else {
             qrSize = 150;
-            css = `
-                @page { size: 50mm 23mm; margin: 0; } 
-                body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } 
-                .label { width: 50mm; height: 23mm; box-sizing: border-box; padding: 1mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } 
-                .qr { width: 19mm; display: flex; justify-content: center; align-items: center; } 
-                .qr img { width: 18mm; height: 18mm; } 
-                .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } 
-                .mat { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } 
-                .ubi { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 3px; color: black; text-transform: uppercase; } 
-                .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 2px; } 
-                .arts { font-size: 6pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-            `;
+            css = `@page{size:50mm 23mm;margin:0} body{margin:0;padding:0;font-family:'Arial',sans-serif;background:#fff} .label{width:50mm;height:23mm;box-sizing:border-box;padding:1mm;display:flex;align-items:center;justify-content:space-between;page-break-after:always;overflow:hidden} .qr{width:19mm;display:flex;justify-content:center;align-items:center} .qr img{width:18mm;height:18mm} .text{width:28mm;padding-left:1mm;display:flex;flex-direction:column;justify-content:center} .mat{font-size:8.5pt;font-weight:900;line-height:1;margin-bottom:2px;color:black} .ubi{font-size:8.5pt;font-weight:900;line-height:1;margin-bottom:3px;color:black;text-transform:uppercase} .nom{font-size:6pt;line-height:1.1;color:black;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:2px} .arts{font-size:6pt;font-weight:bold;color:#333;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}`;
         }
-
-        css += `
-            @media screen { 
-                body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; } 
-                .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; } 
-                .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; } 
-            } 
-            @media print { .no-print { display: none !important; } }
-        `;
-
+        css += `@media screen{body{background:#334155;padding:20px;display:flex;flex-direction:column;align-items:center}.label{background:#fff;margin-bottom:10px;box-shadow:0 4px 6px rgba(0,0,0,0.3);border-radius:2px}.btn{background:#14b8a6;color:white;padding:15px 30px;border:none;border-radius:8px;font-size:18px;font-weight:bold;cursor:pointer;margin-bottom:20px}} @media print{.no-print{display:none !important}}`;
         let html = `<!DOCTYPE html><html><head><title>Impresión Godex ${tamano}</title><style>${css}</style></head><body><button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex (${tamano})</button>`;
-        
         items.forEach(t => {
             const qr = new QRious({ value: t.id.toString(), size: qrSize, level: 'M' });
             const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
             html += `<div class="label"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div>`;
         });
         html += `</body></html>`;
-        
-        printWindow.document.write(html);
-        printWindow.document.close();
-        
-        const modalQr = document.getElementById('modal-qr');
-        if (modalQr) { modalQr.classList.add('oculto'); }
+        printWindow.document.write(html); printWindow.document.close();
+        const modalQr = document.getElementById('modal-qr'); if (modalQr) modalQr.classList.add('oculto');
         setTimeout(() => { printWindow.print(); }, 800);
     },
-    
-    imprimirLoteQRs: (tamano = '50x23') => { 
-        if(App.seleccionados.size === 0) return; 
-        const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); 
-        App.imprimirEtiquetasGodex(itemsToPrint, tamano); 
-        App.limpiarSeleccion(); 
-    },
-    
+    imprimirLoteQRs: (tamano = '50x23') => { if(App.seleccionados.size === 0) return; const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); App.imprimirEtiquetasGodex(itemsToPrint, tamano); App.limpiarSeleccion(); },
     generarQR: (id_db) => { 
         const t = App.datos.find(x => x.id === id_db); if(!t) return;
         document.getElementById('modal-qr').classList.remove('oculto'); 
-        
         document.getElementById('qr-texto-id').innerText = "TROQUEL " + t.id_troquel; 
         document.getElementById('qr-texto-ubi').innerText = "UBI: " + (t.ubicacion || '-'); 
         document.getElementById('qr-texto-desc').innerText = t.nombre; 
-        
         const elArts = document.getElementById('qr-texto-arts');
         if(elArts) { if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } else { elArts.style.display = "none"; } }
         new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
-        
         document.getElementById('btn-imprimir-qr-unico-50').onclick = () => { App.imprimirEtiquetasGodex([t], '50x23'); };
         document.getElementById('btn-imprimir-qr-unico-100').onclick = () => { App.imprimirEtiquetasGodex([t], '100x70'); };
     },
@@ -899,38 +938,35 @@ const App = {
     limpiarDuplicadosExactos: async () => {
         if(confirm("⚠️ ¿Estás seguro? Esto escaneará toda tu base de datos y borrará los troqueles que sean COPIAS EXACTAS.")) {
             const btn = document.getElementById('btn-limpiar-dup');
-            if(btn) btn.innerText = "⏳ Limpiando Base de Datos...";
+            if(btn) btn.innerText = "⏳ Limpiando...";
             try {
                 const res = await fetch('/api/mantenimiento/limpiar_duplicados', { method: 'DELETE' });
                 const data = await res.json();
-                alert(`✅ Limpieza completada.\n\nSe han pulverizado ${data.borrados} troqueles que estaban repetidos.`);
+                App.mostrarToast(`Se han borrado ${data.borrados} duplicados.`);
                 await App.cargarTodo();
-            } catch(e) { alert("❌ Ocurrió un error al limpiar los duplicados."); }
+            } catch(e) { App.mostrarToast("Error al limpiar duplicados.", "error"); }
             if(btn) btn.innerText = "🧹 Borrar Duplicados Exactos de la BD";
             document.getElementById('modal-aux').classList.add('oculto');
         }
     },
 
     procesarImportacion: async (input) => { 
-        const file = input.files[0]; 
-        if(!file) return; 
-
+        const file = input.files[0]; if(!file) return; 
         const selectElement = document.getElementById('select-import-tipo');
         const idTipoDefecto = (selectElement && selectElement.value) ? parseInt(selectElement.value) : null;
+        
+        App.mostrarToast("Procesando archivo, por favor espera...", "exito");
         
         const reader = new FileReader(); 
         reader.onload = async(e) => { 
             try {
                 const filas = e.target.result.split(/\r?\n/); 
-                if(filas.length < 2) { alert("El archivo está vacío o no tiene datos."); return; }
-                
+                if(filas.length < 2) { App.mostrarToast("Archivo vacío o sin datos.", "error"); return; }
                 const cabeceraStr = filas[0];
                 const separador = cabeceraStr.includes(';') ? ';' : ',';
                 const normalizar = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/['"]/g,'').trim();
                 const cabecera = cabeceraStr.split(separador).map(c => normalizar(c));
-                
                 let colsMap = { mat: -1, ubi: -1, nom: -1, tipo: -1, ot: -1, arts: -1, madera: -1, corte: -1, obs: -1 };
-
                 cabecera.forEach((c, index) => {
                     if (/MATR|ID|CODIGO|NUMERO|REF|TROQUEL/i.test(c) && colsMap.mat === -1) colsMap.mat = index;
                     else if (/UBI|LOC|ESTAN|HUECO|SITIO|LUGAR/i.test(c) && colsMap.ubi === -1) colsMap.ubi = index;
@@ -942,35 +978,15 @@ const App = {
                     else if (/CORTE|FINAL|DESARROLLO/i.test(c) && colsMap.corte === -1) colsMap.corte = index;
                     else if (/OBS|NOTAS|COMENTARIO/i.test(c) && colsMap.obs === -1) colsMap.obs = index;
                 });
-
-                if (colsMap.mat === -1) colsMap.mat = 0;
-                if (colsMap.ubi === -1) colsMap.ubi = 1;
-                if (colsMap.nom === -1) colsMap.nom = 2;
-
-                const catNameToId = {};
-                Object.keys(App.mapaCat).forEach(id => { catNameToId[normalizar(App.mapaCat[id])] = parseInt(id); });
-
-                const troqueles = [];
-                const hashesExistentes = new Set();
-                let duplicadosOmitidos = 0;
-
-                const generarHuella = (t) => {
-                    return [
-                        t.id_troquel, t.ubicacion, t.nombre, t.categoria_id, t.familia_id,
-                        t.codigos_articulo, t.referencias_ot, t.tamano_troquel, t.tamano_final, t.observaciones
-                    ].map(x => (x || "").toString().trim().toUpperCase()).join('|');
-                };
-
+                if (colsMap.mat === -1) colsMap.mat = 0; if (colsMap.ubi === -1) colsMap.ubi = 1; if (colsMap.nom === -1) colsMap.nom = 2;
+                const catNameToId = {}; Object.keys(App.mapaCat).forEach(id => { catNameToId[normalizar(App.mapaCat[id])] = parseInt(id); });
+                const troqueles = []; const hashesExistentes = new Set(); let duplicadosOmitidos = 0;
+                const generarHuella = (t) => { return [t.id_troquel, t.ubicacion, t.nombre, t.categoria_id, t.familia_id, t.codigos_articulo, t.referencias_ot, t.tamano_troquel, t.tamano_final, t.observaciones].map(x => (x || "").toString().trim().toUpperCase()).join('|'); };
                 App.datos.forEach(t => hashesExistentes.add(generarHuella(t)));
-
                 for(let i=1; i<filas.length; i++) {
-                    const f = filas[i];
-                    if(!f.trim()) continue;
-                    
+                    const f = filas[i]; if(!f.trim()) continue;
                     const cols = f.split(separador);
-                    const mat = colsMap.mat !== -1 && cols[colsMap.mat] ? cols[colsMap.mat].replace(/['"]/g,'').trim() : null;
-                    if(!mat) continue; 
-
+                    const mat = colsMap.mat !== -1 && cols[colsMap.mat] ? cols[colsMap.mat].replace(/['"]/g,'').trim() : null; if(!mat) continue; 
                     const ubi = colsMap.ubi !== -1 && cols[colsMap.ubi] ? cols[colsMap.ubi].replace(/['"]/g,'').trim() : mat;
                     const nom = colsMap.nom !== -1 && cols[colsMap.nom] ? cols[colsMap.nom].replace(/['"]/g,'').trim() : "Sin Descripción";
                     const tipoStr = colsMap.tipo !== -1 && cols[colsMap.tipo] ? normalizar(cols[colsMap.tipo]) : null;
@@ -979,89 +995,47 @@ const App = {
                     const madera = colsMap.madera !== -1 && cols[colsMap.madera] ? cols[colsMap.madera].replace(/['"]/g,'').trim() : "";
                     const corte = colsMap.corte !== -1 && cols[colsMap.corte] ? cols[colsMap.corte].replace(/['"]/g,'').trim() : "";
                     const obs = colsMap.obs !== -1 && cols[colsMap.obs] ? cols[colsMap.obs].replace(/['"]/g,'').trim() : "";
-                    
-                    let catId = idTipoDefecto; 
-                    if(tipoStr && catNameToId[tipoStr]) catId = catNameToId[tipoStr]; 
-
-                    const nuevoTroquel = { 
-                        id_troquel: mat, ubicacion: ubi, nombre: nom, categoria_id: catId,
-                        referencias_ot: ot, codigos_articulo: arts,
-                        tamano_troquel: madera, tamano_final: corte, observaciones: obs
-                    };
-
+                    let catId = idTipoDefecto; if(tipoStr && catNameToId[tipoStr]) catId = catNameToId[tipoStr]; 
+                    const nuevoTroquel = { id_troquel: mat, ubicacion: ubi, nombre: nom, categoria_id: catId, referencias_ot: ot, codigos_articulo: arts, tamano_troquel: madera, tamano_final: corte, observaciones: obs };
                     const huella = generarHuella(nuevoTroquel);
-
-                    if (!hashesExistentes.has(huella)) {
-                        troqueles.push(nuevoTroquel);
-                        hashesExistentes.add(huella); 
-                    } else {
-                        duplicadosOmitidos++;
-                    }
+                    if (!hashesExistentes.has(huella)) { troqueles.push(nuevoTroquel); hashesExistentes.add(huella); } else { duplicadosOmitidos++; }
                 }
                 
-                if(troqueles.length === 0) { 
-                    alert(`No hay nada nuevo que importar.\nSe han ignorado ${duplicadosOmitidos} filas porque eran copias EXACTAS de troqueles que ya tenías en el sistema.`); 
-                    input.value = ""; return; 
-                }
-                
-                const res = await fetch('/api/troqueles/importar', { 
-                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(troqueles) 
-                });
-                
+                if(troqueles.length === 0) { App.mostrarToast(`Nada nuevo. Se ignoraron ${duplicadosOmitidos} duplicados.`); input.value = ""; return; }
+                const res = await fetch('/api/troqueles/importar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(troqueles) });
                 if(res.ok) { 
                     App.cargarTodo(); 
-                    let msj = `✅ ÉXITO: Se han importado ${troqueles.length} troqueles nuevos.`;
-                    if(duplicadosOmitidos > 0) msj += `\n\n🛡️ SISTEMA ANTI-DUPLICADOS: Se han bloqueado ${duplicadosOmitidos} filas que estaban repetidas.`;
-                    alert(msj);
+                    App.mostrarToast(`Importados ${troqueles.length}. Ignorados ${duplicadosOmitidos} duplicados.`);
                     if(selectElement) selectElement.value = ""; 
-                } else {
-                    alert(`❌ ERROR DE BASE DE DATOS:\nProbablemente algún código del Excel rompe alguna regla de la BD.`);
-                }
-            } catch (err) { console.error("Fallo general:", err); alert("❌ Ocurrió un error procesando el archivo."); }
+                } else { App.mostrarToast(`ERROR DE BASE DE DATOS.`, "error"); }
+            } catch (err) { App.mostrarToast("Error procesando el archivo.", "error"); }
             input.value = ""; 
         }; 
         reader.readAsText(file, 'ISO-8859-1');
     },
     
     exportarCopiaSeguridad: () => {
-        if(App.datos.length === 0) {
-            alert("No hay datos para exportar.");
-            return;
-        }
+        if(App.datos.length === 0) { App.mostrarToast("No hay datos.", "error"); return; }
         const dataStr = JSON.stringify(App.datos, null, 2);
         const blob = new Blob([dataStr], { type: "application/json" });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
+        const a = document.createElement('a'); a.href = url;
         a.download = `BACKUP_TOTAL_${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
+        a.click(); App.mostrarToast("Copia descargada.");
     },
 
     restaurarCopiaSeguridad: async (input) => {
-        const file = input.files[0];
-        if(!file) return;
-
+        const file = input.files[0]; if(!file) return;
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 const backupData = JSON.parse(e.target.result);
-                if(!confirm(`Se van a restaurar/actualizar ${backupData.length} troqueles. ¿Estás seguro?`)) return;
-
-                const res = await fetch('/api/troqueles/backup/restaurar', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(backupData)
-                });
-
-                if(res.ok) {
-                    alert("✅ Base de datos restaurada con éxito.");
-                    App.cargarTodo(); 
-                } else {
-                    alert("❌ Error al subir el backup al servidor.");
-                }
-            } catch (err) {
-                alert("❌ El archivo no tiene un formato JSON válido.");
-            }
+                if(!confirm(`Se van a restaurar ${backupData.length} troqueles. ¿Seguro?`)) return;
+                App.mostrarToast("Subiendo copia de seguridad...", "exito");
+                const res = await fetch('/api/troqueles/backup/restaurar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(backupData) });
+                if(res.ok) { App.mostrarToast("Base de datos restaurada."); App.cargarTodo(); } 
+                else { App.mostrarToast("Error en el servidor.", "error"); }
+            } catch (err) { App.mostrarToast("Formato JSON inválido.", "error"); }
         };
         reader.readAsText(file);
     }
