@@ -106,6 +106,39 @@ def troqueles_inactivos(meses: int = 12):
     inactivos.sort(key=lambda x: x['ultima_fecha'] if x['ultima_fecha'] else "")
     return inactivos
 
+@app.get("/api/estadisticas/usados")
+def troqueles_usados(fecha_inicio: str, fecha_fin: str):
+    # Buscar historial en el rango de fechas
+    inicio_full = f"{fecha_inicio}T00:00:00"
+    fin_full = f"{fecha_fin}T23:59:59"
+    
+    res = supabase.table("historial").select("troquel_id, fecha_hora, troqueles(id_troquel, nombre, codigos_articulo, estado)").gte("fecha_hora", inicio_full).lte("fecha_hora", fin_full).execute()
+    historial = res.data
+    
+    uso_dict = {}
+    for h in historial:
+        tid = h['troquel_id']
+        t_data = h.get("troqueles") or {}
+        
+        if tid not in uso_dict:
+            uso_dict[tid] = {
+                "id_db": tid,
+                "id_troquel": t_data.get("id_troquel", "?"),
+                "nombre": t_data.get("nombre", "Desconocido (Borrado)"),
+                "codigos_articulo": t_data.get("codigos_articulo", "-"),
+                "estado": t_data.get("estado", "-"),
+                "movimientos": 0,
+                "ultima_fecha": h["fecha_hora"]
+            }
+        uso_dict[tid]["movimientos"] += 1
+        if h["fecha_hora"] > uso_dict[tid]["ultima_fecha"]:
+            uso_dict[tid]["ultima_fecha"] = h["fecha_hora"]
+            
+    # Convertir a lista y ordenar por los que tienen MÁS movimientos
+    resultado = list(uso_dict.values())
+    resultado.sort(key=lambda x: x["movimientos"], reverse=True)
+    return resultado
+
 # --- POST/PUT ---
 @app.post("/api/categorias")
 def crear_cat(d: EntidadAux):

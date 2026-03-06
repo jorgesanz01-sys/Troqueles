@@ -126,10 +126,43 @@
                 </div>
 
                 <div id="dashboard-resumen" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                    </div>
+
+                <div class="header-modulo" style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
+                    <h2>🔄 Troqueles Usados (Top Actividad)</h2>
+                </div>
+                <div style="margin-bottom: 30px; background:#f0fdf4; padding:15px; border-radius:8px; border:1px solid #86efac; display:flex; align-items:center; flex-wrap:wrap; gap:15px;">
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <label style="font-weight:bold; color:#15803d;">Desde:</label>
+                        <input type="date" id="fecha-inicio-uso" style="padding:8px; border-radius:5px; border:1px solid #cbd5e1;">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <label style="font-weight:bold; color:#15803d;">Hasta:</label>
+                        <input type="date" id="fecha-fin-uso" style="padding:8px; border-radius:5px; border:1px solid #cbd5e1;">
+                    </div>
+                    <button class="btn-accion" style="background:#16a34a;" onclick="App.cargarUsadosFechas()">🔍 Consultar Periodo</button>
+                </div>
+
+                <div class="contenedor-tabla" style="margin-bottom: 40px;">
+                    <table class="tabla-pro">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Artículo</th>
+                                <th>Descripción</th>
+                                <th>Estado Actual</th>
+                                <th>Total Movimientos</th>
+                                <th>Último Movimiento en Periodo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-estadisticas-usados">
+                            <tr><td colspan="6" class="text-center" style="color:#64748b;">Selecciona un rango de fechas y pulsa Buscar.</td></tr>
+                        </tbody>
+                    </table>
                 </div>
 
                 <div class="header-modulo" style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
-                    <h2>⏳ Control de Obsolescencia</h2>
+                    <h2>⏳ Control de Obsolescencia (Sin Uso)</h2>
                 </div>
                 
                 <div style="margin-bottom: 20px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #cbd5e1; display:flex; align-items:center;">
@@ -142,6 +175,23 @@
                         <option value="60">5 Años</option>
                     </select>
                 </div>
+
+                <div class="contenedor-tabla">
+                    <table class="tabla-pro">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Artículo</th>
+                                <th>Descripción</th>
+                                <th>Estado Actual</th>
+                                <th>Último Movimiento Registrado</th>
+                                <th width="150">Acción Rápida</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-estadisticas"></tbody>
+                    </table>
+                </div>
+            </section>
 
                 <div class="contenedor-tabla">
                     <table class="tabla-pro">
@@ -371,6 +421,6 @@
         </main>
     </div>
     
-    <script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

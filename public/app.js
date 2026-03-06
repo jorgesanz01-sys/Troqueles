@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V31 (DOBLE TAMAÑO DE IMPRESIÓN)
+// ERP PACKAGING - LÓGICA V32 (TOP ACTIVIDAD Y DOBLE IMPRESIÓN)
 // =============================================================
 
 const App = {
@@ -229,6 +229,20 @@ const App = {
     cargarEstadisticas: async (meses) => {
         App.generarDashboardEstadisticas();
         
+        // --- INICIO AÑADIDO: Poner fechas por defecto si están vacías ---
+        const inputInicio = document.getElementById('fecha-inicio-uso');
+        const inputFin = document.getElementById('fecha-fin-uso');
+        if(inputInicio && !inputInicio.value) {
+            const hoy = new Date();
+            const mesPasado = new Date();
+            mesPasado.setMonth(hoy.getMonth() - 1);
+            inputFin.value = hoy.toISOString().split('T')[0];
+            inputInicio.value = mesPasado.toISOString().split('T')[0];
+            // Cargamos automáticamente el mes pasado
+            App.cargarUsadosFechas();
+        }
+        // --- FIN AÑADIDO ---
+        
         const tbody = document.getElementById('tabla-estadisticas');
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando cálculos... ⏳</td></tr>';
         try {
@@ -248,6 +262,51 @@ const App = {
                 </tr>`;
             }).join('');
         } catch (e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar las estadísticas</td></tr>'; }
+    },
+
+    // --- NUEVA FUNCIÓN: Busca y pinta los troqueles MÁS USADOS por fechas ---
+    cargarUsadosFechas: async () => {
+        const fInicio = document.getElementById('fecha-inicio-uso').value;
+        const fFin = document.getElementById('fecha-fin-uso').value;
+        const tbody = document.getElementById('tabla-estadisticas-usados');
+        
+        if(!fInicio || !fFin) {
+            alert("Por favor, selecciona fecha de inicio y fecha de fin.");
+            return;
+        }
+        if(fInicio > fFin) {
+            alert("La fecha de inicio no puede ser posterior a la de fin.");
+            return;
+        }
+
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Buscando movimientos... ⏳</td></tr>';
+        
+        try {
+            const res = await fetch(`/api/estadisticas/usados?fecha_inicio=${fInicio}&fecha_fin=${fFin}`);
+            if(!res.ok) throw new Error("Fallo en servidor");
+            
+            const data = await res.json();
+            
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500">No se registraron movimientos de troqueles en estas fechas.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(t => {
+                const fecha = new Date(t.ultima_fecha).toLocaleString();
+                return `<tr>
+                    <td style="font-weight:900; color:#16a34a;">${t.id_troquel}</td>
+                    <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                    <td>${t.nombre}</td>
+                    <td>${t.estado || '-'}</td>
+                    <td><strong style="background:#dcfce7; color:#166534; padding:4px 8px; border-radius:12px; font-size:14px;">${t.movimientos} movs.</strong></td>
+                    <td style="color:#64748b; font-size:13px;">${fecha}</td>
+                </tr>`;
+            }).join('');
+        } catch(e) {
+            console.error(e);
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar los datos de uso.</td></tr>';
+        }
     },
 
     cargarHistorial: async () => { 
@@ -718,7 +777,6 @@ const App = {
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(); } },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
 
-    // --- NUEVO: FUNCIÓN DE IMPRESIÓN CON TAMAÑO DINÁMICO ---
     imprimirEtiquetasGodex: (items, tamano = '50x23') => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
         
@@ -727,12 +785,11 @@ const App = {
             return;
         }
 
-        // Definimos las variables de CSS y código QR según el tamaño elegido
         let css = '';
         let qrSize = 150;
 
         if (tamano === '100x70') {
-            qrSize = 300; // QR mucho más grande
+            qrSize = 300;
             css = `
                 @page { size: 100mm 70mm; margin: 0; } 
                 body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } 
@@ -746,7 +803,7 @@ const App = {
                 .arts { font-size: 10pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
             `;
         } else {
-            qrSize = 150; // QR estándar
+            qrSize = 150;
             css = `
                 @page { size: 50mm 23mm; margin: 0; } 
                 body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } 
@@ -761,7 +818,6 @@ const App = {
             `;
         }
 
-        // CSS extra para que se vea bonito en pantalla de previsualización
         css += `
             @media screen { 
                 body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; } 
@@ -788,7 +844,6 @@ const App = {
         setTimeout(() => { printWindow.print(); }, 800);
     },
     
-    // Función de imprimir lote actualizada para recibir el tamaño
     imprimirLoteQRs: (tamano = '50x23') => { 
         if(App.seleccionados.size === 0) return; 
         const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); 
@@ -796,7 +851,6 @@ const App = {
         App.limpiarSeleccion(); 
     },
     
-    // Modal único ahora mapea los dos botones de abajo
     generarQR: (id_db) => { 
         const t = App.datos.find(x => x.id === id_db); if(!t) return;
         document.getElementById('modal-qr').classList.remove('oculto'); 
@@ -809,7 +863,6 @@ const App = {
         if(elArts) { if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } else { elArts.style.display = "none"; } }
         new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
         
-        // Mapear los dos botones nuevos
         document.getElementById('btn-imprimir-qr-unico-50').onclick = () => { App.imprimirEtiquetasGodex([t], '50x23'); };
         document.getElementById('btn-imprimir-qr-unico-100').onclick = () => { App.imprimirEtiquetasGodex([t], '100x70'); };
     },
