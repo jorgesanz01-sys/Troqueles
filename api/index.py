@@ -5,6 +5,7 @@ from supabase import create_client, Client
 import uuid
 import os
 import tempfile
+import re  # Añadido para poder extraer números de textos con letras
 from datetime import datetime, timedelta
 
 app = FastAPI()
@@ -76,10 +77,14 @@ def siguiente_numero(categoria_id: int):
     res = supabase.table("troqueles").select("id_troquel").eq("categoria_id", categoria_id).execute().data
     max_num = 0
     for t in res:
-        try:
-            val = int(t['id_troquel'])
-            if val > max_num: max_num = val
-        except: pass
+        if not t.get('id_troquel'): continue
+        # MAGIA: Extraer solo los números, ignorando letras (Ej: "TRQ-45" -> 45)
+        nums = re.findall(r'\d+', str(t['id_troquel']))
+        if nums:
+            try:
+                val = int(nums[-1])
+                if val > max_num: max_num = val
+            except: pass
     return {"siguiente": max_num + 1}
 
 @app.get("/api/estadisticas/inactivos")
@@ -108,7 +113,6 @@ def troqueles_inactivos(meses: int = 12):
 
 @app.get("/api/estadisticas/usados")
 def troqueles_usados(fecha_inicio: str, fecha_fin: str):
-    # Buscar historial en el rango de fechas
     inicio_full = f"{fecha_inicio}T00:00:00"
     fin_full = f"{fecha_fin}T23:59:59"
     
@@ -134,7 +138,6 @@ def troqueles_usados(fecha_inicio: str, fecha_fin: str):
         if h["fecha_hora"] > uso_dict[tid]["ultima_fecha"]:
             uso_dict[tid]["ultima_fecha"] = h["fecha_hora"]
             
-    # Convertir a lista y ordenar por los que tienen MÁS movimientos
     resultado = list(uso_dict.values())
     resultado.sort(key=lambda x: x["movimientos"], reverse=True)
     return resultado

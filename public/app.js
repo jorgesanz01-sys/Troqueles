@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V32 (TOP ACTIVIDAD Y DOBLE IMPRESIÓN)
+// ERP PACKAGING - LÓGICA V32 (TOP ACTIVIDAD Y DOBLE IMPRESIÓN Y MATRÍCULA FLEXIBLE)
 // =============================================================
 
 const App = {
@@ -229,7 +229,6 @@ const App = {
     cargarEstadisticas: async (meses) => {
         App.generarDashboardEstadisticas();
         
-        // --- INICIO AÑADIDO: Poner fechas por defecto si están vacías ---
         const inputInicio = document.getElementById('fecha-inicio-uso');
         const inputFin = document.getElementById('fecha-fin-uso');
         if(inputInicio && !inputInicio.value) {
@@ -238,10 +237,8 @@ const App = {
             mesPasado.setMonth(hoy.getMonth() - 1);
             inputFin.value = hoy.toISOString().split('T')[0];
             inputInicio.value = mesPasado.toISOString().split('T')[0];
-            // Cargamos automáticamente el mes pasado
             App.cargarUsadosFechas();
         }
-        // --- FIN AÑADIDO ---
         
         const tbody = document.getElementById('tabla-estadisticas');
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando cálculos... ⏳</td></tr>';
@@ -264,7 +261,6 @@ const App = {
         } catch (e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar las estadísticas</td></tr>'; }
     },
 
-    // --- NUEVA FUNCIÓN: Busca y pinta los troqueles MÁS USADOS por fechas ---
     cargarUsadosFechas: async () => {
         const fInicio = document.getElementById('fecha-inicio-uso').value;
         const fFin = document.getElementById('fecha-fin-uso').value;
@@ -753,7 +749,25 @@ const App = {
              await App.cargarTodo(); App.volverDesdeForm();
         }
     },
-    calcularSiguienteId: async () => { const c = document.getElementById('f-cat').value; if(c) { try { const r=await fetch(`/api/siguiente_numero?categoria_id=${c}`); const d=await r.json(); document.getElementById('f-matricula').value=d.siguiente; document.getElementById('f-ubicacion').value=d.siguiente; } catch(e){} } },
+    
+    // AQUÍ ESTÁ LA LÓGICA INTELIGENTE DE MATRÍCULA Y UBICACIÓN
+    calcularSiguienteId: async () => { 
+        const c = document.getElementById('f-cat').value; 
+        if(c) { 
+            try { 
+                const r = await fetch(`/api/siguiente_numero?categoria_id=${c}`); 
+                const d = await r.json(); 
+                document.getElementById('f-matricula').value = d.siguiente; 
+                
+                // Solo copia a Ubicación si la Ubicación está vacía
+                const inputUbi = document.getElementById('f-ubicacion');
+                if(inputUbi && inputUbi.value.trim() === "") {
+                    inputUbi.value = d.siguiente; 
+                }
+            } catch(e){} 
+        } 
+    },
+    
     setFiltroTipo: (t,b) => { App.filtroTipo=t; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('activo')); b.classList.add('activo'); App.renderTabla(); },
     filtrar: () => { const b=document.getElementById('btn-limpiar'); b.classList.toggle('oculto', document.getElementById('buscador').value===''); App.renderTabla(); },
     limpiarBuscador: () => { document.getElementById('buscador').value=''; App.filtrar(); },

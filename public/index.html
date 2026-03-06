@@ -126,7 +126,7 @@
                 </div>
 
                 <div id="dashboard-resumen" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px;">
-                    </div>
+                </div>
 
                 <div class="header-modulo" style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
                     <h2>🔄 Troqueles Usados (Top Actividad)</h2>
@@ -193,23 +193,6 @@
                 </div>
             </section>
 
-                <div class="contenedor-tabla">
-                    <table class="tabla-pro">
-                        <thead>
-                            <tr>
-                                <th>Matrícula</th>
-                                <th>Artículo</th>
-                                <th>Descripción</th>
-                                <th>Estado Actual</th>
-                                <th>Último Movimiento Registrado</th>
-                                <th width="150">Acción Rápida</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-estadisticas"></tbody>
-                    </table>
-                </div>
-            </section>
-
             <section id="vista-formulario" class="vista oculto">
                 <div class="header-modulo">
                     <h1 id="titulo-form">Ficha Troquel</h1>
@@ -226,7 +209,9 @@
                                     <button type="button" class="btn-secundario" onclick="App.crearTipo()">+</button>
                                 </div>
                             </div>
-                            <div><label>Matrícula</label><input type="text" id="f-matricula" required readonly style="background:#eee; font-weight:900;"></div>
+                            
+                            <div><label>Matrícula (Editable)</label><input type="text" id="f-matricula" required style="font-weight:900; border: 2px solid #0f766e;"></div>
+                            
                             <div><label>Ubicación</label><input type="text" id="f-ubicacion" required style="font-weight:900;"></div>
                             <div class="full-width" style="padding:15px; border:2px dashed #cbd5e1; background:#f8fafc;">
                                 <label style="display:block; margin-bottom:10px; font-weight:bold;">📎 Documentación</label>
@@ -421,6 +406,6 @@
         </main>
     </div>
     
-<script src="app.js?v=6"></script>
+    <script src="app.js?v=7"></script>
 </body>
 </html>
