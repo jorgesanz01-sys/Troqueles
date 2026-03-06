@@ -1,0 +1,16 @@
+{
+  "name": "ERP Edelvives Troqueles",
+  "short_name": "Troqueles",
+  "description": "Sistema de gestión de inventario y escáner de troqueles",
+  "start_url": "./?modo=operario",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "logo-edelvives.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
