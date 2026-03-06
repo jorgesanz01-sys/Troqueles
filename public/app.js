@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V30 (SCROLL MOVIL + FAMILIAS BLINDADAS)
+// ERP PACKAGING - LÓGICA V31 (DOBLE TAMAÑO DE IMPRESIÓN)
 // =============================================================
 
 const App = {
@@ -583,7 +583,6 @@ const App = {
 
     verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
     
-    // FUNCIONES CREAR BLINDADAS CON AVISOS DE ERROR CLAROS
     crearFamilia: async () => { 
         const n = prompt("Nombre de la nueva Familia:"); 
         if(n) { 
@@ -651,7 +650,6 @@ const App = {
         if(v==='vista-lista') document.getElementById('sidebar').classList.remove('oculto'); 
     },
     
-    // BUSCADOR MÓVIL AMPLIADO A 50 RESULTADOS
     buscarMovil: (txt) => { 
         const d = document.getElementById('resultados-movil'); d.innerHTML = ""; 
         if(txt.length<2) return; 
@@ -720,7 +718,8 @@ const App = {
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.limpiarSeleccion(); App.cargarTodo(); } },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
 
-    imprimirEtiquetasGodex: (items) => {
+    // --- NUEVO: FUNCIÓN DE IMPRESIÓN CON TAMAÑO DINÁMICO ---
+    imprimirEtiquetasGodex: (items, tamano = '50x23') => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
         
         if (!printWindow) {
@@ -728,10 +727,54 @@ const App = {
             return;
         }
 
-        let html = `<!DOCTYPE html><html><head><title>Impresión Godex 50x23</title><style>@page { size: 50mm 23mm; margin: 0; } body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } .label { width: 50mm; height: 23mm; box-sizing: border-box; padding: 1mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } .qr { width: 19mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 18mm; height: 18mm; } .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } .ubi { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 3px; color: black; text-transform: uppercase; } .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 2px; } .arts { font-size: 6pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } @media screen { body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; } .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; } .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; } } @media print { .no-print { display: none !important; } }</style></head><body><button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex</button>`;
+        // Definimos las variables de CSS y código QR según el tamaño elegido
+        let css = '';
+        let qrSize = 150;
+
+        if (tamano === '100x70') {
+            qrSize = 300; // QR mucho más grande
+            css = `
+                @page { size: 100mm 70mm; margin: 0; } 
+                body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } 
+                .label { width: 100mm; height: 70mm; box-sizing: border-box; padding: 3mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } 
+                .qr { width: 40mm; display: flex; justify-content: center; align-items: center; } 
+                .qr img { width: 38mm; height: 38mm; } 
+                .text { width: 55mm; padding-left: 2mm; display: flex; flex-direction: column; justify-content: center; } 
+                .mat { font-size: 18pt; font-weight: 900; line-height: 1.1; margin-bottom: 6px; color: black; } 
+                .ubi { font-size: 16pt; font-weight: 900; line-height: 1.1; margin-bottom: 6px; color: black; text-transform: uppercase; } 
+                .nom { font-size: 11pt; line-height: 1.2; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; margin-bottom: 6px; } 
+                .arts { font-size: 10pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+            `;
+        } else {
+            qrSize = 150; // QR estándar
+            css = `
+                @page { size: 50mm 23mm; margin: 0; } 
+                body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #fff; } 
+                .label { width: 50mm; height: 23mm; box-sizing: border-box; padding: 1mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; } 
+                .qr { width: 19mm; display: flex; justify-content: center; align-items: center; } 
+                .qr img { width: 18mm; height: 18mm; } 
+                .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } 
+                .mat { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } 
+                .ubi { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 3px; color: black; text-transform: uppercase; } 
+                .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 2px; } 
+                .arts { font-size: 6pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+            `;
+        }
+
+        // CSS extra para que se vea bonito en pantalla de previsualización
+        css += `
+            @media screen { 
+                body { background: #334155; padding: 20px; display: flex; flex-direction: column; align-items: center; } 
+                .label { background: #fff; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 2px; } 
+                .btn { background: #14b8a6; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; } 
+            } 
+            @media print { .no-print { display: none !important; } }
+        `;
+
+        let html = `<!DOCTYPE html><html><head><title>Impresión Godex ${tamano}</title><style>${css}</style></head><body><button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex (${tamano})</button>`;
         
         items.forEach(t => {
-            const qr = new QRious({ value: t.id.toString(), size: 150, level: 'M' });
+            const qr = new QRious({ value: t.id.toString(), size: qrSize, level: 'M' });
             const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
             html += `<div class="label"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div>`;
         });
@@ -745,8 +788,15 @@ const App = {
         setTimeout(() => { printWindow.print(); }, 800);
     },
     
-    imprimirLoteQRs: () => { if(App.seleccionados.size === 0) return; const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); App.imprimirEtiquetasGodex(itemsToPrint); App.limpiarSeleccion(); },
+    // Función de imprimir lote actualizada para recibir el tamaño
+    imprimirLoteQRs: (tamano = '50x23') => { 
+        if(App.seleccionados.size === 0) return; 
+        const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); 
+        App.imprimirEtiquetasGodex(itemsToPrint, tamano); 
+        App.limpiarSeleccion(); 
+    },
     
+    // Modal único ahora mapea los dos botones de abajo
     generarQR: (id_db) => { 
         const t = App.datos.find(x => x.id === id_db); if(!t) return;
         document.getElementById('modal-qr').classList.remove('oculto'); 
@@ -759,7 +809,9 @@ const App = {
         if(elArts) { if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } else { elArts.style.display = "none"; } }
         new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
         
-        document.getElementById('btn-imprimir-qr-unico').onclick = () => { App.imprimirEtiquetasGodex([t]); };
+        // Mapear los dos botones nuevos
+        document.getElementById('btn-imprimir-qr-unico-50').onclick = () => { App.imprimirEtiquetasGodex([t], '50x23'); };
+        document.getElementById('btn-imprimir-qr-unico-100').onclick = () => { App.imprimirEtiquetasGodex([t], '100x70'); };
     },
 
     limpiarDuplicadosExactos: async () => {
