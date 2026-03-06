@@ -13,6 +13,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     
     <style>
+        /* 🛠️ FIX PERFECCIONISTA: Evita que los márgenes ensanchen la pantalla en el móvil */
+        *, *::before, *::after { box-sizing: border-box; }
+
         /* MAGIA DEL MENÚ DESPLEGABLE */
         #sidebar { transition: width 0.3s ease; position: relative; overflow-x: hidden; }
         #sidebar.colapsado { width: 75px !important; }
@@ -312,7 +315,7 @@
                 </div>
             </section>
 
-            <section id="vista-movil-detalle" class="vista oculto" style="padding:10px; background:#f8fafc; height:100vh; overflow-y:auto; padding-bottom:120px;">
+            <section id="vista-movil-detalle" class="vista oculto" style="padding:10px; background:#f8fafc; height:100dvh; overflow-y:auto; overflow-x:hidden; padding-bottom:120px; width:100%;">
                 <button class="btn-secundario" onclick="App.volverMenuMovil()" style="width:100%; margin-bottom:10px; padding:12px;">⬅️ Volver</button>
                 
                 <div style="background:white; border:2px solid #2563eb; border-radius:8px; padding:10px; text-align:center; margin-bottom:10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;">
@@ -470,6 +473,6 @@
     
     <div id="toast-container"></div>
     
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=13"></script>
 </body>
 </html>
