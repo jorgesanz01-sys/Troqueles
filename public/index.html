@@ -7,20 +7,11 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     
-    <script>
-        if (window.location.search.includes('modo=operario')) {
-            // Oculta el PC y muestra el Móvil ANTES de que la pantalla se dibuje
-            document.write('<style id="anti-parpadeo">#sidebar, #vista-lista { display: none !important; } #vista-movil { display: block !important; }</style>');
-            
-            // Cuando la app termina de arrancar, quitamos este escudo para no interferir con tu navegación
-            window.addEventListener('load', function() {
-                setTimeout(function() {
-                    var escudo = document.getElementById('anti-parpadeo');
-                    if (escudo) escudo.remove();
-                }, 100);
-            });
+    <style id="escudo-movil">
+        @media screen and (max-width: 850px) {
+            #sidebar, #vista-lista { display: none !important; }
         }
-    </script>
+    </style>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -78,7 +69,6 @@
                 <img src="logo-edelvives.png" alt="Logo Edelvives" style="max-height: 30px; max-width: 90%; width: auto; object-fit: contain; transition: all 0.3s ease;">
                 <h2 class="menu-text" style="font-size: 18px; margin: 0; color: white;">Gestión de Troqueles</h2>
             </div>
-
             
             <nav class="sidebar-menu">
                 <button class="menu-item activo" onclick="App.nav('vista-lista', this)" title="Inventario PC">📊 <span class="menu-text">Inventario PC</span></button>
@@ -488,6 +478,6 @@
     
     <div id="toast-container"></div>
     
-    <script src="app.js?v=13"></script>
+    <script src="app.js?v=14"></script>
 </body>
 </html>

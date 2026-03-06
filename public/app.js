@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V35 (TOASTS, BEEP, DARK MODE, OPTIMIZACIÓN FOTOS)
+// ERP PACKAGING - LÓGICA V36 (AUTO-DETECTAR MÓVIL Y TOASTS)
 // =============================================================
 
 const App = {
@@ -9,7 +9,6 @@ const App = {
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
     intervaloRefresco: null,
 
-    // 🌟 NUEVO: NOTIFICACIONES FLOTANTES (TOASTS)
     mostrarToast: (msj, tipo = 'exito') => {
         const container = document.getElementById('toast-container');
         if(!container) return;
@@ -27,7 +26,6 @@ const App = {
         }, 3500);
     },
 
-    // 🌟 NUEVO: SONIDO DE ESCÁNER (BEEP)
     reproducirBeep: (exito = true) => {
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -52,10 +50,9 @@ const App = {
         } catch(e) { console.log("Audio no soportado"); }
     },
 
-    // 🌟 NUEVO: COMPRESIÓN DE FOTOS EN CLIENTE
     comprimirImagen: (file) => {
         return new Promise((resolve) => {
-            if(!file.type.startsWith('image/')) return resolve(file); // Si es PDF, lo dejamos igual
+            if(!file.type.startsWith('image/')) return resolve(file); 
             
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -64,7 +61,7 @@ const App = {
                 img.src = event.target.result;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1200; // Ancho máximo
+                    const MAX_WIDTH = 1200; 
                     let width = img.width;
                     let height = img.height;
                     
@@ -78,7 +75,6 @@ const App = {
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // Comprimir a JPEG con 70% de calidad
                     canvas.toBlob(blob => {
                         resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg' }));
                     }, 'image/jpeg', 0.7);
@@ -87,7 +83,6 @@ const App = {
         });
     },
 
-    // 🌟 NUEVO: MODO OSCURO (DARK MODE)
     toggleDarkMode: () => {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
@@ -118,7 +113,6 @@ const App = {
     init: async () => {
         console.log("Iniciando ERP...");
         
-        // Comprobar si tenía el Modo Oscuro guardado
         if(localStorage.getItem('erp_dark_mode') === 'true') {
             document.body.classList.add('dark-mode');
         }
@@ -129,8 +123,11 @@ const App = {
             
             App.iniciarTiempoReal();
 
+            // DETECCIÓN INTELIGENTE DE MÓVIL
             const params = new URLSearchParams(window.location.search);
-            if (params.get('modo') === 'operario') {
+            const esMovil = window.innerWidth <= 850 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (params.get('modo') === 'operario' || esMovil) {
                 document.body.classList.add('kiosk-mode');
                 App.activarModoMovil();
             }
@@ -587,7 +584,6 @@ const App = {
         App.mostrarToast("Comprimiendo y subiendo foto... ⏳", "exito");
         
         try {
-            // COMPRESIÓN DE IMAGEN ANTES DE ENVIAR
             const archivoOptimo = await App.comprimirImagen(input.files[0]);
             const fd = new FormData(); 
             fd.append('file', archivoOptimo);
@@ -655,13 +651,13 @@ const App = {
                 const t = App.datos.find(x => x.id.toString() === txt);
                 if(t) {
                     if (App.modoScanner === 'UNICO') {
-                        App.reproducirBeep(true); // BEEP de éxito
+                        App.reproducirBeep(true); 
                         App.toggleScanner(false);
                         if(navigator.vibrate) navigator.vibrate(200);
                         App.abrirDetalleMovil(t.id);
                     } else {
                         if(!App.escaneadosLote.has(t.id)) { 
-                            App.reproducirBeep(true); // BEEP de éxito
+                            App.reproducirBeep(true); 
                             App.escaneadosLote.set(t.id, t); 
                             App.renderListaEscaneados(); 
                             if(navigator.vibrate) navigator.vibrate(100); 
@@ -669,7 +665,7 @@ const App = {
                     }
                     last = txt; t0 = Date.now();
                 } else {
-                    App.reproducirBeep(false); // BEEP de error (troquel no existe)
+                    App.reproducirBeep(false); 
                 }
             });
         } else { el.classList.add('oculto'); if(App.scanner) App.scanner.stop(); }
