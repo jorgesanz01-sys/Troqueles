@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Packaging | Gestión de Troqueles</title>
+    <title>ERP V27 | Gestión Total y Papelera</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -13,9 +13,9 @@
     <div class="erp-layout">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-logo" style="display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 10px 0;">
-    <img src="logo-edelvives.png" alt="Logo Edelvives" style="max-height: 30px; width: auto; object-fit: contain;">
-    <h2 style="font-size: 16px; margin: 0; color: white;">Gestión de Troqueles</h2>
-</div>
+                <img src="logo-edelvives.png" alt="Logo Edelvives" style="max-height: 30px; width: auto; object-fit: contain;">
+                <h2 style="font-size: 18px; margin: 0; color: white;">Gestión de Troqueles</h2>
+            </div>
             <nav class="sidebar-menu">
                 <button class="menu-item activo" onclick="App.nav('vista-lista', this)">📊 Inventario PC</button>
                 <div class="menu-divisor"></div>
@@ -49,15 +49,19 @@
 
         <main class="main-content">
             <section id="vista-lista" class="vista">
-                <div class="header-modulo">
-                    <h1 id="titulo-lista">Inventario</h1>
-
-                    <div id="herramientas-papelera" class="oculto" style="display:flex; gap:10px; padding:8px 15px; background:#fee2e2; border-radius:6px; border: 1px solid #f87171;">
-                        <button class="btn-secundario" onclick="App.salirPapelera()" style="background:white;">🔙 Volver</button>
-                        <div style="width:2px; background:#f87171; margin:0 5px;"></div>
-                        <button class="btn-accion" style="background:#22c55e;" onclick="App.restaurarTodoPapelera()">♻️ Restaurar TODO</button>
-                        <button class="btn-accion" style="background:#b91c1c;" onclick="App.vaciarPapelera()">🔥 Vaciar Papelera</button>
+                <div class="header-modulo" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <h1 id="titulo-lista" style="margin: 0;">Inventario</h1>
+                        <div id="herramientas-papelera" class="oculto" style="display:flex; gap:10px; padding:8px 15px; background:#fee2e2; border-radius:6px; border: 1px solid #f87171;">
+                            <button class="btn-secundario" onclick="App.salirPapelera()" style="background:white;">🔙 Volver</button>
+                            <div style="width:2px; background:#f87171; margin:0 5px;"></div>
+                            <button class="btn-accion" style="background:#22c55e;" onclick="App.restaurarTodoPapelera()">♻️ Restaurar TODO</button>
+                            <button class="btn-accion" style="background:#b91c1c;" onclick="App.vaciarPapelera()">🔥 Vaciar Papelera</button>
+                        </div>
                     </div>
+                    <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; display:flex; align-items:center; gap:8px;" title="Alternar Pantalla Completa">
+                        🔲 Pantalla Completa
+                    </button>
                 </div>
 
                 <div class="filtros-chips" id="chips-tipos"></div>
@@ -124,8 +128,11 @@
             </section>
 
             <section id="vista-estadisticas" class="vista oculto">
-                <div class="header-modulo">
-                    <h1>📈 Dashboard y Estadísticas</h1>
+                <div class="header-modulo" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                    <h1 style="margin: 0;">📈 Dashboard y Estadísticas</h1>
+                    <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; display:flex; align-items:center; gap:8px;" title="Alternar Pantalla Completa">
+                        🔲 Pantalla Completa
+                    </button>
                 </div>
 
                 <div id="dashboard-resumen" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px;">
@@ -242,6 +249,7 @@
             <section id="vista-movil" class="vista oculto" style="padding:15px; height:100dvh; overflow-y:auto; padding-bottom:120px; box-sizing:border-box;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                     <h1 style="margin:0; font-size:28px;">🦺 Operario</h1> 
+                    <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size: 20px; padding: 10px;" title="Pantalla Completa">🔲</button>
                 </div>
                 <div class="grid-movil" style="grid-template-columns: 1fr 1fr;">
                     <button class="btn-gigante" style="background:#0f766e;" onclick="App.toggleScanner(true, 'UNICO')">🔎 CONSULTAR QR</button>
@@ -409,6 +417,6 @@
         </main>
     </div>
     
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
 </body>
 </html>

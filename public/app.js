@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V32 (TOP ACTIVIDAD Y DOBLE IMPRESIÓN Y MATRÍCULA FLEXIBLE)
+// ERP PACKAGING - LÓGICA V33 (FULLSCREEN AÑADIDO)
 // =============================================================
 
 const App = {
@@ -8,6 +8,19 @@ const App = {
     scanner: null, modoMovil: false, modoScanner: 'LOTE', 
     archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
     intervaloRefresco: null,
+
+    // NUEVO: Función para alternar Pantalla Completa
+    toggleFullScreen: () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log(`Error al intentar pantalla completa: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    },
 
     parseArchivos: (raw) => {
         if (!raw) return [];
@@ -750,7 +763,6 @@ const App = {
         }
     },
     
-    // AQUÍ ESTÁ LA LÓGICA INTELIGENTE DE MATRÍCULA Y UBICACIÓN
     calcularSiguienteId: async () => { 
         const c = document.getElementById('f-cat').value; 
         if(c) { 
@@ -759,7 +771,6 @@ const App = {
                 const d = await r.json(); 
                 document.getElementById('f-matricula').value = d.siguiente; 
                 
-                // Solo copia a Ubicación si la Ubicación está vacía
                 const inputUbi = document.getElementById('f-ubicacion');
                 if(inputUbi && inputUbi.value.trim() === "") {
                     inputUbi.value = d.siguiente; 
