@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V36 (AUTO-DETECTAR MÓVIL Y TOASTS)
+// ERP PACKAGING - LÓGICA V39 (CALIBRADOR GODEX EXPERTO)
 // =============================================================
 
 const App = {
@@ -123,7 +123,6 @@ const App = {
             
             App.iniciarTiempoReal();
 
-            // DETECCIÓN INTELIGENTE DE MÓVIL
             const params = new URLSearchParams(window.location.search);
             const esMovil = window.innerWidth <= 850 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
@@ -894,137 +893,142 @@ const App = {
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.mostrarToast("Asignación masiva completada."); App.limpiarSeleccion(); App.cargarTodo(); } },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
 
-    // ============================================================
-    // FUNCIÓN GODEX - ENFOQUE CANVAS (v5)
-    // El driver Godex G500 ve el papel SIEMPRE con el lado corto
-    // como ancho. Por eso:
-    //   etiqueta "100x70" → driver ve 70mm ancho × 100mm alto  → layout VERTICAL
-    //   etiqueta "50x23"  → driver ve 23mm ancho × 50mm alto   → layout VERTICAL
-    // Dibujamos el canvas exactamente así y le decimos a Chrome
-    // el mismo tamaño en @page. Márgenes = Ninguno, Escala = 100%.
-    // ============================================================
+    // 🌟 NUEVO CALIBRADOR GODEX EXPERTO 🌟
     imprimirEtiquetasGodex: (items, tamano = '50x23') => {
-
-        // 203 dpi estándar Godex G500  →  1 mm = 203/25.4 ≈ 7.99 px
-        const PX_MM = 203 / 25.4;
-
-        // Dimensiones TAL COMO EL DRIVER LAS VE (ancho × alto en mm)
-        const W_MM = tamano === '100x70' ? 70  : 23;
-        const H_MM = tamano === '100x70' ? 100 : 50;
-        const W    = Math.round(W_MM * PX_MM);
-        const H    = Math.round(H_MM * PX_MM);
-
-        const pad  = Math.round(2   * PX_MM);   // margen interior 2 mm
-
-        const dibujarEtiqueta = (t) => {
-            const canvas = document.createElement('canvas');
-            canvas.width  = W;
-            canvas.height = H;
-            const ctx = canvas.getContext('2d');
-
-            // Fondo blanco
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, W, H);
-
-            // ── QR centrado horizontalmente, en la mitad superior ──
-            const qrSize  = W - pad * 2;                  // QR ocupa el ancho útil
-            const qrX     = pad;
-            const qrY     = pad;
-            const qrCanvas = document.createElement('canvas');
-            new QRious({ element: qrCanvas, value: t.id.toString(), size: qrSize, level: 'M', background: 'white', foreground: 'black' });
-            ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
-
-            // ── TEXTO debajo del QR ──
-            const txtY0   = qrY + qrSize + Math.round(1.5 * PX_MM);
-            const txtMaxW = W - pad * 2;
-            let   curY    = txtY0;
-
-            const escribir = (texto, fMM, bold, color) => {
-                const fs = Math.round(fMM * PX_MM);
-                ctx.fillStyle = color || '#000000';
-                ctx.font = `${bold ? '900' : '400'} ${fs}px Arial`;
-                let txt = String(texto || '');
-                while (ctx.measureText(txt).width > txtMaxW && txt.length > 1)
-                    txt = txt.slice(0, -1);
-                if (txt.length < String(texto || '').length) txt = txt.slice(0, -1) + '…';
-                ctx.fillText(txt, pad, curY + fs);
-                curY += fs + Math.round(1 * PX_MM);
-            };
-
-            if (tamano === '100x70') {
-                escribir('TROQUEL ' + t.id_troquel,       5.5, true,  '#000000');
-                escribir('UBI: '    + (t.ubicacion||'-'), 5.0, true,  '#000000');
-                escribir(t.nombre,                        3.5, false, '#333333');
-                if (t.codigos_articulo) escribir('Art: ' + t.codigos_articulo, 3.0, true, '#555555');
-            } else {
-                escribir('TRQ ' + t.id_troquel,           3.2, true,  '#000000');
-                escribir('UBI: ' + (t.ubicacion||'-'),    3.0, true,  '#000000');
-                escribir(t.nombre,                        2.4, false, '#333333');
-                if (t.codigos_articulo) escribir('Art: ' + t.codigos_articulo, 2.2, true, '#555555');
-            }
-
-            return canvas.toDataURL('image/png');
-        };
-
-        const printWindow = window.open('', '_blank', 'width=700,height=700');
+        let printWindow = window.open('', '_blank', 'width=800,height=700');
         if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
+        
+        let w = 50, h = 23, qrSize = 150, p = 1;
+        let cssLabel = '';
 
-        // Generamos todas las imágenes antes de escribir el HTML
-        const dataUrls  = items.map(t => dibujarEtiqueta(t));
-        const imgsHtml  = dataUrls.map(src =>
-            `<div class="et"><img src="${src}" width="${W_MM}mm" height="${H_MM}mm"></div>`
-        ).join('');
+        if (tamano === '100x70') {
+            w = 100; h = 70; qrSize = 300; p = 3;
+            cssLabel = `.qr { width: 40mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 38mm; height: 38mm; } .text { width: 55mm; padding-left: 2mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 18pt; font-weight: 900; line-height: 1.1; margin-bottom: 6px; color: black; } .ubi { font-size: 16pt; font-weight: 900; line-height: 1.1; margin-bottom: 6px; color: black; text-transform: uppercase; } .nom { font-size: 11pt; line-height: 1.2; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; margin-bottom: 6px; } .arts { font-size: 10pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }`;
+        } else {
+            w = 50; h = 23; qrSize = 150; p = 1;
+            cssLabel = `.qr { width: 19mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 18mm; height: 18mm; } .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } .ubi { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 3px; color: black; text-transform: uppercase; } .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 2px; } .arts { font-size: 6pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }`;
+        }
 
-        const css = `
-            *   { margin:0; padding:0; box-sizing:border-box; }
-            @page { size: ${W_MM}mm ${H_MM}mm; margin: 0mm; }
-            body { background:#334155; font-family:Arial,sans-serif; }
-            .wrap{ display:flex; flex-direction:column; align-items:center; padding:16px; gap:10px; }
-            .et  { background:#fff; line-height:0; }
-            .et img { display:block; width:${W_MM}mm; height:${H_MM}mm; }
-            .btn { background:#14b8a6; color:#fff; padding:12px 26px; border:none;
-                   border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer; }
-            .nota{ color:#e2e8f0; font-size:12px; text-align:center;
-                   background:#1e3a5f; padding:8px 16px; border-radius:6px; max-width:420px; line-height:1.5; }
+        let html = `<!DOCTYPE html><html><head><title>Impresión Godex ${tamano}</title>
+        <style>
+            body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #334155; }
+            ${cssLabel}
+            
+            /* Panel de control */
+            .toolbar { background: #1e293b; padding: 20px; color: white; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4); margin-bottom: 20px; font-family: sans-serif; }
+            .panel-ajustes { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; display: inline-block; text-align: left; margin-bottom: 15px; border: 1px solid #475569; }
+            .btn-small { background: #475569; color: white; border: none; padding: 8px 12px; margin: 0 2px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+            .btn-small:hover { background: #64748b; }
+            .btn-small.active { background: #14b8a6; box-shadow: 0 0 0 2px white; }
+            .btn { background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%; max-width: 300px; }
+            .btn:hover { background: #1d4ed8; }
+            
+            .contenedor-etiquetas { display: flex; flex-direction: column; align-items: center; padding-bottom: 40px; gap: 20px; }
+            
+            @media screen { .label { box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px dashed #ccc; } }
             @media print {
-                body { background:#fff; }
-                .no-print { display:none !important; }
-                .wrap { padding:0; gap:0; }
-                .et  { page-break-after:always; }
-                .et img { width:${W_MM}mm; height:${H_MM}mm; }
+                .no-print { display: none !important; }
+                body { background: white !important; }
+                .contenedor-etiquetas { padding: 0; display: block; gap: 0; }
+                .label { border: none !important; box-shadow: none !important; margin-bottom: 0 !important; }
             }
+        </style>
+        
+        <style id="estilos-dinamicos"></style>
+        
+        <script>
+            let rotacion = 0;
+            let papelInv = false;
+            const w = ${w};
+            const h = ${h};
+            const p = ${p};
+
+            function setRot(deg) { rotacion = deg; render(); }
+            function setPapel(inv) { papelInv = inv; render(); }
+
+            function render() {
+                // Actualizar botones visualmente
+                document.querySelectorAll('.rot-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-r' + rotacion).classList.add('active');
+                
+                document.querySelectorAll('.pap-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-p' + (papelInv ? 'V' : 'H')).classList.add('active');
+
+                // Aplicar la lógica mágica
+                const styleEl = document.getElementById('estilos-dinamicos');
+                let pageW = papelInv ? h : w;
+                let pageH = papelInv ? w : h;
+                
+                let contentW = (rotacion === 90 || rotacion === 270) ? h : w;
+                let contentH = (rotacion === 90 || rotacion === 270) ? w : h;
+
+                styleEl.innerHTML = \`
+                    @page { size: \${pageW}mm \${pageH}mm; margin: 0; }
+                    .label { 
+                        width: \${pageW}mm; 
+                        height: \${pageH}mm; 
+                        page-break-after: always; 
+                        position: relative; 
+                        overflow: hidden; 
+                        background: white;
+                    }
+                    .label-content {
+                        width: \${contentW}mm; 
+                        height: \${contentH}mm;
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%) rotate(\${rotacion}deg);
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: \${p}mm;
+                        box-sizing: border-box;
+                    }
+                \`;
+            }
+            window.onload = render;
+        </script>
+        </head><body>
+        
+        <div class="toolbar no-print">
+            <h2 style="margin: 0 0 10px 0;">⚙️ Calibración de Impresora Godex</h2>
+            <p style="font-size: 14px; margin-bottom: 20px;">Si la impresora corta la etiqueta o la saca girada, combina estas dos opciones <br>hasta que el diseño encaje exactamente con la forma en la que escupe tu papel.</p>
+            
+            <div class="panel-ajustes">
+                <div style="margin-bottom: 15px;">
+                    <strong style="display:inline-block; width: 160px; color:#94a3b8;">1. Girar Diseño (CSS):</strong>
+                    <button id="btn-r0" class="btn-small rot-btn" onclick="setRot(0)">0º</button>
+                    <button id="btn-r90" class="btn-small rot-btn" onclick="setRot(90)">90º</button>
+                    <button id="btn-r180" class="btn-small rot-btn" onclick="setRot(180)">180º</button>
+                    <button id="btn-r270" class="btn-small rot-btn" onclick="setRot(270)">270º</button>
+                </div>
+                <div>
+                    <strong style="display:inline-block; width: 160px; color:#94a3b8;">2. Tamaño Papel (Driver):</strong>
+                    <button id="btn-pH" class="btn-small pap-btn" onclick="setPapel(false)">Apaisado (${w}x${h})</button>
+                    <button id="btn-pV" class="btn-small pap-btn" onclick="setPapel(true)">Vertical (${h}x${w})</button>
+                </div>
+            </div>
+            <br>
+            <button class="btn" onclick="window.print()">🖨️ Probar Impresión</button>
+        </div>
+        
+        <div class="contenedor-etiquetas">
         `;
-
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-            <title>Godex ${tamano}</title><style>${css}</style></head>
-            <body><div class="wrap">
-                <button class="btn no-print" onclick="window.print()">🖨️ Imprimir Godex ${tamano}</button>
-                <p class="nota no-print">
-                    En Chrome: <b>Márgenes → Ninguno</b> · <b>Escala → 100%</b><br>
-                    Tamaño de papel en el driver Godex: <b>${W_MM} × ${H_MM} mm</b>
-                </p>
-                ${imgsHtml}
-            </div></body></html>`;
-
+        
+        items.forEach(t => {
+            const qr = new QRious({ value: t.id.toString(), size: qrSize, level: 'M' });
+            const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
+            html += `<div class="label"><div class="label-content"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div></div>`;
+        });
+        
+        html += `</div></body></html>`;
+        
         printWindow.document.write(html);
         printWindow.document.close();
+        
         const modalQr = document.getElementById('modal-qr');
-        if (modalQr) modalQr.classList.add('oculto');
-        setTimeout(() => { printWindow.print(); }, 800);
-    },
-
-    imprimirLoteQRs: (tamano = '50x23') => { if(App.seleccionados.size === 0) return; const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); App.imprimirEtiquetasGodex(itemsToPrint, tamano); App.limpiarSeleccion(); },
-    generarQR: (id_db) => { 
-        const t = App.datos.find(x => x.id === id_db); if(!t) return;
-        document.getElementById('modal-qr').classList.remove('oculto'); 
-        document.getElementById('qr-texto-id').innerText = "TROQUEL " + t.id_troquel; 
-        document.getElementById('qr-texto-ubi').innerText = "UBI: " + (t.ubicacion || '-'); 
-        document.getElementById('qr-texto-desc').innerText = t.nombre; 
-        const elArts = document.getElementById('qr-texto-arts');
-        if(elArts) { if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } else { elArts.style.display = "none"; } }
-        new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
-        document.getElementById('btn-imprimir-qr-unico-50').onclick = () => { App.imprimirEtiquetasGodex([t], '50x23'); };
-        document.getElementById('btn-imprimir-qr-unico-100').onclick = () => { App.imprimirEtiquetasGodex([t], '100x70'); };
+        if (modalQr) { modalQr.classList.add('oculto'); }
     },
 
     limpiarDuplicadosExactos: async () => {
