@@ -725,6 +725,7 @@ const App = {
                 <td>${t.ubicacion || '-'}</td>
                 <td style="white-space:nowrap;">
                     <button class="btn-accion" style="background:#22c55e; padding:4px 10px; font-size:12px; margin-right:4px;" onclick="App.restaurar(${t.id})">♻️ Restaurar</button>
+                    <button class="btn-accion" style="background:#f59e0b; padding:4px 10px; font-size:12px; margin-right:4px;" onclick="App.descatalogarDesdePapelera(${t.id})">⛔ Descatalogar</button>
                     <button class="btn-accion" style="background:#b91c1c; padding:4px 10px; font-size:12px;" onclick="App.destruirUnico(${t.id})">🔥 Eliminar</button>
                 </td>
             </tr>`).join('');
@@ -768,7 +769,36 @@ const App = {
     },
 
     
-    crearFamilia: async () => { 
+    descatalogarDesdePapelera: async (id) => {
+        const palet = prompt("Ubicación del palet donde se guarda el troquel:");
+        if(palet === null) return;
+        if(!palet.trim()) { App.mostrarToast("Debes indicar la ubicación.", "error"); return; }
+        await fetch('/api/troqueles/bulk/descatalogar', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ ids: [id], ubicacion: palet.trim() })
+        });
+        App.mostrarToast("Troquel movido a Descatalogados.");
+        await App.cargarPapelera();
+    },
+
+    descatalogarTodoPapelera: async () => {
+        if(App.datosPapelera.length === 0) { App.mostrarToast("La papelera está vacía.", "error"); return; }
+        const palet = prompt(`Ubicación del palet para los ${App.datosPapelera.length} troqueles:`);
+        if(palet === null) return;
+        if(!palet.trim()) { App.mostrarToast("Debes indicar la ubicación.", "error"); return; }
+        const ids = App.datosPapelera.map(t => t.id);
+        await fetch('/api/troqueles/bulk/descatalogar', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ ids, ubicacion: palet.trim() })
+        });
+        App.mostrarToast(`${ids.length} troqueles movidos a Descatalogados.`);
+        App.datosPapelera = [];
+        await App.cargarPapelera();
+    },
+
+        crearFamilia: async () => { 
         const n = prompt("Nombre de la nueva Familia:"); 
         if(n) { 
             try {

@@ -301,6 +301,21 @@ def bulk_restaurar(d: BulkIds):
 def bulk_destruir(d: BulkIds):
     return supabase.table("troqueles").delete().in_("id", d.ids).execute()
 
+class BulkDescatalogarData(BaseModel):
+    ids: List[int]
+    ubicacion: str
+
+@app.post("/api/troqueles/bulk/descatalogar")
+def bulk_descatalogar(d: BulkDescatalogarData):
+    from datetime import date
+    supabase.table("troqueles").update({
+        "estado_activo": "Activo",
+        "estado": "DESCATALOGADO",
+        "ubicacion": d.ubicacion.upper(),
+        "fecha_descatalogado": date.today().isoformat()
+    }).in_("id", d.ids).execute()
+    return {"ok": True, "count": len(d.ids)}
+
 def registrar_log(id_t, accion, orig, dest):
     try: supabase.table("historial").insert({"troquel_id": id_t, "accion": accion, "ubicacion_anterior": orig, "ubicacion_nueva": dest}).execute()
     except: pass

@@ -268,8 +268,9 @@
                         <h1 style="margin:0;">🗑️ Papelera</h1>
                         <span id="papelera-contador" style="background:#fee2e2; color:#991b1b; padding:4px 12px; border-radius:20px; font-weight:800; font-size:14px;">0</span>
                     </div>
-                    <div style="display:flex; gap:10px;">
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
                         <button class="btn-accion" style="background:#22c55e;" onclick="App.restaurarTodoPapelera()">♻️ Restaurar todo</button>
+                        <button class="btn-accion" style="background:#f59e0b;" onclick="App.descatalogarTodoPapelera()">⛔ Todos a Descatalogados</button>
                         <button class="btn-accion" style="background:#b91c1c;" onclick="App.vaciarPapelera()">🔥 Vaciar papelera</button>
                         <button class="btn-secundario" onclick="App.nav('vista-lista')">🔙 Volver</button>
                     </div>
