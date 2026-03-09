@@ -244,7 +244,12 @@ def papelera(id_db: int):
 
 @app.post("/api/troqueles/{id_db}/restaurar")
 def restaurar(id_db: int):
-    supabase.table("troqueles").update({"estado_activo": "Activo"}).eq("id", id_db).execute()
+    # Restaurar: vuelve a activo y resetea estado a EN ALMACEN
+    # (por si tenía algún estado inconsistente antes de entrar en papelera)
+    supabase.table("troqueles").update({
+        "estado_activo": "Activo",
+        "estado": "EN ALMACEN"
+    }).eq("id", id_db).execute()
     return {"ok": True}
 
 @app.post("/api/troqueles/{id_db}/reactivar")

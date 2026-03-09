@@ -703,6 +703,8 @@ const App = {
         await App.cargarPapelera();
     },
 
+    datosPapelera: [],
+
     cargarPapelera: async () => {
         const tbody = document.getElementById('tabla-papelera-body');
         const counter = document.getElementById('papelera-contador');
@@ -710,13 +712,13 @@ const App = {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando... ⏳</td></tr>';
         try {
             const res = await fetch('/api/troqueles?ver_papelera=true');
-            const data = await res.json();
-            if(counter) counter.innerText = data.length;
-            if(data.length === 0) {
+            App.datosPapelera = await res.json();
+            if(counter) counter.innerText = App.datosPapelera.length;
+            if(App.datosPapelera.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding:40px; color:#64748b;">La papelera está vacía.</td></tr>';
                 return;
             }
-            tbody.innerHTML = data.map(t => `<tr>
+            tbody.innerHTML = App.datosPapelera.map(t => `<tr>
                 <td style="font-weight:900; color:#64748b;">${t.id_troquel}</td>
                 <td>${t.nombre}</td>
                 <td style="color:#0369a1;">${t.codigos_articulo || '-'}</td>
@@ -746,28 +748,25 @@ const App = {
     },
 
     vaciarPapelera: async () => {
-        const tbody = document.getElementById('tabla-papelera-body');
-        const filas = tbody ? tbody.querySelectorAll('tr[data-noempty]') : [];
-        // Obtener ids de la papelera actual
-        const res = await fetch('/api/troqueles?ver_papelera=true');
-        const data = await res.json();
-        if(data.length === 0) { App.mostrarToast("La papelera ya está vacía.", "error"); return; }
-        if(!confirm(`⚠️ ¿Eliminar DEFINITIVAMENTE los ${data.length} troqueles de la papelera? No hay marcha atrás.`)) return;
-        const ids = data.map(t => t.id);
+        if(App.datosPapelera.length === 0) { App.mostrarToast("La papelera ya está vacía.", "error"); return; }
+        if(!confirm(`⚠️ ¿Eliminar DEFINITIVAMENTE los ${App.datosPapelera.length} troqueles de la papelera? No hay marcha atrás.`)) return;
+        const ids = App.datosPapelera.map(t => t.id);
         await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids }) });
         App.mostrarToast("Papelera vaciada.");
+        App.datosPapelera = [];
         await App.cargarPapelera();
     },
 
     restaurarTodoPapelera: async () => {
-        const res = await fetch('/api/troqueles?ver_papelera=true');
-        const data = await res.json();
-        if(data.length === 0) return;
-        const ids = data.map(t => t.id);
+        if(App.datosPapelera.length === 0) { App.mostrarToast("La papelera está vacía.", "error"); return; }
+        if(!confirm(`¿Restaurar los ${App.datosPapelera.length} troqueles al inventario?`)) return;
+        const ids = App.datosPapelera.map(t => t.id);
         await fetch('/api/troqueles/bulk/restaurar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids }) });
-        App.mostrarToast("Todos restaurados al inventario.");
+        App.mostrarToast(`${ids.length} troqueles restaurados al inventario.`);
+        App.datosPapelera = [];
         await App.cargarPapelera();
     },
+
     
     crearFamilia: async () => { 
         const n = prompt("Nombre de la nueva Familia:"); 
