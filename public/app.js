@@ -895,129 +895,122 @@ const App = {
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
 
     // ============================================================
-    // FUNCIÓN GODEX - ENFOQUE CANVAS (v4)
-    // Genera cada etiqueta como imagen PNG mediante canvas a 203dpi
-    // (resolución estándar Godex G500). Chrome imprime la imagen
-    // tal cual, sin que CSS ni el driver puedan rotar ni escalar nada.
-    // En el diálogo de Chrome: Sin márgenes, escala 100%, el tamaño
-    // de papel debe coincidir con lo configurado en el driver Godex.
+    // FUNCIÓN GODEX - ENFOQUE CANVAS (v5)
+    // El driver Godex G500 ve el papel SIEMPRE con el lado corto
+    // como ancho. Por eso:
+    //   etiqueta "100x70" → driver ve 70mm ancho × 100mm alto  → layout VERTICAL
+    //   etiqueta "50x23"  → driver ve 23mm ancho × 50mm alto   → layout VERTICAL
+    // Dibujamos el canvas exactamente así y le decimos a Chrome
+    // el mismo tamaño en @page. Márgenes = Ninguno, Escala = 100%.
     // ============================================================
     imprimirEtiquetasGodex: (items, tamano = '50x23') => {
-        // 203 dpi => 1mm = 203/25.4 = 7.992 px ≈ 8 px/mm
-        const DPI = 203;
-        const PX_MM = DPI / 25.4;
 
-        // Dimensiones físicas de la etiqueta en mm (ancho x alto)
-        // Usamos siempre la orientación HORIZONTAL (apaisada)
-        let W_MM, H_MM;
-        if (tamano === '100x70') { W_MM = 100; H_MM = 70; }
-        else                     { W_MM = 50;  H_MM = 23; }
+        // 203 dpi estándar Godex G500  →  1 mm = 203/25.4 ≈ 7.99 px
+        const PX_MM = 203 / 25.4;
 
-        const W = Math.round(W_MM * PX_MM);
-        const H = Math.round(H_MM * PX_MM);
+        // Dimensiones TAL COMO EL DRIVER LAS VE (ancho × alto en mm)
+        const W_MM = tamano === '100x70' ? 70  : 23;
+        const H_MM = tamano === '100x70' ? 100 : 50;
+        const W    = Math.round(W_MM * PX_MM);
+        const H    = Math.round(H_MM * PX_MM);
 
-        // Genera el canvas de UNA etiqueta y devuelve Promise<dataURL>
-        // QRious dibuja en un <canvas> propio, así no hay problema de carga de imagen
+        const pad  = Math.round(2   * PX_MM);   // margen interior 2 mm
+
         const dibujarEtiqueta = (t) => {
-            return new Promise((resolve) => {
-                const canvas = document.createElement('canvas');
-                canvas.width  = W;
-                canvas.height = H;
-                const ctx = canvas.getContext('2d');
+            const canvas = document.createElement('canvas');
+            canvas.width  = W;
+            canvas.height = H;
+            const ctx = canvas.getContext('2d');
 
-                // Fondo blanco
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, W, H);
+            // Fondo blanco
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, W, H);
 
-                // --- QR: dibujamos QRious en su propio canvas y lo copiamos ---
-                const qrPx = Math.round(H * 0.80);
-                const qrX  = Math.round(H * 0.10);
-                const qrY  = Math.round((H - qrPx) / 2);
+            // ── QR centrado horizontalmente, en la mitad superior ──
+            const qrSize  = W - pad * 2;                  // QR ocupa el ancho útil
+            const qrX     = pad;
+            const qrY     = pad;
+            const qrCanvas = document.createElement('canvas');
+            new QRious({ element: qrCanvas, value: t.id.toString(), size: qrSize, level: 'M', background: 'white', foreground: 'black' });
+            ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
 
-                const qrCanvas = document.createElement('canvas');
-                new QRious({ element: qrCanvas, value: t.id.toString(), size: qrPx, level: 'M', background: 'white', foreground: 'black' });
-                ctx.drawImage(qrCanvas, qrX, qrY, qrPx, qrPx);
+            // ── TEXTO debajo del QR ──
+            const txtY0   = qrY + qrSize + Math.round(1.5 * PX_MM);
+            const txtMaxW = W - pad * 2;
+            let   curY    = txtY0;
 
-                // --- TEXTO ---
-                const txtX    = qrX + qrPx + Math.round(2 * PX_MM);
-                const txtMaxW = W - txtX - Math.round(1 * PX_MM);
-                let   curY    = qrY;
+            const escribir = (texto, fMM, bold, color) => {
+                const fs = Math.round(fMM * PX_MM);
+                ctx.fillStyle = color || '#000000';
+                ctx.font = `${bold ? '900' : '400'} ${fs}px Arial`;
+                let txt = String(texto || '');
+                while (ctx.measureText(txt).width > txtMaxW && txt.length > 1)
+                    txt = txt.slice(0, -1);
+                if (txt.length < String(texto || '').length) txt = txt.slice(0, -1) + '…';
+                ctx.fillText(txt, pad, curY + fs);
+                curY += fs + Math.round(1 * PX_MM);
+            };
 
-                const escribir = (texto, fontSize, bold, color, lineH) => {
-                    ctx.fillStyle = color || '#000000';
-                    ctx.font = `${bold ? '900' : 'normal'} ${fontSize}px Arial`;
-                    let txt = String(texto || '');
-                    while (ctx.measureText(txt).width > txtMaxW && txt.length > 1) txt = txt.slice(0, -1);
-                    if (txt !== String(texto || '')) txt = txt.slice(0, -1) + '…';
-                    ctx.fillText(txt, txtX, curY + fontSize);
-                    curY += lineH;
-                };
+            if (tamano === '100x70') {
+                escribir('TROQUEL ' + t.id_troquel,       5.5, true,  '#000000');
+                escribir('UBI: '    + (t.ubicacion||'-'), 5.0, true,  '#000000');
+                escribir(t.nombre,                        3.5, false, '#333333');
+                if (t.codigos_articulo) escribir('Art: ' + t.codigos_articulo, 3.0, true, '#555555');
+            } else {
+                escribir('TRQ ' + t.id_troquel,           3.2, true,  '#000000');
+                escribir('UBI: ' + (t.ubicacion||'-'),    3.0, true,  '#000000');
+                escribir(t.nombre,                        2.4, false, '#333333');
+                if (t.codigos_articulo) escribir('Art: ' + t.codigos_articulo, 2.2, true, '#555555');
+            }
 
-                if (tamano === '100x70') {
-                    const f1 = Math.round(6.5 * PX_MM);
-                    const f2 = Math.round(5.5 * PX_MM);
-                    const f3 = Math.round(3.5 * PX_MM);
-                    escribir('TROQUEL ' + t.id_troquel,      f1, true,  '#000000', f1 + Math.round(1.5*PX_MM));
-                    escribir('UBI: ' + (t.ubicacion || '-'), f2, true,  '#000000', f2 + Math.round(1.5*PX_MM));
-                    escribir(t.nombre,                       f3, false, '#333333', f3 + Math.round(1.2*PX_MM));
-                    if (t.codigos_articulo) escribir('Art: ' + t.codigos_articulo, f3, true, '#555555', 0);
-                } else {
-                    const f1 = Math.round(2.8 * PX_MM);
-                    const f2 = Math.round(2.4 * PX_MM);
-                    const f3 = Math.round(2.0 * PX_MM);
-                    escribir('TROQUEL ' + t.id_troquel,      f1, true,  '#000000', f1 + Math.round(0.8*PX_MM));
-                    escribir('UBI: ' + (t.ubicacion || '-'), f1, true,  '#000000', f1 + Math.round(0.8*PX_MM));
-                    escribir(t.nombre,                       f2, false, '#333333', f2 + Math.round(0.7*PX_MM));
-                    if (t.codigos_articulo) escribir('Art: ' + t.codigos_articulo, f3, true, '#555555', 0);
-                }
-
-                resolve(canvas.toDataURL('image/png'));
-            });
+            return canvas.toDataURL('image/png');
         };
 
-        // Construye la página de impresión de forma async
-        const printWindow = window.open('', '_blank', 'width=700,height=600');
+        const printWindow = window.open('', '_blank', 'width=700,height=700');
         if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
 
+        // Generamos todas las imágenes antes de escribir el HTML
+        const dataUrls  = items.map(t => dibujarEtiqueta(t));
+        const imgsHtml  = dataUrls.map(src =>
+            `<div class="et"><img src="${src}" width="${W_MM}mm" height="${H_MM}mm"></div>`
+        ).join('');
+
         const css = `
-            * { margin:0; padding:0; box-sizing:border-box; }
-            @page { size: ${W_MM}mm ${H_MM}mm; margin: 0; }
-            body { background: #334155; }
-            .wrap { display:flex; flex-direction:column; align-items:center; padding:20px; gap:12px; }
-            .etiqueta img { display:block; width:${W_MM}mm; height:${H_MM}mm; }
-            .btn { background:#14b8a6; color:white; padding:14px 28px; border:none; border-radius:8px; font-size:17px; font-weight:bold; cursor:pointer; }
-            .aviso { color:#e2e8f0; font-family:Arial; font-size:13px; text-align:center; background:#1e3a5f; padding:10px 20px; border-radius:8px; max-width:480px; }
+            *   { margin:0; padding:0; box-sizing:border-box; }
+            @page { size: ${W_MM}mm ${H_MM}mm; margin: 0mm; }
+            body { background:#334155; font-family:Arial,sans-serif; }
+            .wrap{ display:flex; flex-direction:column; align-items:center; padding:16px; gap:10px; }
+            .et  { background:#fff; line-height:0; }
+            .et img { display:block; width:${W_MM}mm; height:${H_MM}mm; }
+            .btn { background:#14b8a6; color:#fff; padding:12px 26px; border:none;
+                   border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer; }
+            .nota{ color:#e2e8f0; font-size:12px; text-align:center;
+                   background:#1e3a5f; padding:8px 16px; border-radius:6px; max-width:420px; line-height:1.5; }
             @media print {
                 body { background:#fff; }
                 .no-print { display:none !important; }
                 .wrap { padding:0; gap:0; }
-                .etiqueta img { width:${W_MM}mm; height:${H_MM}mm; page-break-after:always; }
+                .et  { page-break-after:always; }
+                .et img { width:${W_MM}mm; height:${H_MM}mm; }
             }
         `;
 
-        // Generar todos los canvas en paralelo y luego construir el HTML
-        Promise.all(items.map(t => dibujarEtiqueta(t))).then(dataUrls => {
-            let imgsHtml = dataUrls.map(src => `<div class="etiqueta"><img src="${src}"></div>`).join('');
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+            <title>Godex ${tamano}</title><style>${css}</style></head>
+            <body><div class="wrap">
+                <button class="btn no-print" onclick="window.print()">🖨️ Imprimir Godex ${tamano}</button>
+                <p class="nota no-print">
+                    En Chrome: <b>Márgenes → Ninguno</b> · <b>Escala → 100%</b><br>
+                    Tamaño de papel en el driver Godex: <b>${W_MM} × ${H_MM} mm</b>
+                </p>
+                ${imgsHtml}
+            </div></body></html>`;
 
-            const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-                <title>Godex ${tamano}</title><style>${css}</style></head>
-                <body><div class="wrap">
-                    <button class="btn no-print" onclick="window.print()">🖨️ Imprimir en Godex (${tamano})</button>
-                    <div class="aviso no-print">
-                        ⚙️ En el diálogo de Chrome:
-                        <strong>Tamaño</strong> → ${W_MM}×${H_MM}mm &nbsp;|&nbsp;
-                        <strong>Márgenes</strong> → Ninguno &nbsp;|&nbsp;
-                        <strong>Escala</strong> → 100%
-                    </div>
-                    ${imgsHtml}
-                </div></body></html>`;
-
-            printWindow.document.write(html);
-            printWindow.document.close();
-            const modalQr = document.getElementById('modal-qr');
-            if (modalQr) modalQr.classList.add('oculto');
-            setTimeout(() => { printWindow.print(); }, 900);
-        });
+        printWindow.document.write(html);
+        printWindow.document.close();
+        const modalQr = document.getElementById('modal-qr');
+        if (modalQr) modalQr.classList.add('oculto');
+        setTimeout(() => { printWindow.print(); }, 800);
     },
 
     imprimirLoteQRs: (tamano = '50x23') => { if(App.seleccionados.size === 0) return; const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); App.imprimirEtiquetasGodex(itemsToPrint, tamano); App.limpiarSeleccion(); },
