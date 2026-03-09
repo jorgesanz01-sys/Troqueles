@@ -5,7 +5,7 @@ from supabase import create_client, Client
 import uuid
 import os
 import tempfile
-import re  # Añadido para poder extraer números de textos con letras
+import re
 from datetime import datetime, timedelta
 
 app = FastAPI()
@@ -36,6 +36,7 @@ class TroquelData(BaseModel):
     tamano_final: Optional[str] = ""
     observaciones: Optional[str] = ""
     archivos: List[Dict[str, Any]] = []
+    fecha_descatalogado: Optional[str] = None  # NUEVO: fecha en que se descatalogó
 
 class MovimientoLote(BaseModel):
     ids: List[int]
@@ -49,6 +50,9 @@ class BulkUpdate(BaseModel):
 class BulkIds(BaseModel):
     ids: List[int]
 
+class ReactivarData(BaseModel):
+    ubicacion: Optional[str] = None
+
 # --- GET ---
 @app.get("/api/troqueles")
 def leer_troqueles(ver_papelera: bool = False):
@@ -59,6 +63,16 @@ def leer_troqueles(ver_papelera: bool = False):
         query = query.or_("estado_activo.eq.Activo,estado_activo.is.null")
         
     return query.order("id_troquel", desc=True).execute().data
+
+@app.get("/api/troqueles/descatalogados")
+def leer_descatalogados():
+    """Troqueles descatalogados: en palets, matrícula conservada, reactivables."""
+    return (supabase.table("troqueles")
+        .select("*")
+        .eq("estado", "DESCATALOGADO")
+        .or_("estado_activo.eq.Activo,estado_activo.is.null")
+        .order("fecha_descatalogado", desc=True)
+        .execute().data)
 
 @app.get("/api/categorias")
 def leer_cat(): return supabase.table("categorias").select("*").order("nombre").execute().data
@@ -77,9 +91,8 @@ def siguiente_numero(categoria_id: int):
     res = supabase.table("troqueles").select("id_troquel").eq("categoria_id", categoria_id).execute().data
     max_num = 0
     for t in res:
-        if not t.get('id_troquel'): continue
-        # MAGIA: Extraer solo los números, ignorando letras (Ej: "TRQ-45" -> 45)
-        nums = re.findall(r'\d+', str(t['id_troquel']))
+        if not t.get("id_troquel"): continue
+        nums = re.findall(r"\d+", str(t["id_troquel"]))
         if nums:
             try:
                 val = int(nums[-1])
@@ -95,20 +108,20 @@ def troqueles_inactivos(meses: int = 12):
     
     ultimos_mov = {}
     for h in historial:
-        tid = h['troquel_id']
+        tid = h["troquel_id"]
         if tid not in ultimos_mov:
-            ultimos_mov[tid] = h['fecha_hora'] 
+            ultimos_mov[tid] = h["fecha_hora"] 
             
     inactivos = []
     for t in troqueles:
-        if t.get('estado') == 'DESCATALOGADO': continue
-        tid = t['id']
+        if t.get("estado") == "DESCATALOGADO": continue
+        tid = t["id"]
         ultima_fecha = ultimos_mov.get(tid, "")
         if not ultima_fecha or ultima_fecha < fecha_limite:
-            t['ultima_fecha'] = ultima_fecha
+            t["ultima_fecha"] = ultima_fecha
             inactivos.append(t)
             
-    inactivos.sort(key=lambda x: x['ultima_fecha'] if x['ultima_fecha'] else "")
+    inactivos.sort(key=lambda x: x["ultima_fecha"] if x["ultima_fecha"] else "")
     return inactivos
 
 @app.get("/api/estadisticas/usados")
@@ -121,7 +134,7 @@ def troqueles_usados(fecha_inicio: str, fecha_fin: str):
     
     uso_dict = {}
     for h in historial:
-        tid = h['troquel_id']
+        tid = h["troquel_id"]
         t_data = h.get("troqueles") or {}
         
         if tid not in uso_dict:
@@ -163,7 +176,7 @@ def crear_fam(d: EntidadAux):
 async def subir_foto(file: UploadFile = File(...)):
     temp_path = None
     try:
-        ext = file.filename.split('.')[-1]
+        ext = file.filename.split(".")[-1]
         id_fichero = str(uuid.uuid4())
         nombre_fichero = f"{id_fichero}.{ext}"
         
@@ -195,7 +208,7 @@ def crear_troquel(t: TroquelData):
     d["estado_activo"] = "Activo"
     if not d["ubicacion"]: d["ubicacion"] = d["id_troquel"]
     res = supabase.table("troqueles").insert(d).execute()
-    if res.data: registrar_log(res.data[0]['id'], "ALTA", "-", d["ubicacion"])
+    if res.data: registrar_log(res.data[0]["id"], "ALTA", "-", d["ubicacion"])
     return res
 
 @app.post("/api/troqueles/importar")
@@ -208,10 +221,20 @@ def importar_masivo(lista: List[TroquelData]):
 
 @app.put("/api/troqueles/{id_db}")
 def editar_troquel(id_db: int, t: TroquelData):
-    prev = supabase.table("troqueles").select("ubicacion").eq("id", id_db).execute().data
-    ubi_old = prev[0]['ubicacion'] if prev else ""
-    res = supabase.table("troqueles").update(t.dict()).eq("id", id_db).execute()
-    if ubi_old != t.ubicacion: registrar_log(id_db, "MOVIDO", ubi_old, t.ubicacion)
+    prev = supabase.table("troqueles").select("ubicacion, estado").eq("id", id_db).execute().data
+    ubi_old = prev[0]["ubicacion"] if prev else ""
+    estado_old = prev[0]["estado"] if prev else ""
+    
+    data = t.dict()
+    res = supabase.table("troqueles").update(data).eq("id", id_db).execute()
+    
+    # Registrar movimiento si cambió ubicación
+    if ubi_old != t.ubicacion:
+        accion = "DESCATALOGADO" if t.estado == "DESCATALOGADO" else "MOVIDO"
+        registrar_log(id_db, accion, ubi_old, t.ubicacion)
+    elif estado_old != t.estado and t.estado == "DESCATALOGADO":
+        registrar_log(id_db, "DESCATALOGADO", ubi_old, t.ubicacion)
+    
     return res
 
 @app.delete("/api/troqueles/{id_db}")
@@ -224,14 +247,30 @@ def restaurar(id_db: int):
     supabase.table("troqueles").update({"estado_activo": "Activo"}).eq("id", id_db).execute()
     return {"ok": True}
 
+@app.post("/api/troqueles/{id_db}/reactivar")
+def reactivar_troquel(id_db: int, d: ReactivarData):
+    """Saca un troquel de descatalogado y lo devuelve al inventario activo."""
+    prev = supabase.table("troqueles").select("ubicacion, id_troquel").eq("id", id_db).execute().data
+    ubi_old = prev[0]["ubicacion"] if prev else "PALET"
+    # Si no se pasa ubicación nueva, usamos la matrícula como ubicación temporal
+    nueva_ubi = (d.ubicacion or "").strip() or (prev[0].get("id_troquel", "ALMACEN") if prev else "ALMACEN")
+    
+    supabase.table("troqueles").update({
+        "estado": "EN ALMACEN",
+        "ubicacion": nueva_ubi.upper(),
+        "fecha_descatalogado": None
+    }).eq("id", id_db).execute()
+    registrar_log(id_db, "REACTIVADO", ubi_old, nueva_ubi.upper())
+    return {"ok": True}
+
 @app.post("/api/movimientos/lote")
 def mover_lote(d: MovimientoLote):
     for id_db in d.ids:
-        st = "EN PRODUCCION" if d.accion == 'SALIDA' else "EN ALMACEN"
-        ubi = "PRODUCCION" if d.accion == 'SALIDA' else (d.ubicacion_destino or "ALMACEN")
+        st = "EN PRODUCCION" if d.accion == "SALIDA" else "EN ALMACEN"
+        ubi = "PRODUCCION" if d.accion == "SALIDA" else (d.ubicacion_destino or "ALMACEN")
         
         prev = supabase.table("troqueles").select("ubicacion").eq("id", id_db).execute().data
-        ubi_old = prev[0]['ubicacion'] if prev else ""
+        ubi_old = prev[0]["ubicacion"] if prev else ""
         
         supabase.table("troqueles").update({"estado": st, "ubicacion": ubi}).eq("id", id_db).execute()
         registrar_log(id_db, d.accion, ubi_old, ubi)
@@ -284,7 +323,8 @@ def restaurar_backup(datos: List[Dict[str, Any]]):
     campos_validos = {
         "id", "id_troquel", "nombre", "ubicacion", "estado", "estado_activo",
         "codigos_articulo", "referencias_ot", "categoria_id", "familia_id",
-        "tamano_troquel", "tamano_final", "observaciones", "archivos", "created_at"
+        "tamano_troquel", "tamano_final", "observaciones", "archivos", "created_at",
+        "fecha_descatalogado"
     }
     datos_limpios = []
     for d in datos:

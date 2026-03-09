@@ -82,7 +82,8 @@
                 <button class="menu-item" onclick="App.nav('vista-estadisticas', this); App.cargarEstadisticas(12)" title="Dashboard y Estadísticas">📈 <span class="menu-text">Estadísticas / Inactivos</span></button>
                 
                 <button class="menu-item" onclick="App.verPapelera()" style="color:#ef4444;" title="Papelera">🗑️ <span class="menu-text">Papelera</span></button>
-                
+                <button class="menu-item" onclick="App.verDescatalogados()" style="color:#f59e0b;" title="Descatalogados">⛔ <span class="menu-text">Descatalogados</span></button>
+
                 <div class="menu-divisor"></div>
                 <div class="sidebar-titulo menu-text">🛡️ COPIAS DE SEGURIDAD</div>
                 <button class="menu-item" onclick="App.exportarCopiaSeguridad()" title="Crear Copia (JSON)">💾 <span class="menu-text">Crear Copia Total (JSON)</span></button>
@@ -130,7 +131,6 @@
                         <option value="TODOS">Todos Estados</option>
                         <option value="EN ALMACEN">Almacén</option>
                         <option value="EN PRODUCCION">Producción</option>
-                        <option value="DESCATALOGADO">Obsoletos</option>
                     </select>
                     <div class="caja-buscador" style="flex:1; position:relative;">
                         <input type="text" id="buscador" placeholder="Buscar por Nombre, Artículo o Matrícula..." oninput="App.filtrar()" style="width:100%;">
@@ -476,6 +476,41 @@
             </div>
             
             <section id="vista-historial" class="vista oculto"><div class="header-modulo"><h1>Historial General</h1></div><div class="contenedor-tabla"><table class="tabla-pro"><thead><tr><th>Fecha</th><th>Troquel</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tabla-historial"></tbody></table></div></section>
+            <section id="vista-descatalogados" class="vista oculto">
+                <div class="header-modulo" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <h1 style="margin:0;">⛔ Troqueles Descatalogados</h1>
+                        <span id="desc-contador" style="background:#fef3c7; color:#92400e; padding:4px 12px; border-radius:20px; font-weight:800; font-size:14px;">0</span>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-secundario" onclick="App.nav('vista-lista')">🔙 Volver al Inventario</button>
+                        <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size:18px;">🌙</button>
+                    </div>
+                </div>
+
+                <div style="background:#fef3c7; border:1px solid #f59e0b; border-radius:8px; padding:15px; margin-bottom:20px; font-size:14px; color:#78350f;">
+                    <strong>ℹ️ ¿Qué son los descatalogados?</strong> Troqueles que ya no se usan habitualmente y están apilados en palets.
+                    Conservan su matrícula original y pueden <strong>reactivarse</strong> si vuelve a necesitarse el trabajo.
+                </div>
+
+                <div class="contenedor-tabla">
+                    <table class="tabla-pro">
+                        <thead>
+                            <tr>
+                                <th onclick="App.ordenarDesc('id_troquel')" style="cursor:pointer;">Matrícula ↕️</th>
+                                <th>Ubicación (Palet)</th>
+                                <th>Descripción</th>
+                                <th>Artículos / Cliente</th>
+                                <th onclick="App.ordenarDesc('fecha_descatalogado')" style="cursor:pointer;">Fecha Desc. ↕️</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-desc-body">
+                            <tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </main>
     </div>
     

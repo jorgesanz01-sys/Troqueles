@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V41 (CALIBRADOR GODEX + FUNCIONES QR RECUPERADAS)
+// ERP PACKAGING - LÓGICA V36 (AUTO-DETECTAR MÓVIL Y TOASTS)
 // =============================================================
 
 const App = {
@@ -123,6 +123,7 @@ const App = {
             
             App.iniciarTiempoReal();
 
+            // DETECCIÓN INTELIGENTE DE MÓVIL
             const params = new URLSearchParams(window.location.search);
             const esMovil = window.innerWidth <= 850 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
@@ -208,6 +209,7 @@ const App = {
         const est = document.getElementById('filtro-estado').value;
 
         let res = App.datos.filter(t => {
+            if(t.estado === 'DESCATALOGADO') return false; // tiene su propia vista
             const nCat = App.mapaCat[t.categoria_id] || '';
             const okTip = App.filtroTipo === 'TODOS' || nCat === App.filtroTipo;
             const okFam = fam === 'TODAS' || t.familia_id == fam;
@@ -874,176 +876,140 @@ const App = {
     limpiarBuscador: () => { document.getElementById('buscador').value=''; App.filtrar(); },
     ordenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
     descatalogar: async (id) => { 
-        if(confirm("¿Estás seguro de que deseas marcar este troquel como DESCATALOGADO?")) { 
-            const t = App.datos.find(x => x.id === id); 
-            let dataToSend = t;
-            if(!t) { const r = await fetch(`/api/troqueles`); const full = await r.json(); dataToSend = full.find(x => x.id === id); }
-            if(dataToSend) {
-                dataToSend.estado = "DESCATALOGADO"; 
-                dataToSend.archivos = App.parseArchivos(dataToSend.archivos);
-
-                await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dataToSend) }); 
-                App.mostrarToast("Troquel descatalogado.");
-                await App.cargarTodo(); 
-                if(!document.getElementById('vista-estadisticas').classList.contains('oculto')) App.cargarEstadisticas(document.getElementById('select-inactividad').value);
-            }
-        } 
+        const t = App.datos.find(x => x.id === id); if(!t) return;
+        const ubicacionPalet = prompt(
+            `¿Dónde se va a apilar "${t.id_troquel}"?\n` +
+            `(Ej: PALET-A, PALET-3, ZONA-DESC...)\n` +
+            `Ubicación actual: ${t.ubicacion}`,
+            'PALET-1'
+        );
+        if(ubicacionPalet === null) return; // cancelado
+        if(!ubicacionPalet.trim()) { App.mostrarToast("Debes indicar la ubicación del palet.", "error"); return; }
+        
+        const dataToSend = {
+            ...t,
+            estado: "DESCATALOGADO",
+            ubicacion: ubicacionPalet.trim().toUpperCase(),
+            fecha_descatalogado: new Date().toISOString().split('T')[0],
+            archivos: App.parseArchivos(t.archivos)
+        };
+        
+        await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dataToSend) }); 
+        App.mostrarToast(`Troquel ${t.id_troquel} descatalogado → ${ubicacionPalet.trim().toUpperCase()}`);
+        await App.cargarTodo(); 
+        if(!document.getElementById('vista-estadisticas').classList.contains('oculto')) App.cargarEstadisticas(document.getElementById('select-inactividad').value);
     },
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.mostrarToast("Lote movido."); App.limpiarSeleccion(); App.cargarTodo(); },
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.mostrarToast("Asignación masiva completada."); App.limpiarSeleccion(); App.cargarTodo(); } },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
 
-    // 🌟 NUEVO CALIBRADOR GODEX EXPERTO 🌟
+
+    // ============================================================
+    // FUNCIÓN GODEX - CANVAS HORIZONTAL (v6)
+    // Driver en landscape → papel sale ancho x alto (50x23 o 100x70).
+    // Canvas dibujado igual: W=ancho, H=alto a 203dpi.
+    // Layout: QR a la izquierda, texto a la derecha.
+    // Chrome: Márgenes=Ninguno, Escala=100%
+    // ============================================================
     imprimirEtiquetasGodex: (items, tamano = '50x23') => {
-        let printWindow = window.open('', '_blank', 'width=800,height=700');
+
+        const PX_MM = 203 / 25.4;  // 203 dpi → 7.99 px/mm
+
+        // Driver en landscape: W es el lado largo, H el corto
+        const W_MM = tamano === '100x70' ? 100 : 50;
+        const H_MM = tamano === '100x70' ? 70  : 23;
+        const W    = Math.round(W_MM * PX_MM);
+        const H    = Math.round(H_MM * PX_MM);
+        const pad  = Math.round(1.5 * PX_MM);
+
+        const dibujarEtiqueta = (t) => {
+            const canvas = document.createElement('canvas');
+            canvas.width  = W;
+            canvas.height = H;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, W, H);
+
+            // QR: cuadrado usando el 40% del ancho total, centrado verticalmente
+            const qrSize   = Math.round(W * 0.38);
+            const qrY      = Math.round((H - qrSize) / 2);
+            const qrCanvas = document.createElement('canvas');
+            new QRious({ element: qrCanvas, value: t.id.toString(), size: qrSize, level: 'M', background: 'white', foreground: 'black' });
+            ctx.drawImage(qrCanvas, pad, qrY, qrSize, qrSize);
+
+            // Texto a la derecha del QR
+            const txtX    = pad + qrSize + pad;
+            const txtMaxW = W - txtX - pad;
+            let   curY    = pad;
+
+            const escribir = (texto, fMM, bold, color) => {
+                const fs = Math.round(fMM * PX_MM);
+                if (curY + fs > H - pad) return;
+                ctx.fillStyle = color || '#000000';
+                ctx.font = `${bold ? '900' : '400'} ${fs}px Arial`;
+                let txt = String(texto || '');
+                while (ctx.measureText(txt).width > txtMaxW && txt.length > 1) txt = txt.slice(0, -1);
+                if (txt.length < String(texto || '').length) txt = txt.slice(0, -1) + '…';
+                ctx.fillText(txt, txtX, curY + fs);
+                curY += fs + Math.round(0.8 * PX_MM);
+            };
+
+            if (tamano === '100x70') {
+                escribir('TROQUEL ' + t.id_troquel,        6.0, true,  '#000000');
+                escribir('UBI: '    + (t.ubicacion||'- '), 5.5, true,  '#000000');
+                escribir(t.nombre,                          4.0, false, '#333333');
+                if (t.codigos_articulo) escribir('Art: ' + t.codigos_articulo, 3.5, true, '#555555');
+            } else {
+                escribir('TROQUEL ' + t.id_troquel,        2.8, true,  '#000000');
+                escribir('UBI: '    + (t.ubicacion||'-'), 2.6, true,  '#000000');
+                escribir(t.nombre,                          2.2, false, '#333333');
+                if (t.codigos_articulo) escribir('Art: ' + t.codigos_articulo, 2.0, true, '#555555');
+            }
+
+            return canvas.toDataURL('image/png');
+        };
+
+        const printWindow = window.open('', '_blank', 'width=750,height=600');
         if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
-        
-        let w = 50, h = 23, qrSize = 150, p = 1;
-        let cssLabel = '';
 
-        if (tamano === '100x70') {
-            w = 100; h = 70; qrSize = 300; p = 3;
-            cssLabel = `.qr { width: 40mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 38mm; height: 38mm; } .text { width: 55mm; padding-left: 2mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 18pt; font-weight: 900; line-height: 1.1; margin-bottom: 6px; color: black; } .ubi { font-size: 16pt; font-weight: 900; line-height: 1.1; margin-bottom: 6px; color: black; text-transform: uppercase; } .nom { font-size: 11pt; line-height: 1.2; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; margin-bottom: 6px; } .arts { font-size: 10pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }`;
-        } else {
-            w = 50; h = 23; qrSize = 150; p = 1;
-            cssLabel = `.qr { width: 19mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 18mm; height: 18mm; } .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } .ubi { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 3px; color: black; text-transform: uppercase; } .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 2px; } .arts { font-size: 6pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }`;
-        }
+        const dataUrls = items.map(t => dibujarEtiqueta(t));
+        const imgsHtml = dataUrls.map(src => `<div class="et"><img src="${src}"></div>`).join('');
 
-        let html = `<!DOCTYPE html><html><head><title>Impresión Godex ${tamano}</title>
-        <style>
-            body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #334155; }
-            ${cssLabel}
-            
-            /* Panel de control */
-            .toolbar { background: #1e293b; padding: 20px; color: white; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4); margin-bottom: 20px; font-family: sans-serif; }
-            .panel-ajustes { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; display: inline-block; text-align: left; margin-bottom: 15px; border: 1px solid #475569; }
-            .btn-small { background: #475569; color: white; border: none; padding: 8px 12px; margin: 0 2px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-            .btn-small:hover { background: #64748b; }
-            .btn-small.active { background: #14b8a6; box-shadow: 0 0 0 2px white; }
-            .btn { background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%; max-width: 300px; }
-            .btn:hover { background: #1d4ed8; }
-            
-            .contenedor-etiquetas { display: flex; flex-direction: column; align-items: center; padding-bottom: 40px; gap: 20px; }
-            
-            @media screen { .label { box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px dashed #ccc; } }
+        const css = `
+            * { margin:0; padding:0; box-sizing:border-box; }
+            @page { size:${W_MM}mm ${H_MM}mm; margin:0; }
+            body { background:#334155; font-family:Arial,sans-serif; }
+            .wrap { display:flex; flex-direction:column; align-items:center; padding:16px; gap:12px; }
+            .et img { display:block; width:${W_MM}mm; height:${H_MM}mm; }
+            .btn { background:#14b8a6; color:#fff; padding:12px 26px; border:none; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer; }
+            .nota { color:#e2e8f0; font-size:12px; text-align:center; background:#1e3a5f; padding:8px 16px; border-radius:6px; max-width:460px; line-height:1.6; }
             @media print {
-                .no-print { display: none !important; }
-                body { background: white !important; }
-                .contenedor-etiquetas { padding: 0; display: block; gap: 0; }
-                .label { border: none !important; box-shadow: none !important; margin-bottom: 0 !important; }
+                body { background:#fff; }
+                .no-print { display:none !important; }
+                .wrap { padding:0; gap:0; }
+                .et { page-break-after:always; }
+                .et img { display:block; width:${W_MM}mm; height:${H_MM}mm; }
             }
-        </style>
-        
-        <style id="estilos-dinamicos"></style>
-        
-        <script>
-            let rotacion = 0;
-            let papelInv = false;
-            const w = ${w};
-            const h = ${h};
-            const p = ${p};
-
-            function setRot(deg) { rotacion = deg; render(); }
-            function setPapel(inv) { papelInv = inv; render(); }
-
-            function render() {
-                // Actualizar botones visualmente
-                document.querySelectorAll('.rot-btn').forEach(b => b.classList.remove('active'));
-                const br = document.getElementById('btn-r' + rotacion);
-                if(br) br.classList.add('active');
-                
-                document.querySelectorAll('.pap-btn').forEach(b => b.classList.remove('active'));
-                const bp = document.getElementById('btn-p' + (papelInv ? 'V' : 'H'));
-                if(bp) bp.classList.add('active');
-
-                // Aplicar la lógica mágica
-                const styleEl = document.getElementById('estilos-dinamicos');
-                let pageW = papelInv ? h : w;
-                let pageH = papelInv ? w : h;
-                
-                let contentW = (rotacion === 90 || rotacion === 270) ? h : w;
-                let contentH = (rotacion === 90 || rotacion === 270) ? w : h;
-
-                styleEl.innerHTML = \`
-                    @page { size: \${pageW}mm \${pageH}mm; margin: 0; }
-                    .label { 
-                        width: \${pageW}mm; 
-                        height: \${pageH}mm; 
-                        page-break-after: always; 
-                        position: relative; 
-                        overflow: hidden; 
-                        background: white;
-                    }
-                    .label-content {
-                        width: \${contentW}mm; 
-                        height: \${contentH}mm;
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%) rotate(\${rotacion}deg);
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                        padding: \${p}mm;
-                        box-sizing: border-box;
-                    }
-                \`;
-            }
-            window.onload = render;
-        </script>
-        </head><body>
-        
-        <div class="toolbar no-print">
-            <h2 style="margin: 0 0 10px 0;">⚙️ Calibración de Impresora Godex</h2>
-            <p style="font-size: 14px; margin-bottom: 20px;">Si la impresora corta la etiqueta o la saca girada, combina estas dos opciones <br>hasta que el diseño encaje exactamente con la forma en la que escupe tu papel.</p>
-            
-            <div class="panel-ajustes">
-                <div style="margin-bottom: 15px;">
-                    <strong style="display:inline-block; width: 160px; color:#94a3b8;">1. Girar Diseño:</strong>
-                    <button id="btn-r0" class="btn-small rot-btn active" onclick="setRot(0)">0º</button>
-                    <button id="btn-r90" class="btn-small rot-btn" onclick="setRot(90)">90º</button>
-                    <button id="btn-r180" class="btn-small rot-btn" onclick="setRot(180)">180º</button>
-                    <button id="btn-r270" class="btn-small rot-btn" onclick="setRot(270)">270º</button>
-                </div>
-                <div>
-                    <strong style="display:inline-block; width: 160px; color:#94a3b8;">2. Tamaño Papel:</strong>
-                    <button id="btn-pH" class="btn-small pap-btn active" onclick="setPapel(false)">Apaisado (${w}x${h})</button>
-                    <button id="btn-pV" class="btn-small pap-btn" onclick="setPapel(true)">Vertical (${h}x${w})</button>
-                </div>
-            </div>
-            <br>
-            <button class="btn" onclick="window.print()">🖨️ Probar Impresión</button>
-        </div>
-        
-        <div class="contenedor-etiquetas">
         `;
-        
-        items.forEach(t => {
-            const qr = new QRious({ value: t.id.toString(), size: qrSize, level: 'M' });
-            const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
-            html += `<div class="label"><div class="label-content"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div></div>`;
-        });
-        
-        html += `</div></body></html>`;
-        
+
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+            <title>Godex ${tamano}</title><style>${css}</style></head>
+            <body><div class="wrap">
+                <button class="btn no-print" onclick="window.print()">🖨️ Imprimir Godex (${W_MM}×${H_MM}mm)</button>
+                <p class="nota no-print">En Chrome: <b>Márgenes → Ninguno</b> · <b>Escala → 100%</b> · <b>Tamaño → ${W_MM}×${H_MM}mm</b></p>
+                ${imgsHtml}
+            </div></body></html>`;
+
         printWindow.document.write(html);
         printWindow.document.close();
-        
         const modalQr = document.getElementById('modal-qr');
-        if (modalQr) { modalQr.classList.add('oculto'); }
-
-        // 🚀 AUTO-IMPRESIÓN (Descomenta esta línea si quieres que se abra el cuadro de Windows directo)
+        if (modalQr) modalQr.classList.add('oculto');
         setTimeout(() => { printWindow.print(); }, 800);
     },
 
-    // AQUI ESTÁN LAS DOS FUNCIONES QUE BORRÉ SIN QUERER:
-    imprimirLoteQRs: (tamano = '50x23') => { 
-        if(App.seleccionados.size === 0) return; 
-        const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); 
-        App.imprimirEtiquetasGodex(itemsToPrint, tamano); 
-        App.limpiarSeleccion(); 
-    },
-    
+
+    imprimirLoteQRs: (tamano = '50x23') => { if(App.seleccionados.size === 0) return; const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); App.imprimirEtiquetasGodex(itemsToPrint, tamano); App.limpiarSeleccion(); },
     generarQR: (id_db) => { 
         const t = App.datos.find(x => x.id === id_db); if(!t) return;
         document.getElementById('modal-qr').classList.remove('oculto'); 
@@ -1053,11 +1019,76 @@ const App = {
         const elArts = document.getElementById('qr-texto-arts');
         if(elArts) { if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } else { elArts.style.display = "none"; } }
         new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
-        
         document.getElementById('btn-imprimir-qr-unico-50').onclick = () => { App.imprimirEtiquetasGodex([t], '50x23'); };
         document.getElementById('btn-imprimir-qr-unico-100').onclick = () => { App.imprimirEtiquetasGodex([t], '100x70'); };
     },
 
+
+    // ─── FLUJO DESCATALOGADOS ───────────────────────────────────
+    verDescatalogados: async () => {
+        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
+        document.getElementById('vista-descatalogados').classList.remove('oculto');
+        document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
+        
+        const tbody = document.getElementById('tabla-desc-body');
+        const counter = document.getElementById('desc-contador');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando... ⏳</td></tr>';
+        
+        try {
+            const res = await fetch('/api/troqueles/descatalogados');
+            const data = await res.json();
+            if(counter) counter.innerText = data.length;
+            
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">No hay troqueles descatalogados.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(t => {
+                const fecha = t.fecha_descatalogado 
+                    ? new Date(t.fecha_descatalogado).toLocaleDateString('es-ES') 
+                    : '<span style="color:#94a3b8">Sin fecha</span>';
+                return `<tr>
+                    <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td>
+                    <td style="color:#64748b; font-weight:bold;">${t.ubicacion || '-'}</td>
+                    <td>${t.nombre}</td>
+                    <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                    <td style="color:#b91c1c; font-weight:bold;">${fecha}</td>
+                    <td style="white-space:nowrap;">
+                        <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${(t.nombre||'').replace(/'/g,'')}')" title="Historial">🕒</button>
+                        <button class="btn-accion" style="background:#16a34a; padding:4px 10px; font-size:12px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar.</td></tr>';
+        }
+    },
+
+    reactivar: async (id) => {
+        const nuevaUbi = prompt(
+            '¿En qué ubicación de estantería se coloca este troquel?\n(Déjalo vacío para asignar después)',
+            ''
+        );
+        if(nuevaUbi === null) return; // cancelado
+        
+        try {
+            const res = await fetch(`/api/troqueles/${id}/reactivar`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ ubicacion: nuevaUbi.trim().toUpperCase() || null })
+            });
+            if(res.ok) {
+                App.mostrarToast('Troquel reactivado y de vuelta al inventario activo.');
+                await App.cargarTodo();
+                App.verDescatalogados();
+            } else {
+                App.mostrarToast('Error al reactivar el troquel.', 'error');
+            }
+        } catch(e) {
+            App.mostrarToast('Error de red.', 'error');
+        }
+    },
+    // ────────────────────────────────────────────────────────────
     limpiarDuplicadosExactos: async () => {
         if(confirm("⚠️ ¿Estás seguro? Esto escaneará toda tu base de datos y borrará los troqueles que sean COPIAS EXACTAS.")) {
             const btn = document.getElementById('btn-limpiar-dup');
