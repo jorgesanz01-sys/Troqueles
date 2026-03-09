@@ -6,7 +6,6 @@
     <title>PACKAGING | Gestión de Troqueles</title>
 
     <link rel="icon" type="image/png" href="icon.png?v=1">
-    
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     
@@ -22,10 +21,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     
     <style>
-        /* 🛠️ FIX PERFECCIONISTA: Evita que los márgenes ensanchen la pantalla en el móvil */
         *, *::before, *::after { box-sizing: border-box; }
 
-        /* MAGIA DEL MENÚ DESPLEGABLE */
         #sidebar { transition: width 0.3s ease; position: relative; overflow-x: hidden; }
         #sidebar.colapsado { width: 75px !important; }
         #sidebar.colapsado .menu-text { display: none !important; }
@@ -42,7 +39,6 @@
         .btn-toggle-sidebar:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
         #sidebar.colapsado .btn-toggle-sidebar { right: 22px; }
 
-        /* MODO OSCURO (DARK MODE) */
         body.dark-mode { background-color: #0f172a; color: #f8fafc; }
         body.dark-mode .main-content { background-color: #1e293b; color: #f8fafc; }
         body.dark-mode .header-modulo { color: #f8fafc; border-bottom-color: #334155; }
@@ -59,7 +55,6 @@
         body.dark-mode h2[style*="color:#0f172a"] { color: #f8fafc !important; }
         body.dark-mode .btn-secundario { background: #334155 !important; color: white !important; border-color: #475569 !important; }
         
-        /* TOASTS (NOTIFICACIONES) */
         #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
     </style>
 </head>
@@ -80,18 +75,17 @@
                 <button class="menu-item" onclick="App.abrirGestionAux()" title="Familias/Tipos">⚙️ <span class="menu-text">Familias/Tipos</span></button>
                 <button class="menu-item" onclick="App.nav('vista-historial', this); App.cargarHistorial()" title="Historial General">📝 <span class="menu-text">Historial General</span></button>
                 <button class="menu-item" onclick="App.nav('vista-estadisticas', this); App.cargarEstadisticas(12)" title="Dashboard y Estadísticas">📈 <span class="menu-text">Estadísticas / Inactivos</span></button>
-                
-                <button class="menu-item" onclick="App.verPapelera()" style="color:#ef4444;" title="Papelera">🗑️ <span class="menu-text">Papelera</span></button>
                 <button class="menu-item" onclick="App.verDescatalogados()" style="color:#f59e0b;" title="Descatalogados">⛔ <span class="menu-text">Descatalogados</span></button>
-
+                <button class="menu-item" onclick="App.verPapelera()" style="color:#ef4444;" title="Papelera">🗑️ <span class="menu-text">Papelera</span></button>
+                
                 <div class="menu-divisor"></div>
                 <div class="sidebar-titulo menu-text">🛡️ COPIAS DE SEGURIDAD</div>
                 <button class="menu-item" onclick="App.exportarCopiaSeguridad()" title="Crear Copia (JSON)">💾 <span class="menu-text">Crear Copia Total (JSON)</span></button>
                 <button class="menu-item" onclick="document.getElementById('input-backup').click()" title="Restaurar Copia">🔄 <span class="menu-text">Restaurar Copia</span></button>
                 <input type="file" id="input-backup" accept=".json" style="display:none;" onchange="App.restaurarCopiaSeguridad(this)">
 
-            <div class="menu-divisor"></div>
-            <div class="sidebar-titulo menu-text">📤 IMPORTAR EXCEL</div>
+                <div class="menu-divisor"></div>
+                <div class="sidebar-titulo menu-text">📤 IMPORTAR EXCEL</div>
                 <div style="padding: 5px 20px;" class="menu-text">
                     <select id="select-import-tipo" class="sidebar-select">
                         <option value="">Tipo al importar...</option>
@@ -109,13 +103,7 @@
             <section id="vista-lista" class="vista">
                 <div class="header-modulo" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <h1 id="titulo-lista" style="margin: 0;">Inventario</h1>
-                        <div id="herramientas-papelera" class="oculto" style="display:flex; gap:10px; padding:8px 15px; background:#fee2e2; border-radius:6px; border: 1px solid #f87171;">
-                            <button class="btn-secundario" onclick="App.salirPapelera()" style="background:white;">🔙 Volver</button>
-                            <div style="width:2px; background:#f87171; margin:0 5px;"></div>
-                            <button class="btn-accion" style="background:#22c55e;" onclick="App.restaurarTodoPapelera()">♻️ Restaurar TODO</button>
-                            <button class="btn-accion" style="background:#b91c1c;" onclick="App.vaciarPapelera()">🔥 Vaciar Papelera</button>
-                        </div>
+                        <h1 style="margin: 0;">Inventario Activo</h1>
                     </div>
                     <div style="display:flex; gap:10px;">
                         <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size:18px;" title="Modo Noche/Día">🌙</button>
@@ -144,7 +132,6 @@
                     <div id="acciones-normales" style="display:inline-flex; gap:5px; align-items:center;">
                         <button class="btn-secundario" style="background:white; border:2px solid #14b8a6; color:#0f766e; font-weight:bold; padding: 6px 10px;" onclick="App.imprimirLoteQRs('50x23')">🖨️ 50x23</button>
                         <button class="btn-secundario" style="background:white; border:2px solid #0284c7; color:#0284c7; font-weight:bold; padding: 6px 10px;" onclick="App.imprimirLoteQRs('100x70')">🖨️ 100x70</button>
-                        
                         <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
                         <button class="btn-accion" style="background:#e11d48;" onclick="App.moverLote('SALIDA')">🏭 A Prod.</button>
                         <button class="btn-accion" style="background:#16a34a;" onclick="App.moverLote('RETORNO')">✅ Devolver</button>
@@ -157,10 +144,6 @@
                         <button class="btn-accion" style="background:#ef4444;" onclick="App.borrarLote()">🗑️ Papelera</button>
                     </div>
 
-                    <div id="acciones-papelera" style="display:none; gap:5px; align-items:center;">
-                        <button class="btn-accion" style="background:#22c55e;" onclick="App.restaurarLote()">♻️ Restaurar Sel.</button>
-                        <button class="btn-accion" style="background:#b91c1c;" onclick="App.destruirLote()">🔥 Destruir Sel.</button>
-                    </div>
 
                     <button class="btn-secundario" style="margin-left:auto;" onclick="App.limpiarSeleccion()">Cancelar</button>
                 </div>
@@ -189,13 +172,12 @@
                 <div class="header-modulo" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                     <h1 style="margin: 0;">📈 Dashboard y Estadísticas</h1>
                     <div style="display:flex; gap:10px;">
-                        <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size:18px;" title="Modo Noche/Día">🌙</button>
+                        <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size:18px;">🌙</button>
                         <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; display:flex; align-items:center; gap:8px;">🔲 Pantalla Completa</button>
                     </div>
                 </div>
 
-                <div id="dashboard-resumen" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 25px;">
-                </div>
+                <div id="dashboard-resumen" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 25px;"></div>
 
                 <div class="header-modulo" style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
                     <h2>🔄 Troqueles Usados (Top Actividad)</h2>
@@ -211,29 +193,16 @@
                     </div>
                     <button class="btn-accion" style="background:#16a34a;" onclick="App.cargarUsadosFechas()">🔍 Consultar Periodo</button>
                 </div>
-
                 <div class="contenedor-tabla" style="margin-bottom: 40px;">
                     <table class="tabla-pro">
-                        <thead>
-                            <tr>
-                                <th>Matrícula</th>
-                                <th>Artículo</th>
-                                <th>Descripción</th>
-                                <th>Estado Actual</th>
-                                <th>Total Movimientos</th>
-                                <th>Último Movimiento en Periodo</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-estadisticas-usados">
-                            <tr><td colspan="6" class="text-center" style="color:#64748b;">Selecciona un rango de fechas y pulsa Buscar.</td></tr>
-                        </tbody>
+                        <thead><tr><th>Matrícula</th><th>Artículo</th><th>Descripción</th><th>Estado Actual</th><th>Total Movimientos</th><th>Último Movimiento en Periodo</th></tr></thead>
+                        <tbody id="tabla-estadisticas-usados"><tr><td colspan="6" class="text-center" style="color:#64748b;">Selecciona un rango de fechas y pulsa Buscar.</td></tr></tbody>
                     </table>
                 </div>
 
                 <div class="header-modulo" style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
                     <h2>⏳ Control de Obsolescencia (Sin Uso)</h2>
                 </div>
-                
                 <div style="margin-bottom: 20px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #cbd5e1; display:flex; align-items:center;">
                     <label style="font-weight:bold; margin-right:15px;">Mostrar troqueles SIN USO en los últimos:</label>
                     <select id="select-inactividad" onchange="App.cargarEstadisticas(this.value)" style="padding:10px; border-radius:5px; font-weight:bold; border:2px solid #0f766e; color:#0f766e;">
@@ -244,19 +213,9 @@
                         <option value="60">5 Años</option>
                     </select>
                 </div>
-
                 <div class="contenedor-tabla">
                     <table class="tabla-pro">
-                        <thead>
-                            <tr>
-                                <th>Matrícula</th>
-                                <th>Artículo</th>
-                                <th>Descripción</th>
-                                <th>Estado Actual</th>
-                                <th>Último Movimiento Registrado</th>
-                                <th width="150">Acción Rápida</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Matrícula</th><th>Artículo</th><th>Descripción</th><th>Estado Actual</th><th>Último Movimiento Registrado</th><th width="150">Acción Rápida</th></tr></thead>
                         <tbody id="tabla-estadisticas"></tbody>
                     </table>
                 </div>
@@ -278,9 +237,7 @@
                                     <button type="button" class="btn-secundario" onclick="App.crearTipo()">+</button>
                                 </div>
                             </div>
-                            
                             <div><label>Matrícula (Editable)</label><input type="text" id="f-matricula" required style="font-weight:900; border: 2px solid #0f766e;"></div>
-                            
                             <div><label>Ubicación</label><input type="text" id="f-ubicacion" required style="font-weight:900;"></div>
                             <div class="full-width" style="padding:15px; border:2px dashed #cbd5e1; background:#f8fafc;">
                                 <label style="display:block; margin-bottom:10px; font-weight:bold;">📎 Documentación</label>
@@ -305,12 +262,82 @@
                 </div>
             </section>
 
+            <section id="vista-papelera" class="vista oculto">
+                <div class="header-modulo" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <h1 style="margin:0;">🗑️ Papelera</h1>
+                        <span id="papelera-contador" style="background:#fee2e2; color:#991b1b; padding:4px 12px; border-radius:20px; font-weight:800; font-size:14px;">0</span>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-accion" style="background:#22c55e;" onclick="App.restaurarTodoPapelera()">♻️ Restaurar todo</button>
+                        <button class="btn-accion" style="background:#b91c1c;" onclick="App.vaciarPapelera()">🔥 Vaciar papelera</button>
+                        <button class="btn-secundario" onclick="App.nav('vista-lista')">🔙 Volver</button>
+                    </div>
+                </div>
+
+                <div style="background:#fee2e2; border:1px solid #f87171; border-radius:8px; padding:12px 15px; margin-bottom:20px; font-size:13px; color:#991b1b;">
+                    <strong>⚠️ Zona de eliminación.</strong> Los troqueles aquí no aparecen en el inventario.
+                    Puedes restaurarlos o eliminarlos definitivamente. La eliminación <strong>no tiene marcha atrás</strong>.
+                </div>
+
+                <div class="contenedor-tabla">
+                    <table class="tabla-pro">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Descripción</th>
+                                <th>Artículos</th>
+                                <th>Última ubicación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-papelera-body">
+                            <tr><td colspan="5" class="text-center" style="padding:40px; color:#64748b;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="vista-descatalogados" class="vista oculto">
+                <div class="header-modulo" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <h1 style="margin:0;">⛔ Troqueles Descatalogados</h1>
+                        <span id="desc-contador" style="background:#fef3c7; color:#92400e; padding:4px 12px; border-radius:20px; font-weight:800; font-size:14px;">0</span>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-secundario" onclick="App.nav('vista-lista')">🔙 Volver al Inventario</button>
+                        <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size:18px;">🌙</button>
+                    </div>
+                </div>
+                <div style="background:#fef3c7; border:1px solid #f59e0b; border-radius:8px; padding:15px; margin-bottom:20px; font-size:14px; color:#78350f;">
+                    <strong>ℹ️ ¿Qué son los descatalogados?</strong> Troqueles que ya no se usan habitualmente y están apilados en palets.
+                    Conservan su matrícula original y pueden <strong>reactivarse</strong> si vuelve a necesitarse el trabajo.
+                </div>
+                <div class="contenedor-tabla">
+                    <table class="tabla-pro">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Ubicación (Palet)</th>
+                                <th>Descripción</th>
+                                <th>Artículos / Cliente</th>
+                                <th>Fecha Desc.</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-desc-body">
+                            <tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             <section id="vista-movil" class="vista oculto" style="padding:15px; height:100dvh; overflow-y:auto; padding-bottom:120px; box-sizing:border-box;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                     <h1 style="margin:0; font-size:28px;">🦺 Operario</h1> 
                     <div style="display:flex; gap:10px;">
-                        <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size: 20px; padding: 10px;" title="Modo Noche/Día">🌙</button>
-                        <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size: 20px; padding: 10px;" title="Pantalla Completa">🔲</button>
+                        <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size: 20px; padding: 10px;">🌙</button>
+                        <button onclick="App.toggleFullScreen()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size: 20px; padding: 10px;">🔲</button>
                     </div>
                 </div>
                 <div class="grid-movil" style="grid-template-columns: 1fr 1fr;">
@@ -325,7 +352,6 @@
 
             <section id="vista-movil-detalle" class="vista oculto" style="padding:15px; background:#f8fafc; height:100dvh; overflow-y:auto; overflow-x:hidden; padding-bottom:120px; width:100%;">
                 <button class="btn-secundario" onclick="App.volverMenuMovil()" style="width:100%; margin-bottom:10px; padding:12px;">⬅️ Volver</button>
-                
                 <div style="background:white; border:2px solid #2563eb; border-radius:8px; padding:10px; text-align:center; margin-bottom:10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;">
                     <div style="width:48%; border-right:1px dashed #cbd5e1;">
                         <div style="font-size:10px; color:#64748b; font-weight:bold;">MATRÍCULA</div>
@@ -340,7 +366,6 @@
                         <div id="movil-estado" style="margin-top:5px;"></div>
                     </div>
                 </div>
-
                 <div style="background:white; border:1px solid #cbd5e1; border-radius:8px; padding:12px; margin-bottom:15px; font-size:13px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom: 10px;">
                         <div style="background:#f8fafc; padding:6px; border-radius:6px;"><b>Tipo:</b> <span id="movil-tipo"></span></div>
@@ -348,19 +373,16 @@
                         <div style="background:#f8fafc; padding:6px; border-radius:6px;"><b>Madera:</b> <span id="movil-madera"></span></div>
                         <div style="background:#f8fafc; padding:6px; border-radius:6px;"><b>Corte:</b> <span id="movil-corte"></span></div>
                     </div>
-                    
                     <div style="margin-bottom: 8px;"><b>OT:</b> <span id="movil-ot" style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:bold;"></span></div>
                     <div style="margin-bottom: 8px;"><b>Artículos:</b> <span id="movil-arts" style="color:#0369a1; font-weight:bold;"></span></div>
                     <div style="margin-bottom: 10px;"><b>Observaciones:</b> 
                         <div id="movil-obs" style="background:#fef3c7; border-left:3px solid #f59e0b; padding:6px; margin-top:4px; border-radius: 0 4px 4px 0;"></div>
                     </div>
-                    
                     <div style="border-top:1px solid #e2e8f0; padding-top:10px;">
                         <b style="color:#64748b;">📎 Documentos / Fotos:</b>
                         <div id="movil-galeria" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
                     </div>
                 </div>
-
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                     <button class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:12px; font-size:14px;" onclick="App.movilCambiarUbi()">📍 Cambiar Ubi</button>
                     <label class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:12px; display:flex; align-items:center; justify-content:center; font-size:14px;">
@@ -436,7 +458,6 @@
                             <button class="btn-accion" style="flex:1;" onclick="App.crearTipo()">➕ Nuevo Tipo</button>
                         </div>
                         <hr style="border:0; border-top:1px solid #cbd5e1; margin:10px 0;">
-                        
                         <div style="background:#fee2e2; padding:15px; border-radius:8px; border:1px solid #f87171;">
                             <h4 style="color:#b91c1c; margin-top:0;">Zona de Peligro</h4>
                             <p style="font-size:12px; color:#991b1b; margin-bottom:10px;">Si has subido el mismo Excel varias veces por error, este botón escaneará toda tu base de datos y eliminará los troqueles que sean copias exactas.</p>
@@ -454,7 +475,6 @@
             <div id="modal-qr" class="modal oculto">
                 <div class="modal-contenido text-center">
                     <h3 class="no-print" style="margin-top:0; color:#0f172a;">Vista Previa Etiqueta</h3>
-                    
                     <div class="etiqueta-preview-container">
                         <div id="zona-impresion" class="etiqueta-preview">
                             <canvas id="qr-canvas"></canvas>
@@ -466,7 +486,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="modal-botones no-print" style="margin-top: 30px; display: flex; gap: 10px; justify-content: center;">
                         <button class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cancelar</button>
                         <button class="btn-accion" id="btn-imprimir-qr-unico-50" style="background:var(--primary);">🖨️ 50x23</button>
@@ -476,46 +495,11 @@
             </div>
             
             <section id="vista-historial" class="vista oculto"><div class="header-modulo"><h1>Historial General</h1></div><div class="contenedor-tabla"><table class="tabla-pro"><thead><tr><th>Fecha</th><th>Troquel</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tabla-historial"></tbody></table></div></section>
-            <section id="vista-descatalogados" class="vista oculto">
-                <div class="header-modulo" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                    <div style="display:flex; align-items:center; gap:15px;">
-                        <h1 style="margin:0;">⛔ Troqueles Descatalogados</h1>
-                        <span id="desc-contador" style="background:#fef3c7; color:#92400e; padding:4px 12px; border-radius:20px; font-weight:800; font-size:14px;">0</span>
-                    </div>
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn-secundario" onclick="App.nav('vista-lista')">🔙 Volver al Inventario</button>
-                        <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size:18px;">🌙</button>
-                    </div>
-                </div>
-
-                <div style="background:#fef3c7; border:1px solid #f59e0b; border-radius:8px; padding:15px; margin-bottom:20px; font-size:14px; color:#78350f;">
-                    <strong>ℹ️ ¿Qué son los descatalogados?</strong> Troqueles que ya no se usan habitualmente y están apilados en palets.
-                    Conservan su matrícula original y pueden <strong>reactivarse</strong> si vuelve a necesitarse el trabajo.
-                </div>
-
-                <div class="contenedor-tabla">
-                    <table class="tabla-pro">
-                        <thead>
-                            <tr>
-                                <th onclick="App.ordenarDesc('id_troquel')" style="cursor:pointer;">Matrícula ↕️</th>
-                                <th>Ubicación (Palet)</th>
-                                <th>Descripción</th>
-                                <th>Artículos / Cliente</th>
-                                <th onclick="App.ordenarDesc('fecha_descatalogado')" style="cursor:pointer;">Fecha Desc. ↕️</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-desc-body">
-                            <tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">Cargando...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
         </main>
     </div>
     
     <div id="toast-container"></div>
     
-    <script src="app.js?v=14"></script>
+    <script src="app.js?v=42"></script>
 </body>
 </html>

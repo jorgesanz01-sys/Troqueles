@@ -6,7 +6,7 @@ const App = {
     datos: [], seleccionados: new Set(), filtroTipo: 'TODOS',
     mapaCat: {}, mapaFam: {}, columnaOrden: 'id_troquel', ordenAsc: true,
     scanner: null, modoMovil: false, modoScanner: 'LOTE', 
-    archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
+    archivosActuales: [], escaneadosLote: new Map(),
     intervaloRefresco: null,
 
     mostrarToast: (msj, tipo = 'exito') => {
@@ -137,9 +137,10 @@ const App = {
     iniciarTiempoReal: () => {
         if(App.intervaloRefresco) clearInterval(App.intervaloRefresco);
         App.intervaloRefresco = setInterval(async () => {
-            if(!document.getElementById('vista-lista').classList.contains('oculto') && !App.enPapelera && !App.modoMovil) {
+            const vistaLista = document.getElementById('vista-lista');
+            if(!vistaLista.classList.contains('oculto') && !App.modoMovil) {
                 try {
-                    const res = await fetch(`/api/troqueles?ver_papelera=false`);
+                    const res = await fetch('/api/troqueles?ver_papelera=false');
                     if (res.ok) {
                         App.datos = await res.json() || [];
                         App.renderTabla(); 
@@ -149,23 +150,13 @@ const App = {
         }, 8000);
     },
 
-    cargarTodo: async (papelera = false) => {
+    cargarTodo: async () => {
         try {
-            App.enPapelera = papelera;
-            const res = await fetch(`/api/troqueles?ver_papelera=${papelera}`);
+            const res = await fetch('/api/troqueles?ver_papelera=false');
             if (res.ok) {
                 App.datos = await res.json() || [];
                 App.limpiarSeleccion(); 
                 App.renderTabla();
-                
-                document.getElementById('titulo-lista').innerText = papelera ? "🗑️ PAPELERA" : "Inventario Activo";
-                
-                const divHerramientasPapelera = document.getElementById('herramientas-papelera');
-                if (papelera) { 
-                    if(divHerramientasPapelera) divHerramientasPapelera.classList.remove('oculto'); 
-                } else { 
-                    if(divHerramientasPapelera) divHerramientasPapelera.classList.add('oculto'); 
-                }
             }
         } catch (e) { console.error(e); }
     },
@@ -236,28 +227,21 @@ const App = {
             
             let col = 'var(--success)', bg = '#dcfce7';
             let textoEstado = 'ALMACÉN';
-            
             if(t.estado === 'EN PRODUCCION') { col = 'var(--danger)'; bg = '#fee2e2'; textoEstado = 'PRODUCCIÓN'; }
-            if(t.estado === 'DESCATALOGADO') { col = '#6b7280'; bg = '#f3f4f6'; textoEstado = 'OBSOLETO'; }
 
             const st = `<span style="background:${bg}; color:${col}; padding:3px 8px; border-radius:10px; font-size:10px; font-weight:800; letter-spacing:0.5px;">${textoEstado}</span>`;
 
             let fam = App.mapaFam[t.familia_id];
             if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
 
-            let btns = `
+            const btns = `
                 <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${t.nombre.replace(/'/g,"")}')" title="Historial">🕒</button>
                 <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir Etiqueta">🖨️</button>
+                <button class="btn-icono" onclick="App.descatalogar(${t.id})" style="color:#f59e0b" title="Descatalogar">⛔</button>
                 <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red" title="A la papelera">🗑️</button>
             `;
-            if(App.enPapelera) {
-                btns = `
-                    <button class="btn-accion" style="background:#22c55e; padding:2px 5px; margin-right:5px;" onclick="App.restaurar(${t.id})" title="Restaurar">♻️</button>
-                    <button class="btn-accion" style="background:#b91c1c; padding:2px 5px;" onclick="App.destruirUnico(${t.id})" title="Destruir Definitivamente">🔥</button>
-                `;
-            }
 
-            return `<tr style="${t.estado==='DESCATALOGADO'?'opacity:0.6':''}" onclick="App.verFicha(${t.id})" style="cursor:pointer;">
+            return `<tr onclick="App.verFicha(${t.id})" style="cursor:pointer;">
                 <td onclick="event.stopPropagation()" class="text-center"><input type="checkbox" value="${t.id}" ${chk} onchange="App.select(this, ${t.id})"></td>
                 <td class="text-center">${bdg}</td><td class="text-center">${st}</td>
                 <td style="font-weight:900; color:var(--text-main);">${t.id_troquel}</td>
@@ -275,13 +259,12 @@ const App = {
         if(!container) return;
 
         let total = App.datos.length;
-        let estAlmacen = 0, estProduccion = 0, estObsoleto = 0;
+        let estAlmacen = 0, estProduccion = 0;
         let conteoFamilias = {};
         let conteoTipos = {};
 
         App.datos.forEach(t => {
             if(t.estado === 'EN PRODUCCION') estProduccion++;
-            else if(t.estado === 'DESCATALOGADO') estObsoleto++;
             else estAlmacen++;
 
             let fam = App.mapaFam[t.familia_id] || 'Sin Familia';
@@ -308,7 +291,7 @@ const App = {
                 <h3 style="margin:0 0 10px 0; color:#64748b; font-size:12px; font-weight:bold; letter-spacing:1px;">RESUMEN DE ESTADO</h3>
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;"><span style="color:#166534; font-weight:bold;">✅ En Almacén</span> <strong>${estAlmacen}</strong></div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;"><span style="color:#991b1b; font-weight:bold;">🏭 En Producción</span> <strong>${estProduccion}</strong></div>
-                <div style="display:flex; justify-content:space-between; font-size:14px;"><span style="color:#6b7280; font-weight:bold;">⛔ Obsoletos</span> <strong>${estObsoleto}</strong></div>
+                <div style="display:flex; justify-content:space-between; font-size:14px;"><span style="color:#6b7280; font-weight:bold; cursor:pointer;" onclick="App.verDescatalogados()">⛔ Ver Descatalogados →</span></div>
             </div>
             <div style="background:white; padding:12px 16px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <h3 style="margin:0 0 8px 0; color:#64748b; font-size:12px; font-weight:bold; letter-spacing:1px;">TOP 5 TIPOS</h3>
@@ -535,7 +518,6 @@ const App = {
 
         let stHtml = `<span style="background:#dcfce7; color:#166534; padding:5px 10px; border-radius:15px; font-weight:bold;">ALMACÉN</span>`;
         if(t.estado === 'EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px; font-weight:bold;">PRODUCCIÓN</span>`;
-        if(t.estado === 'DESCATALOGADO') stHtml = `<span style="background:#f3f4f6; color:#6b7280; padding:5px 10px; border-radius:15px; font-weight:bold;">OBSOLETO</span>`;
         document.getElementById('movil-estado').innerHTML = stHtml;
     },
     volverMenuMovil: () => { document.getElementById('vista-movil-detalle').classList.add('oculto'); document.getElementById('vista-movil').classList.remove('oculto'); App.cargarTodo(); },
@@ -687,14 +669,9 @@ const App = {
         if(App.seleccionados.size > 0) { 
             p.classList.remove('oculto'); 
             document.getElementById('contador-sel').innerText = App.seleccionados.size; 
-            
-            if(App.enPapelera) {
-                document.getElementById('acciones-normales').style.display = 'none';
-                document.getElementById('acciones-papelera').style.display = 'inline-flex';
-            } else {
-                document.getElementById('acciones-normales').style.display = 'inline-flex';
-                document.getElementById('acciones-papelera').style.display = 'none';
-            }
+            // panel-acciones solo existe en inventario activo, siempre muestra acciones normales
+            const an = document.getElementById('acciones-normales');
+            if(an) an.style.display = 'inline-flex';
         } else { 
             p.classList.add('oculto'); 
         } 
@@ -702,7 +679,6 @@ const App = {
     limpiarSeleccion: () => { App.seleccionados.clear(); const chk = document.getElementById('check-all'); if(chk) chk.checked=false; App.updatePanel(); App.renderTabla(); },
     
     borrar: async (id) => { if(confirm("¿Mover a la papelera?")) { await fetch(`/api/troqueles/${id}`, { method:'DELETE' }); App.mostrarToast("Enviado a papelera."); App.cargarTodo(); } },
-    restaurar: async (id) => { await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'}); App.mostrarToast("Restaurado."); App.cargarTodo(true); },
     
     borrarLote: async () => {
         if(!confirm(`¿Mover ${App.seleccionados.size} troqueles a la papelera?`)) return;
@@ -711,35 +687,87 @@ const App = {
     },
     restaurarLote: async () => {
         await fetch('/api/troqueles/bulk/restaurar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados) }) });
-        App.limpiarSeleccion(); App.mostrarToast("Lote restaurado."); App.cargarTodo(true);
+        App.limpiarSeleccion(); App.mostrarToast("Lote restaurado al inventario."); App.cargarTodo();
     },
     destruirLote: async () => {
         if(!confirm(`¡PELIGRO! ¿Eliminar permanentemente ${App.seleccionados.size} troqueles?\nEsta acción NO se puede deshacer.`)) return;
         await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados) }) });
-        App.limpiarSeleccion(); App.mostrarToast("Lote destruido."); App.cargarTodo(true);
+        App.limpiarSeleccion(); App.mostrarToast("Lote eliminado definitivamente."); App.cargarPapelera();
     },
+    verPapelera: async () => {
+        // Navega a la vista dedicada de papelera y carga sus datos
+        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
+        document.getElementById('vista-papelera').classList.remove('oculto');
+        document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
+        App.seleccionados.clear();
+        await App.cargarPapelera();
+    },
+
+    cargarPapelera: async () => {
+        const tbody = document.getElementById('tabla-papelera-body');
+        const counter = document.getElementById('papelera-contador');
+        if(!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando... ⏳</td></tr>';
+        try {
+            const res = await fetch('/api/troqueles?ver_papelera=true');
+            const data = await res.json();
+            if(counter) counter.innerText = data.length;
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding:40px; color:#64748b;">La papelera está vacía.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(t => `<tr>
+                <td style="font-weight:900; color:#64748b;">${t.id_troquel}</td>
+                <td>${t.nombre}</td>
+                <td style="color:#0369a1;">${t.codigos_articulo || '-'}</td>
+                <td>${t.ubicacion || '-'}</td>
+                <td style="white-space:nowrap;">
+                    <button class="btn-accion" style="background:#22c55e; padding:4px 10px; font-size:12px; margin-right:4px;" onclick="App.restaurar(${t.id})">♻️ Restaurar</button>
+                    <button class="btn-accion" style="background:#b91c1c; padding:4px 10px; font-size:12px;" onclick="App.destruirUnico(${t.id})">🔥 Eliminar</button>
+                </td>
+            </tr>`).join('');
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red">Error al cargar la papelera.</td></tr>';
+        }
+    },
+
+    restaurar: async (id) => {
+        await fetch(`/api/troqueles/${id}/restaurar`, {method:'POST'});
+        App.mostrarToast("Troquel restaurado al inventario.");
+        await App.cargarPapelera();
+    },
+
     destruirUnico: async (id) => {
         if(confirm("¡PELIGRO! ¿Eliminar este troquel para siempre? No podrás recuperarlo.")) {
             await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: [id] }) });
-            App.mostrarToast("Troquel destruido."); App.cargarTodo(true);
+            App.mostrarToast("Troquel eliminado definitivamente.");
+            await App.cargarPapelera();
         }
     },
+
     vaciarPapelera: async () => {
-        if(App.datos.length === 0) { App.mostrarToast("La papelera ya está vacía.", "error"); return; }
-        if(!confirm("⚠️ ¡PELIGRO EXTREMO! ⚠️\n\n¿Estás seguro de que quieres eliminar TODOS los troqueles de la papelera?\nSe borrarán para siempre y no hay marcha atrás.")) return;
-        
-        const todosIds = App.datos.map(t => t.id);
-        await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: todosIds }) });
-        App.mostrarToast("Papelera vaciada por completo."); App.cargarTodo(true);
-    },
-    restaurarTodoPapelera: async () => {
-        if(App.datos.length === 0) return;
-        const todosIds = App.datos.map(t => t.id);
-        await fetch('/api/troqueles/bulk/restaurar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: todosIds }) });
-        App.mostrarToast("Todo restaurado."); App.cargarTodo(true);
+        const tbody = document.getElementById('tabla-papelera-body');
+        const filas = tbody ? tbody.querySelectorAll('tr[data-noempty]') : [];
+        // Obtener ids de la papelera actual
+        const res = await fetch('/api/troqueles?ver_papelera=true');
+        const data = await res.json();
+        if(data.length === 0) { App.mostrarToast("La papelera ya está vacía.", "error"); return; }
+        if(!confirm(`⚠️ ¿Eliminar DEFINITIVAMENTE los ${data.length} troqueles de la papelera? No hay marcha atrás.`)) return;
+        const ids = data.map(t => t.id);
+        await fetch('/api/troqueles/bulk/destruir', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids }) });
+        App.mostrarToast("Papelera vaciada.");
+        await App.cargarPapelera();
     },
 
-    verPapelera: () => App.cargarTodo(true), salirPapelera: () => App.cargarTodo(false),
+    restaurarTodoPapelera: async () => {
+        const res = await fetch('/api/troqueles?ver_papelera=true');
+        const data = await res.json();
+        if(data.length === 0) return;
+        const ids = data.map(t => t.id);
+        await fetch('/api/troqueles/bulk/restaurar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids }) });
+        App.mostrarToast("Todos restaurados al inventario.");
+        await App.cargarPapelera();
+    },
     
     crearFamilia: async () => { 
         const n = prompt("Nombre de la nueva Familia:"); 
@@ -806,7 +834,13 @@ const App = {
             document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
             btnElement.classList.add('activo');
         }
-        if(v==='vista-lista') document.getElementById('sidebar').classList.remove('oculto'); 
+        if(v==='vista-lista') {
+            document.getElementById('sidebar').classList.remove('oculto');
+            // Asegurar que el inventario siempre muestra datos activos al navegar
+            if(App.datos.length === 0 || document.getElementById('titulo-lista').innerText.includes('PAPELERA')) {
+                App.cargarTodo();
+            }
+        }
     },
     
     buscarMovil: (txt) => { 
