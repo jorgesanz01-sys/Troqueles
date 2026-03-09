@@ -895,7 +895,11 @@ const App = {
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
 
     // ============================================================
-    // FUNCIÓN CORREGIDA: orientación landscape para impresora Godex
+    // FUNCIÓN CORREGIDA: rotación por transform para impresora Godex
+    // El driver Godex define el papel como 50x23mm (ancho x alto).
+    // Chrome respeta ese tamaño pero el contenido sale girado 90°.
+    // Solución: diseñamos la etiqueta en vertical (23x50) y la
+    // rotamos -90° con transform para que encaje en el papel horizontal.
     // ============================================================
     imprimirEtiquetasGodex: (items, tamano = '50x23') => {
         let printWindow = window.open('', '_blank', 'width=600,height=600');
@@ -903,17 +907,39 @@ const App = {
         let css = ''; let qrSize = 150;
         if (tamano === '100x70') {
             qrSize = 300;
-            css = `@page{size:100mm 70mm landscape;margin:0} html,body{margin:0;padding:0;width:100mm;height:70mm} body{font-family:'Arial',sans-serif;background:#fff} .label{width:100mm;height:70mm;box-sizing:border-box;padding:3mm;display:flex;align-items:center;justify-content:space-between;page-break-after:always;overflow:hidden} .qr{width:40mm;display:flex;justify-content:center;align-items:center} .qr img{width:38mm;height:38mm} .text{width:55mm;padding-left:2mm;display:flex;flex-direction:column;justify-content:center} .mat{font-size:18pt;font-weight:900;line-height:1.1;margin-bottom:6px;color:black} .ubi{font-size:16pt;font-weight:900;line-height:1.1;margin-bottom:6px;color:black;text-transform:uppercase} .nom{font-size:11pt;line-height:1.2;color:black;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;margin-bottom:6px} .arts{font-size:10pt;font-weight:bold;color:#333;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}`;
+            // Papel en driver: 100x70mm. Diseñamos en 70x100 y rotamos -90°.
+            css = `@page{size:100mm 70mm;margin:0}
+            html,body{margin:0;padding:0;background:#fff;font-family:'Arial',sans-serif;}
+            .page-wrap{width:70mm;height:100mm;transform:rotate(-90deg) translateX(-100mm);transform-origin:top left;overflow:hidden;page-break-after:always;}
+            .label{width:70mm;height:100mm;box-sizing:border-box;padding:3mm;display:flex;flex-direction:column;justify-content:center;align-items:center;}
+            .qr{display:flex;justify-content:center;align-items:center;margin-bottom:4mm;}
+            .qr img{width:38mm;height:38mm;}
+            .text{width:64mm;display:flex;flex-direction:column;justify-content:center;}
+            .mat{font-size:18pt;font-weight:900;line-height:1.1;margin-bottom:3px;color:black;}
+            .ubi{font-size:16pt;font-weight:900;line-height:1.1;margin-bottom:3px;color:black;text-transform:uppercase;}
+            .nom{font-size:11pt;line-height:1.2;color:black;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;margin-bottom:3px;}
+            .arts{font-size:10pt;font-weight:bold;color:#333;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}`;
         } else {
             qrSize = 150;
-            css = `@page{size:50mm 23mm landscape;margin:0} html,body{margin:0;padding:0;width:50mm;height:23mm} body{font-family:'Arial',sans-serif;background:#fff} .label{width:50mm;height:23mm;box-sizing:border-box;padding:1mm;display:flex;align-items:center;justify-content:space-between;page-break-after:always;overflow:hidden} .qr{width:19mm;display:flex;justify-content:center;align-items:center} .qr img{width:18mm;height:18mm} .text{width:28mm;padding-left:1mm;display:flex;flex-direction:column;justify-content:center} .mat{font-size:8.5pt;font-weight:900;line-height:1;margin-bottom:2px;color:black} .ubi{font-size:8.5pt;font-weight:900;line-height:1;margin-bottom:3px;color:black;text-transform:uppercase} .nom{font-size:6pt;line-height:1.1;color:black;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:2px} .arts{font-size:6pt;font-weight:bold;color:#333;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}`;
+            // Papel en driver: 50x23mm. Diseñamos en 23x50 y rotamos -90°.
+            css = `@page{size:50mm 23mm;margin:0}
+            html,body{margin:0;padding:0;background:#fff;font-family:'Arial',sans-serif;}
+            .page-wrap{width:23mm;height:50mm;transform:rotate(-90deg) translateX(-50mm);transform-origin:top left;overflow:hidden;page-break-after:always;}
+            .label{width:23mm;height:50mm;box-sizing:border-box;padding:1mm;display:flex;flex-direction:column;justify-content:center;align-items:center;}
+            .qr{display:flex;justify-content:center;align-items:center;margin-bottom:1mm;}
+            .qr img{width:18mm;height:18mm;}
+            .text{width:21mm;display:flex;flex-direction:column;justify-content:center;}
+            .mat{font-size:7pt;font-weight:900;line-height:1.1;margin-bottom:1px;color:black;}
+            .ubi{font-size:7pt;font-weight:900;line-height:1.1;margin-bottom:1px;color:black;text-transform:uppercase;}
+            .nom{font-size:5.5pt;line-height:1.1;color:black;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:1px;}
+            .arts{font-size:5pt;font-weight:bold;color:#333;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}`;
         }
-        css += `@media screen{body{background:#334155;padding:20px;display:flex;flex-direction:column;align-items:center;width:auto;height:auto}.label{background:#fff;margin-bottom:10px;box-shadow:0 4px 6px rgba(0,0,0,0.3);border-radius:2px}.btn{background:#14b8a6;color:white;padding:15px 30px;border:none;border-radius:8px;font-size:18px;font-weight:bold;cursor:pointer;margin-bottom:20px}} @media print{.no-print{display:none !important}}`;
+        css += `@media screen{html,body{background:#334155;padding:20px;}.page-wrap{background:#fff;margin-bottom:20px;box-shadow:0 4px 6px rgba(0,0,0,0.3);transform:none;width:auto;height:auto;}.label{width:auto;height:auto;flex-direction:row;}.qr{margin-bottom:0;margin-right:5px;}.text{width:auto;}}.btn{background:#14b8a6;color:white;padding:15px 30px;border:none;border-radius:8px;font-size:18px;font-weight:bold;cursor:pointer;margin-bottom:20px;display:block;} @media print{.no-print{display:none !important}}`;
         let html = `<!DOCTYPE html><html><head><title>Impresión Godex ${tamano}</title><style>${css}</style></head><body><button class="no-print btn" onclick="window.print()">🖨️ Iniciar Impresión Godex (${tamano})</button>`;
         items.forEach(t => {
             const qr = new QRious({ value: t.id.toString(), size: qrSize, level: 'M' });
             const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
-            html += `<div class="label"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div>`;
+            html += `<div class="page-wrap"><div class="label"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div></div>`;
         });
         html += `</body></html>`;
         printWindow.document.write(html); printWindow.document.close();
