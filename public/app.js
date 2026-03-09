@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V39 (CALIBRADOR GODEX EXPERTO)
+// ERP PACKAGING - LÓGICA V40 (CALIBRADOR GODEX + AUTO-IMPRESIÓN)
 // =============================================================
 
 const App = {
@@ -893,7 +893,6 @@ const App = {
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.mostrarToast("Asignación masiva completada."); App.limpiarSeleccion(); App.cargarTodo(); } },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
 
-    // 🌟 NUEVO CALIBRADOR GODEX EXPERTO 🌟
     imprimirEtiquetasGodex: (items, tamano = '50x23') => {
         let printWindow = window.open('', '_blank', 'width=800,height=700');
         if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
@@ -914,7 +913,6 @@ const App = {
             body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #334155; }
             ${cssLabel}
             
-            /* Panel de control */
             .toolbar { background: #1e293b; padding: 20px; color: white; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4); margin-bottom: 20px; font-family: sans-serif; }
             .panel-ajustes { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; display: inline-block; text-align: left; margin-bottom: 15px; border: 1px solid #475569; }
             .btn-small { background: #475569; color: white; border: none; padding: 8px 12px; margin: 0 2px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
@@ -935,7 +933,40 @@ const App = {
         </style>
         
         <style id="estilos-dinamicos"></style>
+        </head><body>
         
+        <div class="toolbar no-print">
+            <h2 style="margin: 0 0 10px 0;">⚙️ Calibración de Impresora Godex</h2>
+            <p style="font-size: 14px; margin-bottom: 20px;">Si la impresora corta la etiqueta o la saca girada, combina estas dos opciones <br>hasta que el diseño encaje exactamente con la forma en la que escupe tu papel.</p>
+            
+            <div class="panel-ajustes">
+                <div style="margin-bottom: 15px;">
+                    <strong style="display:inline-block; width: 160px; color:#94a3b8;">1. Girar Diseño:</strong>
+                    <button id="btn-r0" class="btn-small rot-btn active" onclick="setRot(0)">0º</button>
+                    <button id="btn-r90" class="btn-small rot-btn" onclick="setRot(90)">90º</button>
+                    <button id="btn-r180" class="btn-small rot-btn" onclick="setRot(180)">180º</button>
+                    <button id="btn-r270" class="btn-small rot-btn" onclick="setRot(270)">270º</button>
+                </div>
+                <div>
+                    <strong style="display:inline-block; width: 160px; color:#94a3b8;">2. Tamaño Papel:</strong>
+                    <button id="btn-pH" class="btn-small pap-btn active" onclick="setPapel(false)">Apaisado (${w}x${h})</button>
+                    <button id="btn-pV" class="btn-small pap-btn" onclick="setPapel(true)">Vertical (${h}x${w})</button>
+                </div>
+            </div>
+            <br>
+            <button class="btn" onclick="window.print()">🖨️ Probar Impresión</button>
+        </div>
+        
+        <div class="contenedor-etiquetas">
+        `;
+        
+        items.forEach(t => {
+            const qr = new QRious({ value: t.id.toString(), size: qrSize, level: 'M' });
+            const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
+            html += `<div class="label"><div class="label-content"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div></div>`;
+        });
+        
+        html += `</div>
         <script>
             let rotacion = 0;
             let papelInv = false;
@@ -947,14 +978,14 @@ const App = {
             function setPapel(inv) { papelInv = inv; render(); }
 
             function render() {
-                // Actualizar botones visualmente
                 document.querySelectorAll('.rot-btn').forEach(b => b.classList.remove('active'));
-                document.getElementById('btn-r' + rotacion).classList.add('active');
+                const br = document.getElementById('btn-r' + rotacion);
+                if(br) br.classList.add('active');
                 
                 document.querySelectorAll('.pap-btn').forEach(b => b.classList.remove('active'));
-                document.getElementById('btn-p' + (papelInv ? 'V' : 'H')).classList.add('active');
+                const bp = document.getElementById('btn-p' + (papelInv ? 'V' : 'H'));
+                if(bp) bp.classList.add('active');
 
-                // Aplicar la lógica mágica
                 const styleEl = document.getElementById('estilos-dinamicos');
                 let pageW = papelInv ? h : w;
                 let pageH = papelInv ? w : h;
@@ -987,48 +1018,18 @@ const App = {
                     }
                 \`;
             }
-            window.onload = render;
+            render(); // Se ejecuta al instante para que todo cargue bien
         </script>
-        </head><body>
-        
-        <div class="toolbar no-print">
-            <h2 style="margin: 0 0 10px 0;">⚙️ Calibración de Impresora Godex</h2>
-            <p style="font-size: 14px; margin-bottom: 20px;">Si la impresora corta la etiqueta o la saca girada, combina estas dos opciones <br>hasta que el diseño encaje exactamente con la forma en la que escupe tu papel.</p>
-            
-            <div class="panel-ajustes">
-                <div style="margin-bottom: 15px;">
-                    <strong style="display:inline-block; width: 160px; color:#94a3b8;">1. Girar Diseño (CSS):</strong>
-                    <button id="btn-r0" class="btn-small rot-btn" onclick="setRot(0)">0º</button>
-                    <button id="btn-r90" class="btn-small rot-btn" onclick="setRot(90)">90º</button>
-                    <button id="btn-r180" class="btn-small rot-btn" onclick="setRot(180)">180º</button>
-                    <button id="btn-r270" class="btn-small rot-btn" onclick="setRot(270)">270º</button>
-                </div>
-                <div>
-                    <strong style="display:inline-block; width: 160px; color:#94a3b8;">2. Tamaño Papel (Driver):</strong>
-                    <button id="btn-pH" class="btn-small pap-btn" onclick="setPapel(false)">Apaisado (${w}x${h})</button>
-                    <button id="btn-pV" class="btn-small pap-btn" onclick="setPapel(true)">Vertical (${h}x${w})</button>
-                </div>
-            </div>
-            <br>
-            <button class="btn" onclick="window.print()">🖨️ Probar Impresión</button>
-        </div>
-        
-        <div class="contenedor-etiquetas">
-        `;
-        
-        items.forEach(t => {
-            const qr = new QRious({ value: t.id.toString(), size: qrSize, level: 'M' });
-            const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
-            html += `<div class="label"><div class="label-content"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div></div>`;
-        });
-        
-        html += `</div></body></html>`;
+        </body></html>`;
         
         printWindow.document.write(html);
         printWindow.document.close();
         
         const modalQr = document.getElementById('modal-qr');
         if (modalQr) { modalQr.classList.add('oculto'); }
+
+        // 🚀 AQUI ESTÁ LA AUTO-IMPRESIÓN RECUPERADA
+        setTimeout(() => { printWindow.print(); }, 800);
     },
 
     limpiarDuplicadosExactos: async () => {
