@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V37 (SOLUCIÓN IMPRESIÓN GODEX)
+// ERP PACKAGING - LÓGICA V36 (AUTO-DETECTAR MÓVIL Y TOASTS)
 // =============================================================
 
 const App = {
@@ -894,91 +894,136 @@ const App = {
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.mostrarToast("Asignación masiva completada."); App.limpiarSeleccion(); App.cargarTodo(); } },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
 
-    // 🌟 AQUÍ ESTÁ LA NUEVA FUNCIÓN DE IMPRESIÓN MEJORADA 🌟
+    // ============================================================
+    // FUNCIÓN GODEX - ENFOQUE CANVAS (v4)
+    // Genera cada etiqueta como imagen PNG mediante canvas a 203dpi
+    // (resolución estándar Godex G500). Chrome imprime la imagen
+    // tal cual, sin que CSS ni el driver puedan rotar ni escalar nada.
+    // En el diálogo de Chrome: Sin márgenes, escala 100%, el tamaño
+    // de papel debe coincidir con lo configurado en el driver Godex.
+    // ============================================================
     imprimirEtiquetasGodex: (items, tamano = '50x23') => {
-        let printWindow = window.open('', '_blank', 'width=800,height=600');
-        
-        if (!printWindow) {
-            App.mostrarToast("El navegador bloqueó la ventana de impresión.", "error");
-            return;
-        }
+        // 203 dpi => 1mm = 203/25.4 = 7.992 px ≈ 8 px/mm
+        const DPI = 203;
+        const PX_MM = DPI / 25.4;
 
-        let w = '50mm', h = '23mm', qrSize = 150;
-        let cssLabel = '';
+        // Dimensiones físicas de la etiqueta en mm (ancho x alto)
+        // Usamos siempre la orientación HORIZONTAL (apaisada)
+        let W_MM, H_MM;
+        if (tamano === '100x70') { W_MM = 100; H_MM = 70; }
+        else                     { W_MM = 50;  H_MM = 23; }
 
-        if (tamano === '100x70') {
-            qrSize = 300; w = '100mm'; h = '70mm';
-            cssLabel = `.label { width: 100mm; height: 70mm; box-sizing: border-box; padding: 3mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; background: #fff; margin: 0 auto; position: relative; } .qr { width: 40mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 38mm; height: 38mm; } .text { width: 55mm; padding-left: 2mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 18pt; font-weight: 900; line-height: 1.1; margin-bottom: 6px; color: black; } .ubi { font-size: 16pt; font-weight: 900; line-height: 1.1; margin-bottom: 6px; color: black; text-transform: uppercase; } .nom { font-size: 11pt; line-height: 1.2; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; margin-bottom: 6px; } .arts { font-size: 10pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }`;
-        } else {
-            qrSize = 150; w = '50mm'; h = '23mm';
-            cssLabel = `.label { width: 50mm; height: 23mm; box-sizing: border-box; padding: 1mm; display: flex; align-items: center; justify-content: space-between; page-break-after: always; overflow: hidden; background: #fff; margin: 0 auto; position: relative; } .qr { width: 19mm; display: flex; justify-content: center; align-items: center; } .qr img { width: 18mm; height: 18mm; } .text { width: 28mm; padding-left: 1mm; display: flex; flex-direction: column; justify-content: center; } .mat { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 2px; color: black; } .ubi { font-size: 8.5pt; font-weight: 900; line-height: 1; margin-bottom: 3px; color: black; text-transform: uppercase; } .nom { font-size: 6pt; line-height: 1.1; color: black; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 2px; } .arts { font-size: 6pt; font-weight: bold; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }`;
-        }
+        const W = Math.round(W_MM * PX_MM);
+        const H = Math.round(H_MM * PX_MM);
 
-        let html = `<!DOCTYPE html><html><head><title>Impresión Godex ${tamano}</title>
-        <style>
-            @page { size: ${w} ${h}; margin: 0; }
-            ${cssLabel}
-            body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: #334155; }
-            
-            /* Panel de control */
-            .toolbar { background: #1e293b; padding: 20px; color: white; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4); margin-bottom: 20px; }
-            .toolbar p { color: #cbd5e1; font-size: 14px; margin-bottom: 15px; line-height: 1.5; }
-            .botones { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
-            .btn { background: #14b8a6; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-            .btn:hover { background: #0f766e; }
-            .btn-alt { background: #475569; }
-            .btn-alt:hover { background: #334155; border: 1px solid #94a3b8; }
-            
-            .contenedor-etiquetas { display: flex; flex-direction: column; gap: 20px; align-items: center; padding-bottom: 40px; }
-            
-            /* Ocultar panel al imprimir y limpiar márgenes */
+        // Genera el canvas de UNA etiqueta y devuelve dataURL
+        const dibujarEtiqueta = (t) => {
+            const canvas = document.createElement('canvas');
+            canvas.width  = W;
+            canvas.height = H;
+            const ctx = canvas.getContext('2d');
+
+            // Fondo blanco
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, W, H);
+
+            // Borde fino
+            ctx.strokeStyle = '#cccccc';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, W, H);
+
+            // --- QR ---
+            const qrPx = Math.round(H * 0.80);          // QR ocupa 80% del alto
+            const qrX  = Math.round(H * 0.10);          // margen izquierdo
+            const qrY  = Math.round(H * 0.10);          // margen superior
+            const qr   = new QRious({ value: t.id.toString(), size: qrPx, level: 'M', background: 'white', foreground: 'black' });
+            ctx.drawImage(qr.image, qrX, qrY, qrPx, qrPx);
+
+            // --- TEXTO ---
+            const txtX     = qrX + qrPx + Math.round(2 * PX_MM);  // empieza tras el QR
+            const txtMaxW  = W - txtX - Math.round(1 * PX_MM);     // ancho disponible
+            let   curY     = qrY;
+
+            const escribir = (texto, fontSize, bold, color, lineH) => {
+                ctx.fillStyle = color || '#000000';
+                ctx.font = `${bold ? '900' : 'normal'} ${fontSize}px Arial`;
+                // Truncar si no cabe
+                let txt = texto;
+                while (ctx.measureText(txt).width > txtMaxW && txt.length > 1) txt = txt.slice(0, -1);
+                if (txt !== texto) txt = txt.slice(0, -1) + '…';
+                ctx.fillText(txt, txtX, curY + fontSize);
+                curY += lineH;
+            };
+
+            if (tamano === '100x70') {
+                const f1 = Math.round(6.5 * PX_MM);   // ~13pt
+                const f2 = Math.round(5.5 * PX_MM);
+                const f3 = Math.round(3.5 * PX_MM);
+                escribir('TROQUEL ' + t.id_troquel,       f1, true,  '#000000', f1 + Math.round(1.5*PX_MM));
+                escribir('UBI: ' + (t.ubicacion || '-'),  f2, true,  '#000000', f2 + Math.round(1.5*PX_MM));
+                escribir(t.nombre,                        f3, false, '#333333', f3 + Math.round(1.2*PX_MM));
+                if (t.codigos_articulo) escribir('Art: ' + t.codigos_articulo, f3, true, '#555555', f3 + Math.round(1*PX_MM));
+            } else {
+                const f1 = Math.round(2.8 * PX_MM);   // ~7pt
+                const f2 = Math.round(2.4 * PX_MM);
+                const f3 = Math.round(2.0 * PX_MM);
+                escribir('TROQUEL ' + t.id_troquel,       f1, true,  '#000000', f1 + Math.round(0.8*PX_MM));
+                escribir('UBI: ' + (t.ubicacion || '-'),  f1, true,  '#000000', f1 + Math.round(0.8*PX_MM));
+                escribir(t.nombre,                        f2, false, '#333333', f2 + Math.round(0.7*PX_MM));
+                if (t.codigos_articulo) escribir('Art: ' + t.codigos_articulo, f3, true, '#555555', 0);
+            }
+
+            return canvas.toDataURL('image/png');
+        };
+
+        // Construye la página de impresión
+        const printWindow = window.open('', '_blank', 'width=700,height=600');
+        if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
+
+        const css = `
+            * { margin:0; padding:0; box-sizing:border-box; }
+            @page { size: ${W_MM}mm ${H_MM}mm; margin: 0; }
+            body { background: #334155; }
+            .wrap { display:flex; flex-direction:column; align-items:center; padding:20px; gap:12px; }
+            .etiqueta img { display:block; width:${W_MM}mm; height:${H_MM}mm; }
+            .btn { background:#14b8a6; color:white; padding:14px 28px; border:none; border-radius:8px;
+                   font-size:17px; font-weight:bold; cursor:pointer; }
+            .aviso { color:#e2e8f0; font-family:Arial; font-size:13px; text-align:center;
+                     background:#1e3a5f; padding:10px 20px; border-radius:8px; max-width:480px; }
             @media print {
-                .no-print { display: none !important; }
-                body { background: white !important; }
-                .contenedor-etiquetas { gap: 0; padding: 0; display: block; }
-                .label { margin: 0; }
+                body { background:#fff; }
+                .no-print { display:none !important; }
+                .wrap { padding:0; gap:0; }
+                .etiqueta img { width:${W_MM}mm; height:${H_MM}mm; page-break-after: always; }
             }
-        </style>
-        <script>
-            let rotada = false;
-            function voltear180() {
-                rotada = !rotada;
-                document.querySelectorAll('.label').forEach(el => {
-                    el.style.transform = rotada ? 'rotate(180deg)' : 'none';
-                });
-            }
-        </script>
-        </head><body>
-        
-        <div class="toolbar no-print">
-            <h2 style="margin: 0 0 10px 0;">⚙️ Ajustes Godex (${tamano})</h2>
-            <p>
-                ⚠️ <b>¿Sale cortada o en vertical?</b><br>En la ventana de imprimir de Windows/Chrome, busca la opción "Diseño" y cámbiala de Horizontal a Vertical (o al revés).<br><br>
-                ⚠️ <b>¿Sale boca abajo?</b><br>Haz clic en el botón gris de aquí abajo para darle la vuelta al diseño.
-            </p>
-            <div class="botones">
-                <button class="btn btn-alt" onclick="voltear180()">🔃 Voltear Boca Abajo (180º)</button>
-                <button class="btn" onclick="window.print()" style="background:#2563eb;">🖨️ Lanzar a Impresora</button>
-            </div>
-        </div>
-        
-        <div class="contenedor-etiquetas">
         `;
-        
+
+        let imgsHtml = '';
         items.forEach(t => {
-            const qr = new QRious({ value: t.id.toString(), size: qrSize, level: 'M' });
-            const htmlArt = t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : '';
-            html += `<div class="label"><div class="qr"><img src="${qr.toDataURL()}"></div><div class="text"><div class="mat">TROQUEL ${t.id_troquel}</div><div class="ubi">UBI: ${t.ubicacion || '-'}</div><div class="nom">${t.nombre}</div>${htmlArt}</div></div>`;
+            imgsHtml += `<div class="etiqueta"><img src="${dibujarEtiqueta(t)}"></div>`;
         });
-        
-        html += `</div></body></html>`;
-        
+
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+            <title>Godex ${tamano}</title><style>${css}</style></head>
+            <body><div class="wrap">
+                <button class="btn no-print" onclick="window.print()">🖨️ Imprimir en Godex (${tamano})</button>
+                <div class="aviso no-print">
+                    ⚙️ En el diálogo de Chrome:<br>
+                    <strong>Destino</strong> → Godex G500 &nbsp;|&nbsp;
+                    <strong>Tamaño</strong> → ${W_MM}×${H_MM}mm &nbsp;|&nbsp;
+                    <strong>Márgenes</strong> → Ninguno &nbsp;|&nbsp;
+                    <strong>Escala</strong> → 100%
+                </div>
+                ${imgsHtml}
+            </div></body></html>`;
+
         printWindow.document.write(html);
         printWindow.document.close();
-        
         const modalQr = document.getElementById('modal-qr');
-        if (modalQr) { modalQr.classList.add('oculto'); }
+        if (modalQr) modalQr.classList.add('oculto');
+        setTimeout(() => { printWindow.print(); }, 900);
     },
+
     imprimirLoteQRs: (tamano = '50x23') => { if(App.seleccionados.size === 0) return; const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); App.imprimirEtiquetasGodex(itemsToPrint, tamano); App.limpiarSeleccion(); },
     generarQR: (id_db) => { 
         const t = App.datos.find(x => x.id === id_db); if(!t) return;
