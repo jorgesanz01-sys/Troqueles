@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V38 (ROTACIÓN 90º PERFECTA GODEX)
+// ERP PACKAGING - LÓGICA V38 (ROTACIÓN 90º PERFECTA GODEX).
 // =============================================================
 
 const App = {
