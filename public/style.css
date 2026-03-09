@@ -229,6 +229,22 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); outlin
 
 .panel-acciones { background: #eff6ff; padding: 10px 15px; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: var(--shadow-sm); }
 
+/* --- MEJORAS TABLA INVENTARIO --- */
+/* Descripción destacada: más peso visual, es la columna más importante */
+.tabla-pro td:nth-child(7) {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 12.5px;
+}
+
+/* Compactar columnas secundarias DOCS y ESTADO */
+.tabla-pro td:nth-child(2),
+.tabla-pro td:nth-child(3) {
+    padding-left: 6px;
+    padding-right: 6px;
+    text-align: center;
+}
+
 /* --- 6. MODO OPERARIO MÓVIL --- */
 .grid-movil { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
 .btn-gigante { border: none; border-radius: 8px; padding: 25px; font-size: 16px; font-weight: 800; color: white; cursor: pointer; box-shadow: var(--shadow-md); transition: var(--transition); text-transform: uppercase; letter-spacing: 1px; }

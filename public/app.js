@@ -294,27 +294,27 @@ const App = {
             return Object.entries(obj)
                 .sort((a,b) => b[1] - a[1])
                 .slice(0, 5)
-                .map(x => `<div style="display:flex; justify-content:space-between; border-bottom:1px dashed #e2e8f0; padding:6px 0; font-size:13px;"><span>${x[0]}</span> <strong style="color:#0f766e; background:#f0fdf4; padding:2px 6px; border-radius:10px;">${x[1]}</strong></div>`)
+                .map(x => `<div style="display:flex; justify-content:space-between; border-bottom:1px dashed #e2e8f0; padding:5px 0; font-size:12px;"><span>${x[0]}</span> <strong style="color:#0f766e; background:#f0fdf4; padding:1px 6px; border-radius:10px;">${x[1]}</strong></div>`)
                 .join('');
         };
 
         container.innerHTML = `
-            <div style="background:white; padding:20px; border-radius:8px; border:3px solid #0f766e; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display:flex; flex-direction:column; justify-content:center; align-items:center;">
-                <h3 style="margin:0 0 10px 0; color:#64748b; font-size:13px; font-weight:bold; letter-spacing:1px;">TOTAL INVENTARIO</h3>
-                <div style="font-size:52px; font-weight:900; color:#0f172a; line-height:1;">${total}</div>
+            <div style="background:white; padding:12px 16px; border-radius:8px; border:3px solid #0f766e; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                <h3 style="margin:0 0 6px 0; color:#64748b; font-size:12px; font-weight:bold; letter-spacing:1px;">TOTAL INVENTARIO</h3>
+                <div style="font-size:48px; font-weight:900; color:#0f172a; line-height:1;">${total}</div>
             </div>
-            <div style="background:white; padding:20px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <h3 style="margin:0 0 15px 0; color:#64748b; font-size:13px; font-weight:bold; letter-spacing:1px;">RESUMEN DE ESTADO</h3>
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:15px;"><span style="color:#166534; font-weight:bold;">✅ En Almacén</span> <strong>${estAlmacen}</strong></div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:15px;"><span style="color:#991b1b; font-weight:bold;">🏭 En Producción</span> <strong>${estProduccion}</strong></div>
-                <div style="display:flex; justify-content:space-between; font-size:15px;"><span style="color:#6b7280; font-weight:bold;">⛔ Obsoletos</span> <strong>${estObsoleto}</strong></div>
+            <div style="background:white; padding:12px 16px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="margin:0 0 10px 0; color:#64748b; font-size:12px; font-weight:bold; letter-spacing:1px;">RESUMEN DE ESTADO</h3>
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;"><span style="color:#166534; font-weight:bold;">✅ En Almacén</span> <strong>${estAlmacen}</strong></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;"><span style="color:#991b1b; font-weight:bold;">🏭 En Producción</span> <strong>${estProduccion}</strong></div>
+                <div style="display:flex; justify-content:space-between; font-size:14px;"><span style="color:#6b7280; font-weight:bold;">⛔ Obsoletos</span> <strong>${estObsoleto}</strong></div>
             </div>
-            <div style="background:white; padding:20px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <h3 style="margin:0 0 10px 0; color:#64748b; font-size:13px; font-weight:bold; letter-spacing:1px;">TOP 5 TIPOS</h3>
+            <div style="background:white; padding:12px 16px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="margin:0 0 8px 0; color:#64748b; font-size:12px; font-weight:bold; letter-spacing:1px;">TOP 5 TIPOS</h3>
                 ${renderLista(conteoTipos)}
             </div>
-            <div style="background:white; padding:20px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <h3 style="margin:0 0 10px 0; color:#64748b; font-size:13px; font-weight:bold; letter-spacing:1px;">TOP 5 FAMILIAS</h3>
+            <div style="background:white; padding:12px 16px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="margin:0 0 8px 0; color:#64748b; font-size:12px; font-weight:bold; letter-spacing:1px;">TOP 5 FAMILIAS</h3>
                 ${renderLista(conteoFamilias)}
             </div>
         `;

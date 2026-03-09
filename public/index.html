@@ -170,14 +170,14 @@
                         <thead>
                             <tr>
                                 <th width="30"><input type="checkbox" id="check-all" onclick="App.toggleAll(this)"></th>
-                                <th width="40">Docs</th>
-                                <th>Estado</th>
-                                <th onclick="App.ordenar('id_troquel')" style="cursor:pointer;">Matrícula ↕️</th>
-                                <th onclick="App.ordenar('ubicacion')" style="cursor:pointer;">Ubicación ↕️</th>
-                                <th onclick="App.ordenar('codigos_articulo')" style="cursor:pointer;">Artículo ↕️</th>
-                                <th onclick="App.ordenar('nombre')" style="cursor:pointer;">Descripción ↕️</th>
-                                <th onclick="App.ordenar('familia')" style="cursor:pointer;">Familia ↕️</th>
-                                <th style="width:110px; white-space: nowrap;">Acciones</th>
+                                <th width="35">Docs</th>
+                                <th width="85">Estado</th>
+                                <th width="70" onclick="App.ordenar('id_troquel')" style="cursor:pointer;">Matr. ↕️</th>
+                                <th width="100" onclick="App.ordenar('ubicacion')" style="cursor:pointer;">Ubicación ↕️</th>
+                                <th width="120" onclick="App.ordenar('codigos_articulo')" style="cursor:pointer;">Artículo ↕️</th>
+                                <th onclick="App.ordenar('nombre')" style="cursor:pointer; min-width:250px;">Descripción ↕️</th>
+                                <th width="110" onclick="App.ordenar('familia')" style="cursor:pointer;">Familia ↕️</th>
+                                <th style="width:100px; white-space: nowrap;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tabla-body"></tbody>
@@ -194,7 +194,7 @@
                     </div>
                 </div>
 
-                <div id="dashboard-resumen" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                <div id="dashboard-resumen" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 25px;">
                 </div>
 
                 <div class="header-modulo" style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
