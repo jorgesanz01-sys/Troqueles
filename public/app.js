@@ -1102,27 +1102,23 @@ const App = {
 
 
     imprimirEtiquetasA4: (items) => {
-        // A4: 210x297mm, 8 etiquetas por folio (2 columnas x 4 filas)
-        // Cada etiqueta: ~95x65mm con 5mm de margen entre ellas
         const printWindow = window.open('', '_blank', 'width=800,height=900');
         if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
 
         const etiquetasHtml = items.map(t => {
-            // Generar QR como data URL
             const qrCanvas = document.createElement('canvas');
-            new QRious({ element: qrCanvas, value: t.id.toString(), size: 180, level: 'M', background: 'white', foreground: 'black' });
+            new QRious({ element: qrCanvas, value: t.id.toString(), size: 120, level: 'M', background: 'white', foreground: 'black' });
             const qrSrc = qrCanvas.toDataURL('image/png');
-            const familia = App.mapaFam[t.familia_id] || '';
-            const tipo    = App.mapaCat[t.categoria_id] || '';
+            // Truncar descripción a ~55 chars para que no se corte feo
+            const desc = t.nombre && t.nombre.length > 55 ? t.nombre.slice(0, 54) + '…' : (t.nombre || '');
             return `
             <div class="etiqueta">
                 <img class="qr" src="${qrSrc}" alt="QR">
                 <div class="info">
-                    <div class="matricula">TROQUEL ${t.id_troquel}</div>
-                    <div class="ubi">📍 ${t.ubicacion || '-'}</div>
-                    <div class="nombre">${t.nombre}</div>
-                    ${t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : ''}
-                    ${familia ? `<div class="meta">${familia}${tipo ? ' · '+tipo : ''}</div>` : ''}
+                    <div class="matricula">Nº ${t.id_troquel}</div>
+                    <div class="ubi">${t.ubicacion || '-'}</div>
+                    ${t.codigos_articulo ? `<div class="arts">${t.codigos_articulo}</div>` : ''}
+                    <div class="desc">${desc}</div>
                 </div>
             </div>`;
         }).join('');
@@ -1131,56 +1127,114 @@ const App = {
         <title>Etiquetas A4</title>
         <style>
             * { margin:0; padding:0; box-sizing:border-box; }
-            @page { size: A4 portrait; margin: 8mm; }
-            body { font-family: Arial, sans-serif; background: #f0f0f0; }
+            @page { size: A4 portrait; margin: 6mm; }
+            body { font-family: Arial, sans-serif; background: #e2e8f0; }
 
             .toolbar { display:flex; gap:10px; align-items:center; padding:12px 16px; background:#1e293b; }
-            .toolbar button { background:#14b8a6; color:#fff; border:none; padding:10px 20px; border-radius:6px; font-size:15px; font-weight:bold; cursor:pointer; }
+            .toolbar button { background:#7c3aed; color:#fff; border:none; padding:10px 22px; border-radius:6px; font-size:15px; font-weight:bold; cursor:pointer; }
             .toolbar span { color:#94a3b8; font-size:13px; }
 
-            .pagina { 
-                display: grid; 
-                grid-template-columns: 1fr 1fr; 
-                gap: 4mm;
-                padding: 0;
+            .pagina {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 3mm;
                 background: white;
-                margin: 12px auto;
-                width: 194mm;
+                margin: 10px auto;
+                width: 198mm;
+                padding: 0;
             }
 
             .etiqueta {
                 display: flex;
                 flex-direction: row;
-                align-items: center;
-                gap: 3mm;
-                border: 1px solid #cbd5e1;
-                border-radius: 3mm;
-                padding: 3mm;
-                height: 65mm;
+                align-items: stretch;
+                border: 0.8pt solid #94a3b8;
+                height: 66mm;
                 background: white;
                 overflow: hidden;
             }
 
-            .qr { width: 55mm; height: 55mm; flex-shrink: 0; }
+            /* QR: columna izquierda fija, pequeña pero legible */
+            .qr {
+                width: 38mm;
+                height: 38mm;
+                flex-shrink: 0;
+                align-self: center;
+                margin: 0 2mm 0 2mm;
+            }
 
-            .info { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 1.5mm; }
-            .matricula { font-size: 12pt; font-weight: 900; color: #0f172a; }
-            .ubi       { font-size: 10pt; font-weight: 700; color: #0369a1; }
-            .nombre    { font-size: 8pt;  color: #334155; line-height: 1.3; }
-            .arts      { font-size: 7.5pt; color: #475569; font-weight: 600; }
-            .meta      { font-size: 7pt;  color: #94a3b8; margin-top: auto; }
+            /* Separador vertical */
+            .sep {
+                width: 0.5pt;
+                background: #cbd5e1;
+                margin: 3mm 0;
+                flex-shrink: 0;
+            }
+
+            /* Bloque de texto: ocupa el resto */
+            .info {
+                flex: 1;
+                padding: 3mm 3mm 3mm 3mm;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 2mm;
+                overflow: hidden;
+                min-width: 0;
+            }
+
+            /* Matrícula: lo más grande */
+            .matricula {
+                font-size: 18pt;
+                font-weight: 900;
+                color: #0f172a;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                line-height: 1;
+            }
+
+            /* Ubicación */
+            .ubi {
+                font-size: 12pt;
+                font-weight: 700;
+                color: #0369a1;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* Código artículo */
+            .arts {
+                font-size: 11pt;
+                font-weight: 600;
+                color: #374151;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* Descripción: más pequeña, con ellipsis */
+            .desc {
+                font-size: 8pt;
+                color: #64748b;
+                line-height: 1.3;
+                overflow: hidden;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+            }
 
             @media print {
                 body { background: white; }
                 .toolbar { display: none !important; }
-                .pagina { margin: 0; width: 100%; box-shadow: none; }
-                .etiqueta { border: 0.5pt solid #94a3b8; }
+                .pagina { margin: 0; width: 100%; }
             }
         </style>
         </head><body>
-        <div class="toolbar no-print">
+        <div class="toolbar">
             <button onclick="window.print()">🖨️ Imprimir A4 (8 por folio)</button>
-            <span>${items.length} etiqueta${items.length !== 1 ? 's' : ''} · ${Math.ceil(items.length/8)} folio${Math.ceil(items.length/8) !== 1 ? 's' : ''} · Márgenes mínimos · A4 vertical</span>
+            <span>${items.length} etiqueta${items.length !== 1 ? 's' : ''} · ${Math.ceil(items.length / 8)} folio${Math.ceil(items.length / 8) !== 1 ? 's' : ''} · Márgenes mínimos · A4 vertical</span>
         </div>
         <div class="pagina">${etiquetasHtml}</div>
         </body></html>`;
