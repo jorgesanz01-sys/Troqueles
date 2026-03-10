@@ -938,29 +938,42 @@ const App = {
     filtrar: () => { const b=document.getElementById('btn-limpiar'); b.classList.toggle('oculto', document.getElementById('buscador').value===''); App.renderTabla(); },
     limpiarBuscador: () => { document.getElementById('buscador').value=''; App.filtrar(); },
     ordenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
-    descatalogar: async (id) => { 
+    descatalogar: async (id) => {
         const t = App.datos.find(x => x.id === id); if(!t) return;
-        const ubicacionPalet = prompt(
-            `¿Dónde se va a apilar "${t.id_troquel}"?\n` +
-            `(Ej: PALET-A, PALET-3, ZONA-DESC...)\n` +
-            `Ubicación actual: ${t.ubicacion}`,
+        const palet = prompt(
+            `¿Dónde se apila "${t.id_troquel}"?\n(Ej: PALET-A, PALET-3...)\nUbicación actual: ${t.ubicacion}`,
             'PALET-1'
         );
-        if(ubicacionPalet === null) return; // cancelado
-        if(!ubicacionPalet.trim()) { App.mostrarToast("Debes indicar la ubicación del palet.", "error"); return; }
-        
-        const dataToSend = {
-            ...t,
-            estado: "DESCATALOGADO",
-            ubicacion: ubicacionPalet.trim().toUpperCase(),
-            fecha_descatalogado: new Date().toISOString().split('T')[0],
-            archivos: App.parseArchivos(t.archivos)
-        };
-        
-        await fetch(`/api/troqueles/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dataToSend) }); 
-        App.mostrarToast(`Troquel ${t.id_troquel} descatalogado → ${ubicacionPalet.trim().toUpperCase()}`);
-        await App.cargarTodo(); 
-        if(!document.getElementById('vista-estadisticas').classList.contains('oculto')) App.cargarEstadisticas(document.getElementById('select-inactividad').value);
+        if(palet === null) return;
+        if(!palet.trim()) { App.mostrarToast("Debes indicar la ubicación del palet.", "error"); return; }
+        const res = await fetch('/api/troqueles/bulk/descatalogar', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ ids: [id], ubicacion: palet.trim() })
+        });
+        if(res.ok) {
+            App.mostrarToast(`${t.id_troquel} → Descatalogado en ${palet.trim().toUpperCase()}`);
+            await App.cargarTodo();
+        } else {
+            App.mostrarToast("Error al descatalogar.", "error");
+        }
+    },
+
+    descatalogarLote: async () => {
+        if(App.seleccionados.size === 0) return;
+        const palet = prompt(`¿Dónde se apilan los ${App.seleccionados.size} troqueles seleccionados?\n(Ej: PALET-A, PALET-3...)`);
+        if(palet === null) return;
+        if(!palet.trim()) { App.mostrarToast("Debes indicar la ubicación del palet.", "error"); return; }
+        const res = await fetch('/api/troqueles/bulk/descatalogar', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ ids: Array.from(App.seleccionados), ubicacion: palet.trim() })
+        });
+        if(res.ok) {
+            App.mostrarToast(`${App.seleccionados.size} troqueles descatalogados → ${palet.trim().toUpperCase()}`);
+            App.limpiarSeleccion();
+            await App.cargarTodo();
+        } else {
+            App.mostrarToast("Error al descatalogar.", "error");
+        }
     },
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.mostrarToast("Lote movido."); App.limpiarSeleccion(); App.cargarTodo(); },
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.mostrarToast("Asignación masiva completada."); App.limpiarSeleccion(); App.cargarTodo(); } },
