@@ -124,6 +124,10 @@
                         <input type="text" id="buscador" placeholder="Buscar por Nombre, Artículo o Matrícula..." oninput="App.filtrar()" style="width:100%;">
                         <button id="btn-limpiar" onclick="App.limpiarBuscador()" class="oculto" style="position:absolute; right:5px; top:5px; border:none; background:transparent;">✕</button>
                     </div>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#475569; white-space:nowrap; cursor:pointer; user-select:none;">
+                        <input type="checkbox" id="chk-buscar-global" onchange="App.filtrar()" style="width:16px; height:16px; cursor:pointer;">
+                        🔍 Incluir descatalogados
+                    </label>
                 </div>
 
                 <div id="panel-acciones" class="panel-acciones oculto">
@@ -226,7 +230,10 @@
             <section id="vista-formulario" class="vista oculto">
                 <div class="header-modulo">
                     <h1 id="titulo-form">Ficha Troquel</h1>
-                    <button class="btn-secundario" onclick="App.volverDesdeForm()">Volver</button>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn-secundario" id="btn-etiqueta-form" onclick="App.imprimirEtiquetaForm()" style="display:none;">🖨️ Imprimir Etiqueta</button>
+                        <button class="btn-secundario" onclick="App.volverDesdeForm()">Volver</button>
+                    </div>
                 </div>
                 <div class="panel-formulario">
                     <form onsubmit="App.guardarFicha(event)">

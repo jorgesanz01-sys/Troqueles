@@ -892,7 +892,18 @@ const App = {
             </div>`).join(''); 
     },
     
-    nuevoTroquel: () => { document.getElementById('titulo-form').innerText="Nuevo"; document.querySelector('form').reset(); document.getElementById('f-id-db').value=""; App.archivosActuales=[]; App.renderListaArchivos(); if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); App.nav('vista-formulario'); },
+    nuevoTroquel: () => { 
+        document.getElementById('titulo-form').innerText="Nuevo"; 
+        document.querySelector('form').reset(); 
+        document.getElementById('f-id-db').value=""; 
+        App.archivosActuales=[]; 
+        App.renderListaArchivos(); 
+        // Ocultar botón etiqueta en modo nuevo (no hay id todavía)
+        const btnEtq = document.getElementById('btn-etiqueta-form');
+        if(btnEtq) btnEtq.style.display = 'none';
+        if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); 
+        App.nav('vista-formulario'); 
+    },
     editar: (id) => { 
         const t = App.datos.find(x=>x.id===id); if(!t)return;
         document.getElementById('titulo-form').innerText="Editar";
@@ -906,9 +917,18 @@ const App = {
         
         App.renderListaArchivos();
         if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); 
+        // Mostrar botón imprimir etiqueta (solo en edición, no en nuevo)
+        const btnEtq = document.getElementById('btn-etiqueta-form');
+        if(btnEtq) { btnEtq.style.display = 'block'; btnEtq.dataset.id = t.id; }
         App.nav('vista-formulario');
     },
     volverDesdeForm: () => { if(App.modoMovil) App.activarModoMovil(); else App.nav('vista-lista'); },
+    imprimirEtiquetaForm: () => {
+        const btnEtq = document.getElementById('btn-etiqueta-form');
+        const id = btnEtq ? parseInt(btnEtq.dataset.id) : null;
+        if(!id) { App.mostrarToast("Guarda el troquel primero para imprimir la etiqueta.", "error"); return; }
+        App.generarQR(id);
+    },
     guardarFicha: async (e) => {
         e.preventDefault(); const id = document.getElementById('f-id-db').value;
         const getVal = (elId) => { const el = document.getElementById(elId); return el ? el.value : ""; };
@@ -948,8 +968,78 @@ const App = {
     },
     
     setFiltroTipo: (t,b) => { App.filtroTipo=t; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('activo')); b.classList.add('activo'); App.renderTabla(); },
-    filtrar: () => { const b=document.getElementById('btn-limpiar'); b.classList.toggle('oculto', document.getElementById('buscador').value===''); App.renderTabla(); },
+    filtrar: () => { 
+        const val = document.getElementById('buscador').value;
+        const b = document.getElementById('btn-limpiar');
+        b.classList.toggle('oculto', val === '');
+        // Si hay texto, activar búsqueda global (incluye descatalogados)
+        const chkGlobal = document.getElementById('chk-buscar-global');
+        if(chkGlobal && chkGlobal.checked && val.trim().length >= 2) {
+            App.buscarGlobal(val.trim());
+        } else {
+            App.renderTabla();
+        }
+    },
     limpiarBuscador: () => { document.getElementById('buscador').value=''; App.filtrar(); },
+
+    buscarGlobal: async (txt) => {
+        // Busca en activos + descatalogados simultáneamente
+        const q = txt.toLowerCase();
+        const tbody = document.getElementById('tabla-body');
+        if(!tbody) return;
+
+        try {
+            // Activos ya están en App.datos; descatalogados los pedimos si no los tenemos
+            const resDesc = await fetch('/api/troqueles/descatalogados');
+            const descatalogados = await resDesc.json();
+
+            const todos = [
+                ...App.datos.map(t => ({...t, _origen: 'activo'})),
+                ...descatalogados.map(t => ({...t, _origen: 'descatalogado'}))
+            ];
+
+            const res = todos.filter(t => [
+                t.id_troquel, t.nombre, t.ubicacion,
+                t.codigos_articulo, t.referencias_ot, t.observaciones
+            ].some(v => v && String(v).toLowerCase().includes(q)));
+
+            if(res.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center">Sin resultados en todo el inventario</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = res.map(t => {
+                const esDesc = t._origen === 'descatalogado';
+                const bgRow  = esDesc ? 'background:#fffbeb;' : '';
+                const badge  = esDesc
+                    ? `<span style="background:#fef3c7; color:#92400e; padding:2px 7px; border-radius:8px; font-size:10px; font-weight:800;">DESC.</span>`
+                    : `<span style="background:${t.estado==='EN PRODUCCION'?'#fee2e2':'#dcfce7'}; color:${t.estado==='EN PRODUCCION'?'#991b1b':'#166534'}; padding:2px 7px; border-radius:8px; font-size:10px; font-weight:800;">${t.estado==='EN PRODUCCION'?'PROD.':'ALMACÉN'}</span>`;
+                const archs = App.parseArchivos(t.archivos);
+                const bdg   = archs.length > 0 ? `<span class="obs-pildora">📎 ${archs.length}</span>` : '-';
+                const fam   = App.mapaFam[t.familia_id] || '-';
+                const accion = esDesc
+                    ? `<button class="btn-accion" style="background:#16a34a; padding:3px 8px; font-size:11px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>`
+                    : `<button class="btn-icono" onclick="App.generarQR(${t.id})" title="Etiqueta">🖨️</button>
+                       <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red" title="Papelera">🗑️</button>`;
+
+                return `<tr style="${bgRow}cursor:pointer;" onclick="App.verFicha(${t.id})">
+                    <td class="text-center">-</td>
+                    <td class="text-center">${bdg}</td>
+                    <td class="text-center">${badge}</td>
+                    <td style="font-weight:900;">${t.id_troquel}</td>
+                    <td>${t.ubicacion || '-'}</td>
+                    <td style="color:var(--primary); font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                    <td>${t.nombre}</td>
+                    <td><small>${fam}</small></td>
+                    <td onclick="event.stopPropagation()" style="white-space:nowrap;">${accion}</td>
+                </tr>`;
+            }).join('');
+
+        } catch(e) {
+            console.error(e);
+            App.renderTabla(); // fallback
+        }
+    },
     ordenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
     descatalogar: async (id) => {
         const t = App.datos.find(x => x.id === id); if(!t) return;
