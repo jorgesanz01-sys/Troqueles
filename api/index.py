@@ -11,10 +11,12 @@ from datetime import datetime, timedelta
 app = FastAPI()
 
 # --- CREDENCIALES ---
-SUPABASE_URL = "https://pkaqgtelkdhxlyjodzbq.supabase.co"
-SUPABASE_KEY = "sb_publishable_8F5hCEJTDggd-uus5BKW_Q_891Hr856"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 try:
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("ADVERTENCIA: Faltan credenciales de Supabase. El servidor fallará.")
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 except:
     print("Error conectando a Supabase")

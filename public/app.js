@@ -520,7 +520,91 @@ const App = {
         if(t.estado === 'EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px; font-weight:bold;">PRODUCCIÓN</span>`;
         document.getElementById('movil-estado').innerHTML = stHtml;
     },
-    volverMenuMovil: () => { document.getElementById('vista-movil-detalle').classList.add('oculto'); document.getElementById('vista-movil').classList.remove('oculto'); App.cargarTodo(); },
+    volverMenuMovil: () => { 
+        document.getElementById('vista-movil-detalle').classList.add('oculto'); 
+        const altavista = document.getElementById('vista-movil-alta');
+        if (altavista) altavista.classList.add('oculto');
+        document.getElementById('vista-movil').classList.remove('oculto'); 
+        App.cargarTodo(); 
+    },
+    
+    abrirAltaRapidaMovil: () => {
+        document.getElementById('vista-movil').classList.add('oculto');
+        document.getElementById('vista-movil-alta').classList.remove('oculto');
+        document.getElementById('am-nombre').value = '';
+        document.getElementById('am-foto').value = '';
+        document.getElementById('am-foto-txt').innerHTML = '📷 Tomar Foto del Troquel';
+        
+        const selCat = document.getElementById('am-cat');
+        const selFam = document.getElementById('am-fam');
+        selCat.innerHTML = document.getElementById('f-cat').innerHTML;
+        selFam.innerHTML = document.getElementById('f-fam').innerHTML;
+    },
+    
+    uiFotoTomada: (input) => {
+        if(input.files && input.files[0]) {
+            document.getElementById('am-foto-txt').innerHTML = '✅ Foto: ' + input.files[0].name.substring(0,25);
+        }
+    },
+    
+    guardarAltaRapida: async (e) => {
+        e.preventDefault();
+        const cat = parseInt(document.getElementById('am-cat').value);
+        const fam = parseInt(document.getElementById('am-fam').value);
+        const nom = document.getElementById('am-nombre').value;
+        const inputFoto = document.getElementById('am-foto');
+        
+        if (!cat || !fam || !nom || !inputFoto.files.length) {
+            App.mostrarToast("Rellena todos los campos y toma una foto.", "error"); return;
+        }
+        
+        const btn = document.getElementById('btn-am-guardar');
+        btn.innerText = "⏳ GUARDANDO...";
+        btn.disabled = true;
+        
+        try {
+            const rId = await fetch(`/api/siguiente_numero?categoria_id=${cat}`); 
+            const dId = await rId.json(); 
+            const matricula = dId.siguiente;
+
+            const archivoOptimo = await App.comprimirImagen(inputFoto.files[0]);
+            const fd = new FormData(); fd.append('file', archivoOptimo);
+            const resFoto = await fetch('/api/subir_foto', { method:'POST', body:fd });
+            let archivosArr = [];
+            if(resFoto.ok) {
+                const df = await resFoto.json();
+                archivosArr.push({ url: df.url, nombre: archivoOptimo.name, tipo: df.tipo });
+            } else {
+                App.mostrarToast("Aviso: Error guardando foto", "error");
+            }
+            
+            const payload = {
+                id_troquel: String(matricula), ubicacion: String(matricula), nombre: String(nom),
+                categoria_id: cat, familia_id: fam,
+                tamano_troquel: "", tamano_final: "",
+                codigos_articulo: "", referencias_ot: "ALTA MÓVIL",
+                observaciones: "Dado de alta desde móvil. Faltan datos adicionales.", 
+                estado: "EN ALMACEN",
+                archivos: archivosArr
+            };
+            
+            const resGuardar = await fetch('/api/troqueles', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            
+            if(resGuardar.ok) {
+                App.mostrarToast(`✅ Troquel creado con Matrícula: ${matricula}`);
+                await App.cargarTodo();
+                App.volverMenuMovil();
+            } else {
+                const errG = await resGuardar.text();
+                App.mostrarToast(`Error BD: ${errG}`, "error");
+            }
+        } catch(err) {
+            App.mostrarToast("Error intermitente de red.", "error");
+        } finally {
+            btn.innerText = "💾 GUARDAR TROQUEL";
+            btn.disabled = false;
+        }
+    },
     
     movilCambiarUbi: async () => {
         const id = document.getElementById('movil-id-db').value;
@@ -1041,41 +1125,63 @@ const App = {
         }
     },
     ordenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
+    descatalogarTargetId: null,
+    descatalogarModo: null,
+
     descatalogar: async (id) => {
         const t = App.datos.find(x => x.id === id); if(!t) return;
-        const palet = prompt(
-            `¿Dónde se apila "${t.id_troquel}"?\n(Ej: PALET-A, PALET-3...)\nUbicación actual: ${t.ubicacion}`,
-            'PALET-1'
-        );
-        if(palet === null) return;
-        if(!palet.trim()) { App.mostrarToast("Debes indicar la ubicación del palet.", "error"); return; }
-        const res = await fetch('/api/troqueles/bulk/descatalogar', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ ids: [id], ubicacion: palet.trim() })
-        });
-        if(res.ok) {
-            App.mostrarToast(`${t.id_troquel} → Descatalogado en ${palet.trim().toUpperCase()}`);
-            await App.cargarTodo();
-        } else {
-            App.mostrarToast("Error al descatalogar.", "error");
-        }
+        App.descatalogarTargetId = id;
+        App.descatalogarModo = 'SINGLE';
+        const modal = document.getElementById('modal-descatalogar');
+        const input = document.getElementById('input-descatalogar-ubi');
+        input.value = t.ubicacion || 'PALET-1';
+        modal.classList.remove('oculto');
     },
 
     descatalogarLote: async () => {
         if(App.seleccionados.size === 0) return;
-        const palet = prompt(`¿Dónde se apilan los ${App.seleccionados.size} troqueles seleccionados?\n(Ej: PALET-A, PALET-3...)`);
-        if(palet === null) return;
+        App.descatalogarModo = 'LOTE';
+        const modal = document.getElementById('modal-descatalogar');
+        const input = document.getElementById('input-descatalogar-ubi');
+        input.value = 'PALET-1';
+        modal.classList.remove('oculto');
+    },
+
+    cerrarModalDescatalogar: () => {
+        document.getElementById('modal-descatalogar').classList.add('oculto');
+    },
+
+    confirmarDescatalogar: async () => {
+        const palet = document.getElementById('input-descatalogar-ubi').value;
         if(!palet.trim()) { App.mostrarToast("Debes indicar la ubicación del palet.", "error"); return; }
-        const res = await fetch('/api/troqueles/bulk/descatalogar', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ ids: Array.from(App.seleccionados), ubicacion: palet.trim() })
-        });
-        if(res.ok) {
-            App.mostrarToast(`${App.seleccionados.size} troqueles descatalogados → ${palet.trim().toUpperCase()}`);
-            App.limpiarSeleccion();
-            await App.cargarTodo();
-        } else {
-            App.mostrarToast("Error al descatalogar.", "error");
+        
+        App.cerrarModalDescatalogar();
+        
+        if (App.descatalogarModo === 'SINGLE') {
+            const id = App.descatalogarTargetId;
+            const t = App.datos.find(x => x.id === id); if(!t) return;
+            const res = await fetch('/api/troqueles/bulk/descatalogar', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ ids: [id], ubicacion: palet.trim() })
+            });
+            if(res.ok) {
+                App.mostrarToast(`${t.id_troquel} → Descatalogado en ${palet.trim().toUpperCase()}`);
+                await App.cargarTodo();
+            } else {
+                App.mostrarToast("Error al descatalogar.", "error");
+            }
+        } else if (App.descatalogarModo === 'LOTE') {
+            const res = await fetch('/api/troqueles/bulk/descatalogar', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ ids: Array.from(App.seleccionados), ubicacion: palet.trim() })
+            });
+            if(res.ok) {
+                App.mostrarToast(`${App.seleccionados.size} troqueles descatalogados → ${palet.trim().toUpperCase()}`);
+                App.limpiarSeleccion();
+                await App.cargarTodo();
+            } else {
+                App.mostrarToast("Error al descatalogar.", "error");
+            }
         }
     },
     moverLote: async (acc) => { await fetch('/api/movimientos/lote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), accion: acc }) }); App.mostrarToast("Lote movido."); App.limpiarSeleccion(); App.cargarTodo(); },
@@ -1149,9 +1255,6 @@ const App = {
             return canvas.toDataURL('image/png');
         };
 
-        const printWindow = window.open('', '_blank', 'width=750,height=600');
-        if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
-
         const dataUrls = items.map(t => dibujarEtiqueta(t));
         const imgsHtml = dataUrls.map(src => `<div class="et"><img src="${src}"></div>`).join('');
 
@@ -1180,19 +1283,31 @@ const App = {
                 ${imgsHtml}
             </div></body></html>`;
 
-        printWindow.document.write(html);
-        printWindow.document.close();
+        let iframe = document.getElementById('impresion-oculta');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'impresion-oculta';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+        }
+
+        iframe.contentWindow.document.open();
+        iframe.contentWindow.document.write(html);
+        iframe.contentWindow.document.close();
+
         const modalQr = document.getElementById('modal-qr');
         if (modalQr) modalQr.classList.add('oculto');
-        setTimeout(() => { printWindow.print(); }, 800);
+        
+        setTimeout(() => { 
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print(); 
+        }, 800);
     },
 
 
     imprimirEtiquetasA4: (items) => {
         // APLI ref.1291 — A4, 8 etiquetas de 97×67.7mm (2col × 4fil)
         // Márgenes hoja: 8mm lat, 13.1mm sup/inf, sin gap entre etiquetas
-        const printWindow = window.open('', '_blank', 'width=820,height=960');
-        if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
 
         const etiquetasHtml = items.map(t => {
             const qrCanvas = document.createElement('canvas');
@@ -1355,11 +1470,25 @@ const App = {
         <div class="pagina">${etiquetasHtml}</div>
         </body></html>`;
 
-        printWindow.document.write(html);
-        printWindow.document.close();
+        let iframe = document.getElementById('impresion-oculta');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'impresion-oculta';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+        }
+
+        iframe.contentWindow.document.open();
+        iframe.contentWindow.document.write(html);
+        iframe.contentWindow.document.close();
+
         const modalQr = document.getElementById('modal-qr');
         if (modalQr) modalQr.classList.add('oculto');
-        setTimeout(() => { printWindow.print(); }, 900);
+        
+        setTimeout(() => { 
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print(); 
+        }, 900);
     },
 
     imprimirLoteQRs: (tamano = '50x23') => { 

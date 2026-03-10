@@ -362,6 +362,7 @@
                     <button class="btn-gigante" style="background:#0f766e;" onclick="App.toggleScanner(true, 'UNICO')">🔎 CONSULTAR QR</button>
                     <button class="btn-gigante scan" onclick="App.toggleScanner(true, 'LOTE')">📦 MOVER LOTE</button>
                 </div>
+                <button class="btn-gigante" style="background:#3b82f6; width:100%; margin-top:15px; display:flex; gap:10px; align-items:center; justify-content:center;" onclick="App.abrirAltaRapidaMovil()">➕ ALTA EXPRÉS (Nuevo Troquel)</button>
                 <div style="margin-top:30px;">
                     <input type="text" id="buscador-movil" placeholder="Buscar por Nombre, Matrícula o Ubicación..." style="width:100%; padding:15px; font-size:18px; border-radius:8px; border:2px solid #cbd5e1;" oninput="App.buscarMovil(this.value)">
                     <div id="resultados-movil" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;"></div>
@@ -410,6 +411,37 @@
                     <button class="btn-gigante" style="background:var(--success); color:white; padding:15px; font-size:15px;" onclick="App.movilCambiarEstado('RETORNO')">✅ A Almacén</button>
                 </div>
                 <input type="hidden" id="movil-id-db">
+            </section>
+
+            <section id="vista-movil-alta" class="vista oculto" style="padding:15px; background:#f8fafc; height:100dvh; overflow-y:auto; padding-bottom:120px; width:100%; box-sizing:border-box;">
+                <button class="btn-secundario" onclick="App.volverMenuMovil()" style="width:100%; margin-bottom:15px; padding:12px;">⬅️ Cancelar Alta</button>
+                <div style="background:white; border:2px solid #3b82f6; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h2 style="margin-top:0; color:#1e293b; font-size:20px;">⚡ Alta Exprés</h2>
+                    <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Captura un troquel nuevo rápidamente. La matrícula se generará sola.</p>
+                    
+                    <form onsubmit="App.guardarAltaRapida(event)">
+                        <div style="margin-bottom:12px;">
+                            <label style="font-weight:bold; font-size:14px; color:#1e293b; display:block; margin-bottom:5px;">1. TIPO PRINCIPAL *</label>
+                            <select id="am-cat" required style="padding:12px; font-weight:bold; border:2px solid #3b82f6; width:100%;"></select>
+                        </div>
+                        <div style="margin-bottom:12px;">
+                            <label style="font-weight:bold; font-size:14px; color:#1e293b; display:block; margin-bottom:5px;">2. FAMILIA *</label>
+                            <select id="am-fam" required style="padding:12px; border:2px solid #cbd5e1; width:100%;"></select>
+                        </div>
+                        <div style="margin-bottom:12px;">
+                            <label style="font-weight:bold; font-size:14px; color:#1e293b; display:block; margin-bottom:5px;">3. DESCRIPCIÓN *</label>
+                            <input type="text" id="am-nombre" required placeholder="Ej: CAJA PIZZA GRANDE" style="padding:12px; border:2px solid #cbd5e1; width:100%;">
+                        </div>
+                        <div style="margin-bottom:20px;">
+                            <label style="font-weight:bold; font-size:14px; color:#1e293b; display:block; margin-bottom:5px;">4. FOTOGRAFÍA *</label>
+                            <label class="btn-secundario" style="display:block; text-align:center; padding:15px; border:2px dashed #94a3b8; background:#f1f5f9; cursor:pointer;">
+                                <span id="am-foto-txt" style="font-weight:bold; font-size:16px;">📷 Tomar Foto del Troquel</span>
+                                <input type="file" id="am-foto" accept="image/*" capture="environment" onchange="App.uiFotoTomada(this)" required style="display:none;">
+                            </label>
+                        </div>
+                        <button type="submit" id="btn-am-guardar" class="btn-gigante" style="background:#10b981; width:100%; padding:15px;">💾 GUARDAR TROQUEL</button>
+                    </form>
+                </div>
             </section>
 
             <div id="modal-ficha" class="modal oculto">
@@ -513,6 +545,30 @@
                 </div>
             </div>
             
+            <div id="modal-descatalogar" class="modal oculto">
+                <div class="modal-contenido" style="max-width:400px; text-align:center;">
+                    <h3 style="margin-top:0;">⛔ Mover a Descatalogados</h3>
+                    <p style="font-size:14px; color:#64748b; margin-bottom:15px;">¿Dónde se va a almacenar este troquel físicamente?</p>
+                    
+                    <div style="text-align:left; margin-bottom:20px;">
+                        <label style="font-weight:bold; font-size:12px; color:#475569;">UBICACIÓN / PALET *</label>
+                        <input type="text" id="input-descatalogar-ubi" placeholder="Ej: PALET-1, ESTANTERIA A..." style="font-weight:bold; border:2px solid #cbd5e1; padding:10px; margin-top:5px;" list="palets-sugeridos">
+                        <datalist id="palets-sugeridos">
+                            <option value="PALET-1">
+                            <option value="PALET-2">
+                            <option value="PALET-3">
+                            <option value="PALET-4">
+                            <option value="ALTILLO">
+                        </datalist>
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-secundario" style="flex:1;" onclick="App.cerrarModalDescatalogar()">Cancelar</button>
+                        <button class="btn-accion" style="flex:1; background:#f59e0b;" onclick="App.confirmarDescatalogar()">Confirmar</button>
+                    </div>
+                </div>
+            </div>
+
             <section id="vista-historial" class="vista oculto"><div class="header-modulo"><h1>Historial General</h1></div><div class="contenedor-tabla"><table class="tabla-pro"><thead><tr><th>Fecha</th><th>Troquel</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tabla-historial"></tbody></table></div></section>
         </main>
     </div>
