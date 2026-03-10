@@ -1271,3 +1271,182 @@ const App = {
         if (modalQr) modalQr.classList.add('oculto');
         setTimeout(() => { printWindow.print(); }, 900);
     },
+
+    imprimirLoteQRs: (tamano = '50x23') => { 
+        if(App.seleccionados.size === 0) return; 
+        const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); 
+        if(tamano === 'a4') App.imprimirEtiquetasA4(itemsToPrint);
+        else App.imprimirEtiquetasGodex(itemsToPrint, tamano); 
+        App.limpiarSeleccion(); 
+    },
+
+    generarQR: (id_db) => { 
+        const t = App.datos.find(x => x.id === id_db); if(!t) return;
+        document.getElementById('modal-qr').classList.remove('oculto'); 
+        document.getElementById('qr-texto-id').innerText = "TROQUEL " + t.id_troquel; 
+        document.getElementById('qr-texto-ubi').innerText = "UBI: " + (t.ubicacion || '-'); 
+        document.getElementById('qr-texto-desc').innerText = t.nombre; 
+        const elArts = document.getElementById('qr-texto-arts');
+        if(elArts) { if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } else { elArts.style.display = "none"; } }
+        new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
+        document.getElementById('btn-imprimir-qr-unico-50').onclick  = () => { App.imprimirEtiquetasGodex([t], '50x23'); };
+        document.getElementById('btn-imprimir-qr-unico-100').onclick = () => { App.imprimirEtiquetasGodex([t], '100x70'); };
+        const btnA4 = document.getElementById('btn-imprimir-qr-unico-a4');
+        if(btnA4) btnA4.onclick = () => { App.imprimirEtiquetasA4([t]); };
+    },
+
+    // ─── FLUJO DESCATALOGADOS ───────────────────────────────────
+    verDescatalogados: async () => {
+        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
+        document.getElementById('vista-descatalogados').classList.remove('oculto');
+        document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
+        
+        const tbody = document.getElementById('tabla-desc-body');
+        const counter = document.getElementById('desc-contador');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando... ⏳</td></tr>';
+        
+        try {
+            const res = await fetch('/api/troqueles/descatalogados');
+            const data = await res.json();
+            if(counter) counter.innerText = data.length;
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">No hay troqueles descatalogados.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(t => {
+                const fecha = t.fecha_descatalogado 
+                    ? new Date(t.fecha_descatalogado).toLocaleDateString('es-ES') 
+                    : '-';
+                return `<tr>
+                    <td style="font-weight:900; color:#92400e;">${t.id_troquel}</td>
+                    <td>${t.ubicacion || '-'}</td>
+                    <td>${t.nombre}</td>
+                    <td style="color:#0369a1;">${t.codigos_articulo || '-'}</td>
+                    <td style="color:#64748b;">${fecha}</td>
+                    <td>
+                        <button class="btn-accion" style="background:#16a34a; padding:4px 12px; font-size:12px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar.</td></tr>';
+        }
+    },
+
+    reactivar: async (id) => {
+        const ubi = prompt("¿A qué estantería vuelve el troquel?");
+        if(ubi === null) return;
+        if(!ubi.trim()) { App.mostrarToast("Debes indicar la ubicación.", "error"); return; }
+        const res = await fetch(`/api/troqueles/${id}/reactivar`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ ubicacion: ubi.trim() })
+        });
+        if(res.ok) { App.mostrarToast("Troquel reactivado al inventario."); App.verDescatalogados(); }
+        else { App.mostrarToast("Error al reactivar.", "error"); }
+    },
+
+    // ─── BACKUP ────────────────────────────────────────────────
+    exportarCopiaSeguridad: async () => {
+        App.mostrarToast("Generando copia de seguridad...");
+        try {
+            const [resActivos, resPapelera, resDesc] = await Promise.all([
+                fetch('/api/troqueles?ver_papelera=false'),
+                fetch('/api/troqueles?ver_papelera=true'),
+                fetch('/api/troqueles/descatalogados')
+            ]);
+            const activos        = await resActivos.json();
+            const papelera       = await resPapelera.json();
+            const descatalogados = await resDesc.json();
+
+            const mapaIds = {};
+            [...activos, ...papelera, ...descatalogados].forEach(t => mapaIds[t.id] = t);
+            const todos = Object.values(mapaIds);
+
+            const ahora = new Date();
+            const fecha = ahora.toISOString().split('T')[0];
+            const hora  = ahora.toTimeString().slice(0,5).replace(':','-');
+
+            const payload = {
+                version: 2,
+                fecha_backup: ahora.toISOString(),
+                total: todos.length,
+                resumen: {
+                    activos: activos.length,
+                    papelera: papelera.length,
+                    descatalogados: descatalogados.length
+                },
+                troqueles: todos
+            };
+
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `BACKUP_TROQUELES_${fecha}_${hora}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            App.mostrarToast(`Copia descargada: ${todos.length} troqueles (${activos.length} activos, ${descatalogados.length} desc., ${papelera.length} papelera).`);
+        } catch(e) {
+            App.mostrarToast("Error al generar la copia de seguridad.", "error");
+            console.error(e);
+        }
+    },
+
+    restaurarCopiaSeguridad: async (input) => {
+        const file = input.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const parsed = JSON.parse(e.target.result);
+                const backupData = Array.isArray(parsed) ? parsed : (parsed.troqueles || []);
+                const esFecha    = parsed.fecha_backup ? new Date(parsed.fecha_backup).toLocaleString('es-ES') : 'desconocida';
+                const resumen    = parsed.resumen || {};
+
+                const msg = parsed.version === 2
+                    ? `Backup del ${esFecha}\n\nContenido:\n• ${resumen.activos || '?'} activos\n• ${resumen.descatalogados || '?'} descatalogados\n• ${resumen.papelera || '?'} en papelera\n• Total: ${backupData.length} troqueles\n\n⚠️ Esto REEMPLAZARÁ la base de datos actual.\n¿Continuar?`
+                    : `Backup con ${backupData.length} troqueles (formato antiguo).\n\n⚠️ Esto REEMPLAZARÁ la base de datos actual.\n¿Continuar?`;
+
+                if(!confirm(msg)) return;
+                App.mostrarToast("Restaurando copia de seguridad...");
+                const res = await fetch('/api/troqueles/backup/restaurar', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(backupData)
+                });
+                if(res.ok) {
+                    App.mostrarToast("Base de datos restaurada correctamente.");
+                    await App.cargarTodo();
+                } else {
+                    App.mostrarToast("Error en el servidor al restaurar.", "error");
+                }
+            } catch (err) {
+                App.mostrarToast("Formato JSON inválido.", "error");
+                console.error(err);
+            }
+        };
+        reader.readAsText(file);
+    },
+
+    // ─── IMPORTAR CSV ──────────────────────────────────────────
+    importarCSV: async (input) => {
+        if(!input.files.length) return;
+        const tipo = document.getElementById('select-import-tipo').value;
+        if(!tipo) { App.mostrarToast("Selecciona un tipo antes de importar.", "error"); return; }
+        const fd = new FormData();
+        fd.append('file', input.files[0]);
+        fd.append('categoria_id', tipo);
+        App.mostrarToast("Importando CSV...");
+        const res = await fetch('/api/importar_csv', { method: 'POST', body: fd });
+        if(res.ok) {
+            const d = await res.json();
+            App.mostrarToast(`Importados: ${d.insertados} troqueles.`);
+            App.cargarTodo();
+        } else {
+            const err = await res.json();
+            App.mostrarToast(`Error: ${err.detail}`, "error");
+        }
+        input.value = "";
+    }
+};
+
+window.onload = App.init;
