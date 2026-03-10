@@ -1157,8 +1157,8 @@ const App = {
 
             /* QR: columna izquierda fija, pequeña pero legible */
             .qr {
-                width: 38mm;
-                height: 38mm;
+                width: 20mm;
+                height: 20mm;
                 flex-shrink: 0;
                 align-self: center;
                 margin: 0 2mm 0 2mm;
@@ -1186,7 +1186,7 @@ const App = {
 
             /* Matrícula */
             .matricula {
-                font-size: 14pt;
+                font-size: 12pt;
                 font-weight: 900;
                 color: #0f172a;
                 white-space: nowrap;
@@ -1197,7 +1197,7 @@ const App = {
 
             /* Ubicación */
             .ubi {
-                font-size: 11pt;
+                font-size: 12pt;
                 font-weight: 900;
                 color: #0369a1;
                 white-space: nowrap;
@@ -1217,7 +1217,7 @@ const App = {
 
             /* Descripción: la más grande, negrita, con ellipsis */
             .desc {
-                font-size: 13pt;
+                font-size: 11pt;
                 font-weight: 900;
                 color: #0f172a;
                 line-height: 1.3;
