@@ -308,12 +308,17 @@ class BulkDescatalogarData(BaseModel):
 @app.post("/api/troqueles/bulk/descatalogar")
 def bulk_descatalogar(d: BulkDescatalogarData):
     from datetime import date
+    # Obtener ubicaciones anteriores para el historial
+    troqueles = supabase.table("troqueles").select("id, ubicacion").in_("id", d.ids).execute().data
     supabase.table("troqueles").update({
         "estado_activo": "Activo",
         "estado": "DESCATALOGADO",
         "ubicacion": d.ubicacion.upper(),
         "fecha_descatalogado": date.today().isoformat()
     }).in_("id", d.ids).execute()
+    # Registrar historial para cada troquel
+    for t in troqueles:
+        registrar_log(t["id"], "DESCATALOGADO", t.get("ubicacion",""), d.ubicacion.upper())
     return {"ok": True, "count": len(d.ids)}
 
 def registrar_log(id_t, accion, orig, dest):

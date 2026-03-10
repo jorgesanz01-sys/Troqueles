@@ -1244,14 +1244,52 @@ const App = {
         reader.readAsText(file, 'ISO-8859-1');
     },
     
-    exportarCopiaSeguridad: () => {
-        if(App.datos.length === 0) { App.mostrarToast("No hay datos.", "error"); return; }
-        const dataStr = JSON.stringify(App.datos, null, 2);
-        const blob = new Blob([dataStr], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url;
-        a.download = `BACKUP_TOTAL_${new Date().toISOString().split('T')[0]}.json`;
-        a.click(); App.mostrarToast("Copia descargada.");
+    exportarCopiaSeguridad: async () => {
+        App.mostrarToast("Generando copia de seguridad...");
+        try {
+            // Obtener TODOS los troqueles: activos, papelera y descatalogados
+            const [resActivos, resPapelera, resDesc] = await Promise.all([
+                fetch('/api/troqueles?ver_papelera=false'),
+                fetch('/api/troqueles?ver_papelera=true'),
+                fetch('/api/troqueles/descatalogados')
+            ]);
+            const activos      = await resActivos.json();
+            const papelera     = await resPapelera.json();
+            const descatalogados = await resDesc.json();
+
+            // Unificar sin duplicados (por id)
+            const mapaIds = {};
+            [...activos, ...papelera, ...descatalogados].forEach(t => mapaIds[t.id] = t);
+            const todos = Object.values(mapaIds);
+
+            const ahora = new Date();
+            const fecha = ahora.toISOString().split('T')[0];
+            const hora  = ahora.toTimeString().slice(0,5).replace(':','-');
+
+            const payload = {
+                version: 2,
+                fecha_backup: ahora.toISOString(),
+                total: todos.length,
+                resumen: {
+                    activos: activos.length,
+                    papelera: papelera.length,
+                    descatalogados: descatalogados.length
+                },
+                troqueles: todos
+            };
+
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `BACKUP_TROQUELES_${fecha}_${hora}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            App.mostrarToast(`Copia descargada: ${todos.length} troqueles (${activos.length} activos, ${descatalogados.length} desc., ${papelera.length} papelera).`);
+        } catch(e) {
+            App.mostrarToast("Error al generar la copia de seguridad.", "error");
+            console.error(e);
+        }
     },
 
     restaurarCopiaSeguridad: async (input) => {
@@ -1259,13 +1297,34 @@ const App = {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                const backupData = JSON.parse(e.target.result);
-                if(!confirm(`Se van a restaurar ${backupData.length} troqueles. ¿Seguro?`)) return;
-                App.mostrarToast("Subiendo copia de seguridad...", "exito");
-                const res = await fetch('/api/troqueles/backup/restaurar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(backupData) });
-                if(res.ok) { App.mostrarToast("Base de datos restaurada."); App.cargarTodo(); } 
-                else { App.mostrarToast("Error en el servidor.", "error"); }
-            } catch (err) { App.mostrarToast("Formato JSON inválido.", "error"); }
+                const parsed = JSON.parse(e.target.result);
+
+                // Soportar formato v2 (objeto con .troqueles) y v1 (array directo)
+                const backupData = Array.isArray(parsed) ? parsed : (parsed.troqueles || []);
+                const esFecha    = parsed.fecha_backup ? new Date(parsed.fecha_backup).toLocaleString('es-ES') : 'desconocida';
+                const resumen    = parsed.resumen || {};
+
+                const msg = parsed.version === 2
+                    ? `Backup del ${esFecha}\n\nContenido:\n• ${resumen.activos || '?'} activos\n• ${resumen.descatalogados || '?'} descatalogados\n• ${resumen.papelera || '?'} en papelera\n• Total: ${backupData.length} troqueles\n\n⚠️ Esto REEMPLAZARÁ la base de datos actual.\n¿Continuar?`
+                    : `Backup con ${backupData.length} troqueles (formato antiguo).\n\n⚠️ Esto REEMPLAZARÁ la base de datos actual.\n¿Continuar?`;
+
+                if(!confirm(msg)) return;
+                App.mostrarToast("Restaurando copia de seguridad...");
+                const res = await fetch('/api/troqueles/backup/restaurar', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(backupData)
+                });
+                if(res.ok) {
+                    App.mostrarToast("Base de datos restaurada correctamente.");
+                    await App.cargarTodo();
+                } else {
+                    App.mostrarToast("Error en el servidor al restaurar.", "error");
+                }
+            } catch (err) {
+                App.mostrarToast("Formato JSON inválido.", "error");
+                console.error(err);
+            }
         };
         reader.readAsText(file);
     }
