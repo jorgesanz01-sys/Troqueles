@@ -319,9 +319,17 @@
                         <button onclick="App.toggleDarkMode()" class="btn-secundario" style="background:white; border:2px solid #cbd5e1; font-weight:bold; font-size:18px;">🌙</button>
                     </div>
                 </div>
-                <div style="background:#fef3c7; border:1px solid #f59e0b; border-radius:8px; padding:15px; margin-bottom:20px; font-size:14px; color:#78350f;">
-                    <strong>ℹ️ ¿Qué son los descatalogados?</strong> Troqueles que ya no se usan habitualmente y están apilados en palets.
-                    Conservan su matrícula original y pueden <strong>reactivarse</strong> si vuelve a necesitarse el trabajo.
+                <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center;">
+                    <div style="position:relative; flex:1; max-width:420px;">
+                        <input type="text" id="buscador-desc" placeholder="Buscar por matrícula, descripción, artículo o ubicación..." 
+                            oninput="App.renderDescatalogados(this.value)"
+                            style="width:100%; padding:10px 36px 10px 12px; border:2px solid #f59e0b; border-radius:8px; font-size:14px;">
+                        <button onclick="document.getElementById('buscador-desc').value=''; App.renderDescatalogados('');" 
+                            style="position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:16px; cursor:pointer; color:#92400e;">✕</button>
+                    </div>
+                </div>
+                <div style="background:#fef3c7; border:1px solid #f59e0b; border-radius:8px; padding:12px 15px; margin-bottom:15px; font-size:13px; color:#78350f;">
+                    <strong>ℹ️ Descatalogados:</strong> Troqueles en palets. Conservan su matrícula y pueden <strong>reactivarse</strong> cuando se necesiten.
                 </div>
                 <div class="contenedor-tabla">
                     <table class="tabla-pro">

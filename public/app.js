@@ -143,7 +143,7 @@ const App = {
                     const res = await fetch('/api/troqueles?ver_papelera=false');
                     if (res.ok) {
                         App.datos = await res.json() || [];
-                        App.renderTabla(); 
+                        App.filtrar(); // respeta búsqueda global si está activa
                     }
                 } catch(e) {}
             }
@@ -1386,41 +1386,53 @@ const App = {
     },
 
     // ─── FLUJO DESCATALOGADOS ───────────────────────────────────
+    datosDescatalogados: [],
+
     verDescatalogados: async () => {
         document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
         document.getElementById('vista-descatalogados').classList.remove('oculto');
         document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
-        
         const tbody = document.getElementById('tabla-desc-body');
         const counter = document.getElementById('desc-contador');
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando... ⏳</td></tr>';
-        
         try {
             const res = await fetch('/api/troqueles/descatalogados');
-            const data = await res.json();
-            if(counter) counter.innerText = data.length;
-            if(data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">No hay troqueles descatalogados.</td></tr>';
-                return;
-            }
-            tbody.innerHTML = data.map(t => {
-                const fecha = t.fecha_descatalogado 
-                    ? new Date(t.fecha_descatalogado).toLocaleDateString('es-ES') 
-                    : '-';
-                return `<tr>
-                    <td style="font-weight:900; color:#92400e;">${t.id_troquel}</td>
-                    <td>${t.ubicacion || '-'}</td>
-                    <td>${t.nombre}</td>
-                    <td style="color:#0369a1;">${t.codigos_articulo || '-'}</td>
-                    <td style="color:#64748b;">${fecha}</td>
-                    <td>
-                        <button class="btn-accion" style="background:#16a34a; padding:4px 12px; font-size:12px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>
-                    </td>
-                </tr>`;
-            }).join('');
+            App.datosDescatalogados = await res.json();
+            App.renderDescatalogados();
         } catch(e) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar.</td></tr>';
         }
+    },
+
+    renderDescatalogados: (filtro = '') => {
+        const tbody = document.getElementById('tabla-desc-body');
+        const counter = document.getElementById('desc-contador');
+        const q = filtro.toLowerCase();
+        const data = q
+            ? App.datosDescatalogados.filter(t => [t.id_troquel, t.nombre, t.ubicacion, t.codigos_articulo]
+                .some(v => v && String(v).toLowerCase().includes(q)))
+            : App.datosDescatalogados;
+        if(counter) counter.innerText = data.length;
+        if(data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">${q ? 'Sin resultados para "'+filtro+'"' : 'No hay troqueles descatalogados.'}</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = data.map(t => {
+            const fecha = t.fecha_descatalogado
+                ? new Date(t.fecha_descatalogado).toLocaleDateString('es-ES')
+                : '-';
+            return `<tr>
+                <td style="font-weight:900; color:#92400e;">${t.id_troquel}</td>
+                <td>${t.ubicacion || '-'}</td>
+                <td>${t.nombre}</td>
+                <td style="color:#0369a1;">${t.codigos_articulo || '-'}</td>
+                <td style="color:#64748b;">${fecha}</td>
+                <td style="white-space:nowrap;">
+                    <button class="btn-accion" style="background:#16a34a; padding:4px 12px; font-size:12px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>
+                    <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir etiqueta">🖨️</button>
+                </td>
+            </tr>`;
+        }).join('');
     },
 
     reactivar: async (id) => {
