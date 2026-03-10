@@ -1184,9 +1184,9 @@ const App = {
                 min-width: 0;
             }
 
-            /* Matrícula: lo más grande */
+            /* Matrícula */
             .matricula {
-                font-size: 22pt;
+                font-size: 14pt;
                 font-weight: 900;
                 color: #0f172a;
                 white-space: nowrap;
@@ -1197,7 +1197,7 @@ const App = {
 
             /* Ubicación */
             .ubi {
-                font-size: 15pt;
+                font-size: 11pt;
                 font-weight: 900;
                 color: #0369a1;
                 white-space: nowrap;
@@ -1207,7 +1207,7 @@ const App = {
 
             /* Código artículo */
             .arts {
-                font-size: 13pt;
+                font-size: 10pt;
                 font-weight: 900;
                 color: #1e293b;
                 white-space: nowrap;
@@ -1215,11 +1215,11 @@ const App = {
                 text-overflow: ellipsis;
             }
 
-            /* Descripción: más pequeña, negrita, con ellipsis */
+            /* Descripción: la más grande, negrita, con ellipsis */
             .desc {
-                font-size: 9pt;
-                font-weight: 700;
-                color: #475569;
+                font-size: 13pt;
+                font-weight: 900;
+                color: #0f172a;
                 line-height: 1.3;
                 overflow: hidden;
                 display: -webkit-box;
