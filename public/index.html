@@ -132,6 +132,7 @@
                     <div id="acciones-normales" style="display:inline-flex; gap:5px; align-items:center;">
                         <button class="btn-secundario" style="background:white; border:2px solid #14b8a6; color:#0f766e; font-weight:bold; padding: 6px 10px;" onclick="App.imprimirLoteQRs('50x23')">🖨️ 50x23</button>
                         <button class="btn-secundario" style="background:white; border:2px solid #0284c7; color:#0284c7; font-weight:bold; padding: 6px 10px;" onclick="App.imprimirLoteQRs('100x70')">🖨️ 100x70</button>
+                        <button class="btn-secundario" style="background:white; border:2px solid #7c3aed; color:#7c3aed; font-weight:bold; padding: 6px 10px;" onclick="App.imprimirLoteQRs('a4')">🖨️ A4 (8/folio)</button>
                         <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
                         <button class="btn-accion" style="background:#e11d48;" onclick="App.moverLote('SALIDA')">🏭 A Prod.</button>
                         <button class="btn-accion" style="background:#16a34a;" onclick="App.moverLote('RETORNO')">✅ Devolver</button>
@@ -490,8 +491,9 @@
                     </div>
                     <div class="modal-botones no-print" style="margin-top: 30px; display: flex; gap: 10px; justify-content: center;">
                         <button class="btn-secundario" onclick="document.getElementById('modal-qr').classList.add('oculto')">Cancelar</button>
-                        <button class="btn-accion" id="btn-imprimir-qr-unico-50" style="background:var(--primary);">🖨️ 50x23</button>
-                        <button class="btn-accion" id="btn-imprimir-qr-unico-100" style="background:#0284c7;">🖨️ 100x70</button>
+                        <button class="btn-accion" id="btn-imprimir-qr-unico-50" style="background:var(--primary);">🖨️ Godex 50x23</button>
+                        <button class="btn-accion" id="btn-imprimir-qr-unico-100" style="background:#0284c7;">🖨️ Godex 100x70</button>
+                        <button class="btn-accion" id="btn-imprimir-qr-unico-a4" style="background:#7c3aed;">🖨️ A4 (8/folio)</button>
                     </div>
                 </div>
             </div>

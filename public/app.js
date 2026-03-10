@@ -874,9 +874,25 @@ const App = {
     
     buscarMovil: (txt) => { 
         const d = document.getElementById('resultados-movil'); d.innerHTML = ""; 
-        if(txt.length<2) return; 
-        const h = App.datos.filter(t => (t.nombre+t.id_troquel+(t.ubicacion||"")).toLowerCase().includes(txt.toLowerCase())); 
-        d.innerHTML = h.slice(0,50).map(t => `<div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})"><div style="font-weight:900;">${t.id_troquel}</div><div>${t.nombre}</div><button class="btn-secundario">Ver</button></div>`).join(''); 
+        if(txt.length<2) return;
+        const q = txt.toLowerCase();
+        const h = App.datos.filter(t => [
+            t.id_troquel, t.nombre, t.ubicacion,
+            t.codigos_articulo, t.referencias_ot,
+            t.observaciones, t.tamano_troquel, t.tamano_final,
+            App.mapaFam[t.familia_id], App.mapaCat[t.categoria_id]
+        ].some(v => v && String(v).toLowerCase().includes(q)));
+        if(h.length === 0) {
+            d.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">Sin resultados</div>';
+            return;
+        }
+        d.innerHTML = h.slice(0,50).map(t => `
+            <div class="card-movil" onclick="App.abrirDetalleMovil(${t.id})">
+                <div style="font-weight:900; color:var(--primary);">${t.id_troquel}</div>
+                <div style="font-size:13px; margin:2px 0;">${t.nombre}</div>
+                <div style="font-size:11px; color:#64748b;">${t.ubicacion || ''} ${t.codigos_articulo ? '· '+t.codigos_articulo : ''}</div>
+                <button class="btn-secundario" style="margin-top:6px;">Ver ficha</button>
+            </div>`).join(''); 
     },
     
     nuevoTroquel: () => { document.getElementById('titulo-form').innerText="Nuevo"; document.querySelector('form').reset(); document.getElementById('f-id-db').value=""; App.archivosActuales=[]; App.renderListaArchivos(); if(App.modoMovil) document.getElementById('sidebar').classList.add('oculto'); App.nav('vista-formulario'); },
@@ -1085,7 +1101,104 @@ const App = {
     },
 
 
-    imprimirLoteQRs: (tamano = '50x23') => { if(App.seleccionados.size === 0) return; const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); App.imprimirEtiquetasGodex(itemsToPrint, tamano); App.limpiarSeleccion(); },
+    imprimirEtiquetasA4: (items) => {
+        // A4: 210x297mm, 8 etiquetas por folio (2 columnas x 4 filas)
+        // Cada etiqueta: ~95x65mm con 5mm de margen entre ellas
+        const printWindow = window.open('', '_blank', 'width=800,height=900');
+        if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
+
+        const etiquetasHtml = items.map(t => {
+            // Generar QR como data URL
+            const qrCanvas = document.createElement('canvas');
+            new QRious({ element: qrCanvas, value: t.id.toString(), size: 180, level: 'M', background: 'white', foreground: 'black' });
+            const qrSrc = qrCanvas.toDataURL('image/png');
+            const familia = App.mapaFam[t.familia_id] || '';
+            const tipo    = App.mapaCat[t.categoria_id] || '';
+            return `
+            <div class="etiqueta">
+                <img class="qr" src="${qrSrc}" alt="QR">
+                <div class="info">
+                    <div class="matricula">TROQUEL ${t.id_troquel}</div>
+                    <div class="ubi">📍 ${t.ubicacion || '-'}</div>
+                    <div class="nombre">${t.nombre}</div>
+                    ${t.codigos_articulo ? `<div class="arts">Art: ${t.codigos_articulo}</div>` : ''}
+                    ${familia ? `<div class="meta">${familia}${tipo ? ' · '+tipo : ''}</div>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+        <title>Etiquetas A4</title>
+        <style>
+            * { margin:0; padding:0; box-sizing:border-box; }
+            @page { size: A4 portrait; margin: 8mm; }
+            body { font-family: Arial, sans-serif; background: #f0f0f0; }
+
+            .toolbar { display:flex; gap:10px; align-items:center; padding:12px 16px; background:#1e293b; }
+            .toolbar button { background:#14b8a6; color:#fff; border:none; padding:10px 20px; border-radius:6px; font-size:15px; font-weight:bold; cursor:pointer; }
+            .toolbar span { color:#94a3b8; font-size:13px; }
+
+            .pagina { 
+                display: grid; 
+                grid-template-columns: 1fr 1fr; 
+                gap: 4mm;
+                padding: 0;
+                background: white;
+                margin: 12px auto;
+                width: 194mm;
+            }
+
+            .etiqueta {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 3mm;
+                border: 1px solid #cbd5e1;
+                border-radius: 3mm;
+                padding: 3mm;
+                height: 65mm;
+                background: white;
+                overflow: hidden;
+            }
+
+            .qr { width: 55mm; height: 55mm; flex-shrink: 0; }
+
+            .info { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 1.5mm; }
+            .matricula { font-size: 12pt; font-weight: 900; color: #0f172a; }
+            .ubi       { font-size: 10pt; font-weight: 700; color: #0369a1; }
+            .nombre    { font-size: 8pt;  color: #334155; line-height: 1.3; }
+            .arts      { font-size: 7.5pt; color: #475569; font-weight: 600; }
+            .meta      { font-size: 7pt;  color: #94a3b8; margin-top: auto; }
+
+            @media print {
+                body { background: white; }
+                .toolbar { display: none !important; }
+                .pagina { margin: 0; width: 100%; box-shadow: none; }
+                .etiqueta { border: 0.5pt solid #94a3b8; }
+            }
+        </style>
+        </head><body>
+        <div class="toolbar no-print">
+            <button onclick="window.print()">🖨️ Imprimir A4 (8 por folio)</button>
+            <span>${items.length} etiqueta${items.length !== 1 ? 's' : ''} · ${Math.ceil(items.length/8)} folio${Math.ceil(items.length/8) !== 1 ? 's' : ''} · Márgenes mínimos · A4 vertical</span>
+        </div>
+        <div class="pagina">${etiquetasHtml}</div>
+        </body></html>`;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
+        const modalQr = document.getElementById('modal-qr');
+        if (modalQr) modalQr.classList.add('oculto');
+        setTimeout(() => { printWindow.print(); }, 800);
+    },
+
+        imprimirLoteQRs: (tamano = '50x23') => { 
+        if(App.seleccionados.size === 0) return; 
+        const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); 
+        if(tamano === 'a4') App.imprimirEtiquetasA4(itemsToPrint);
+        else App.imprimirEtiquetasGodex(itemsToPrint, tamano); 
+        App.limpiarSeleccion(); 
+    },
     generarQR: (id_db) => { 
         const t = App.datos.find(x => x.id === id_db); if(!t) return;
         document.getElementById('modal-qr').classList.remove('oculto'); 
@@ -1095,8 +1208,10 @@ const App = {
         const elArts = document.getElementById('qr-texto-arts');
         if(elArts) { if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } else { elArts.style.display = "none"; } }
         new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
-        document.getElementById('btn-imprimir-qr-unico-50').onclick = () => { App.imprimirEtiquetasGodex([t], '50x23'); };
+        document.getElementById('btn-imprimir-qr-unico-50').onclick  = () => { App.imprimirEtiquetasGodex([t], '50x23'); };
         document.getElementById('btn-imprimir-qr-unico-100').onclick = () => { App.imprimirEtiquetasGodex([t], '100x70'); };
+        const btnA4 = document.getElementById('btn-imprimir-qr-unico-a4');
+        if(btnA4) btnA4.onclick = () => { App.imprimirEtiquetasA4([t]); };
     },
 
 
