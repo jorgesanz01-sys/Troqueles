@@ -271,14 +271,18 @@ def reactivar_troquel(id_db: int, d: ReactivarData):
 @app.post("/api/movimientos/lote")
 def mover_lote(d: MovimientoLote):
     for id_db in d.ids:
-        st = "EN PRODUCCION" if d.accion == "SALIDA" else "EN ALMACEN"
-        ubi = "PRODUCCION" if d.accion == "SALIDA" else (d.ubicacion_destino or "ALMACEN")
-        
-        prev = supabase.table("troqueles").select("ubicacion").eq("id", id_db).execute().data
-        ubi_old = prev[0]["ubicacion"] if prev else ""
-        
-        supabase.table("troqueles").update({"estado": st, "ubicacion": ubi}).eq("id", id_db).execute()
-        registrar_log(id_db, d.accion, ubi_old, ubi)
+        prev = supabase.table("troqueles").select("ubicacion, estado").eq("id", id_db).execute().data
+        ubi_actual = prev[0]["ubicacion"] if prev else ""
+
+        if d.accion == "SALIDA":
+            # Solo cambia estado, la ubicacion se conserva
+            supabase.table("troqueles").update({"estado": "EN PRODUCCION"}).eq("id", id_db).execute()
+            registrar_log(id_db, "SALIDA", ubi_actual, ubi_actual)
+        else:
+            # Retorno: cambia estado, usa ubicacion_destino si se especifica, si no la conserva
+            ubi_retorno = d.ubicacion_destino.strip().upper() if d.ubicacion_destino and d.ubicacion_destino.strip() else ubi_actual
+            supabase.table("troqueles").update({"estado": "EN ALMACEN", "ubicacion": ubi_retorno}).eq("id", id_db).execute()
+            registrar_log(id_db, "RETORNO", ubi_actual, ubi_retorno)
     return {"ok": True}
 
 @app.put("/api/troqueles/bulk/familia")
