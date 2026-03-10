@@ -1114,9 +1114,10 @@ const App = {
             return `
             <div class="etiqueta">
                 <img class="qr" src="${qrSrc}" alt="QR">
+                <div class="sep"></div>
                 <div class="info">
                     <div class="matricula">Nº ${t.id_troquel}</div>
-                    <div class="ubi">${t.ubicacion || '-'}</div>
+                    <div class="ubi">UBI. ${t.ubicacion || '-'}</div>
                     ${t.codigos_articulo ? `<div class="arts">${t.codigos_articulo}</div>` : ''}
                     <div class="desc">${desc}</div>
                 </div>
@@ -1185,7 +1186,7 @@ const App = {
 
             /* Matrícula: lo más grande */
             .matricula {
-                font-size: 18pt;
+                font-size: 22pt;
                 font-weight: 900;
                 color: #0f172a;
                 white-space: nowrap;
@@ -1196,8 +1197,8 @@ const App = {
 
             /* Ubicación */
             .ubi {
-                font-size: 12pt;
-                font-weight: 700;
+                font-size: 15pt;
+                font-weight: 900;
                 color: #0369a1;
                 white-space: nowrap;
                 overflow: hidden;
@@ -1206,18 +1207,19 @@ const App = {
 
             /* Código artículo */
             .arts {
-                font-size: 11pt;
-                font-weight: 600;
-                color: #374151;
+                font-size: 13pt;
+                font-weight: 900;
+                color: #1e293b;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
 
-            /* Descripción: más pequeña, con ellipsis */
+            /* Descripción: más pequeña, negrita, con ellipsis */
             .desc {
-                font-size: 8pt;
-                color: #64748b;
+                font-size: 9pt;
+                font-weight: 700;
+                color: #475569;
                 line-height: 1.3;
                 overflow: hidden;
                 display: -webkit-box;
