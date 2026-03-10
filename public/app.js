@@ -1102,141 +1102,168 @@ const App = {
 
 
     imprimirEtiquetasA4: (items) => {
-        const printWindow = window.open('', '_blank', 'width=800,height=900');
+        // APLI ref.1291 — A4, 8 etiquetas de 97×67.7mm (2col × 4fil)
+        // Márgenes hoja: 8mm lat, 13.1mm sup/inf, sin gap entre etiquetas
+        const printWindow = window.open('', '_blank', 'width=820,height=960');
         if (!printWindow) { App.mostrarToast("El navegador bloqueó la ventana emergente.", "error"); return; }
 
         const etiquetasHtml = items.map(t => {
             const qrCanvas = document.createElement('canvas');
-            new QRious({ element: qrCanvas, value: t.id.toString(), size: 120, level: 'M', background: 'white', foreground: 'black' });
-            const qrSrc = qrCanvas.toDataURL('image/png');
-            // Truncar descripción a ~55 chars para que no se corte feo
-            const desc = t.nombre && t.nombre.length > 55 ? t.nombre.slice(0, 54) + '…' : (t.nombre || '');
+            new QRious({ element: qrCanvas, value: t.id.toString(), size: 160, level: 'M', background: 'white', foreground: 'black' });
+            const qrSrc  = qrCanvas.toDataURL('image/png');
+            const desc   = t.nombre || '';
+            const arts   = t.codigos_articulo || '';
             return `
-            <div class="etiqueta">
-                <img class="qr" src="${qrSrc}" alt="QR">
-                <div class="sep"></div>
-                <div class="info">
-                    <div class="matricula">Nº ${t.id_troquel}</div>
-                    <div class="ubi">UBI. ${t.ubicacion || '-'}</div>
-                    ${t.codigos_articulo ? `<div class="arts">${t.codigos_articulo}</div>` : ''}
-                    <div class="desc">${desc}</div>
+            <div class="et">
+                <div class="qr-col">
+                    <img class="qr" src="${qrSrc}" alt="QR">
+                </div>
+                <div class="txt-col">
+                    <div class="f-matricula">Nº ${t.id_troquel}</div>
+                    <div class="f-ubi">UBI. ${t.ubicacion || '-'}</div>
+                    ${arts ? `<div class="f-arts">${arts}</div>` : ''}
+                    <div class="f-desc">${desc}</div>
                 </div>
             </div>`;
         }).join('');
 
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-        <title>Etiquetas A4</title>
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>APLI 1291</title>
         <style>
             * { margin:0; padding:0; box-sizing:border-box; }
-            @page { size: A4 portrait; margin: 6mm; }
-            body { font-family: Arial, sans-serif; background: #e2e8f0; }
 
-            .toolbar { display:flex; gap:10px; align-items:center; padding:12px 16px; background:#1e293b; }
-            .toolbar button { background:#7c3aed; color:#fff; border:none; padding:10px 22px; border-radius:6px; font-size:15px; font-weight:bold; cursor:pointer; }
-            .toolbar span { color:#94a3b8; font-size:13px; }
-
-            .pagina {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 3mm;
-                background: white;
-                margin: 10px auto;
-                width: 198mm;
-                padding: 0;
+            @page {
+                size: 210mm 297mm;
+                margin-top: 13.1mm;
+                margin-bottom: 13.1mm;
+                margin-left: 8mm;
+                margin-right: 8mm;
             }
 
-            .etiqueta {
+            body {
+                font-family: Arial, Helvetica, sans-serif;
+                background: #dde3ea;
+                -webkit-print-color-adjust: exact;
+            }
+
+            /* ── Toolbar (solo pantalla) ── */
+            .toolbar {
+                display: flex; gap:12px; align-items:center;
+                padding: 12px 18px; background: #1e293b;
+            }
+            .toolbar button {
+                background: #7c3aed; color:#fff; border:none;
+                padding: 10px 22px; border-radius:6px;
+                font-size:14px; font-weight:bold; cursor:pointer;
+            }
+            .toolbar span { color:#94a3b8; font-size:12px; }
+
+            /* ── Grid de etiquetas ── */
+            .pagina {
+                display: grid;
+                grid-template-columns: 97mm 97mm;
+                grid-template-rows: repeat(4, 67.7mm);
+                gap: 0;
+                width: 194mm;
+                margin: 14px auto;
+                background: white;
+            }
+
+            /* ── Etiqueta individual ── */
+            .et {
+                width: 97mm;
+                height: 67.7mm;
                 display: flex;
                 flex-direction: row;
                 align-items: stretch;
-                border: 0.8pt solid #94a3b8;
-                height: 66mm;
-                background: white;
+                border: 0.4pt solid #b0b8c4;
                 overflow: hidden;
+                background: white;
             }
 
-            /* QR: columna izquierda fija, pequeña pero legible */
+            /* ── Columna QR ── */
+            .qr-col {
+                width: 38mm;
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 3mm;
+                border-right: 0.4pt solid #dde3ea;
+            }
             .qr {
-                width: 20mm;
-                height: 20mm;
-                flex-shrink: 0;
-                align-self: center;
-                margin: 0 2mm 0 2mm;
+                width: 32mm;
+                height: 32mm;
             }
 
-            /* Separador vertical */
-            .sep {
-                width: 0.5pt;
-                background: #cbd5e1;
-                margin: 3mm 0;
-                flex-shrink: 0;
-            }
-
-            /* Bloque de texto: ocupa el resto */
-            .info {
+            /* ── Columna texto ── */
+            .txt-col {
                 flex: 1;
-                padding: 3mm 3mm 3mm 3mm;
+                min-width: 0;
+                padding: 3.5mm 3mm 3mm 3.5mm;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-                gap: 2mm;
+                gap: 1.8mm;
                 overflow: hidden;
-                min-width: 0;
             }
 
-            /* Matrícula */
-            .matricula {
-                font-size: 12pt;
+            .f-matricula {
+                font-size: 15pt;
                 font-weight: 900;
                 color: #0f172a;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                line-height: 1;
+                line-height: 1.1;
             }
 
-            /* Ubicación */
-            .ubi {
-                font-size: 12pt;
-                font-weight: 900;
-                color: #0369a1;
+            .f-ubi {
+                font-size: 10.5pt;
+                font-weight: 800;
+                color: #1d4ed8;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                line-height: 1.1;
             }
 
-            /* Código artículo */
-            .arts {
-                font-size: 10pt;
-                font-weight: 900;
-                color: #1e293b;
+            .f-arts {
+                font-size: 9.5pt;
+                font-weight: 700;
+                color: #374151;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                line-height: 1.1;
             }
 
-            /* Descripción: la más grande, negrita, con ellipsis */
-            .desc {
-                font-size: 11pt;
-                font-weight: 900;
-                color: #0f172a;
-                line-height: 1.3;
+            .f-desc {
+                font-size: 8.5pt;
+                font-weight: 600;
+                color: #4b5563;
+                line-height: 1.35;
                 overflow: hidden;
                 display: -webkit-box;
-                -webkit-line-clamp: 2;
+                -webkit-line-clamp: 3;
                 -webkit-box-orient: vertical;
             }
 
             @media print {
                 body { background: white; }
                 .toolbar { display: none !important; }
-                .pagina { margin: 0; width: 100%; }
+                .pagina {
+                    margin: 0;
+                    width: 194mm;
+                    background: white;
+                    box-shadow: none;
+                }
+                .et { border: 0.3pt solid #c0c8d0; }
             }
         </style>
         </head><body>
         <div class="toolbar">
-            <button onclick="window.print()">🖨️ Imprimir A4 (8 por folio)</button>
-            <span>${items.length} etiqueta${items.length !== 1 ? 's' : ''} · ${Math.ceil(items.length / 8)} folio${Math.ceil(items.length / 8) !== 1 ? 's' : ''} · Márgenes mínimos · A4 vertical</span>
+            <button onclick="window.print()">🖨️ Imprimir — APLI 1291 (8 etiq/folio)</button>
+            <span>${items.length} etiqueta${items.length !== 1 ? 's' : ''} · ${Math.ceil(items.length / 8)} folio${Math.ceil(items.length / 8) !== 1 ? 's' : ''} · A4 · Sin escalar</span>
         </div>
         <div class="pagina">${etiquetasHtml}</div>
         </body></html>`;
@@ -1245,260 +1272,5 @@ const App = {
         printWindow.document.close();
         const modalQr = document.getElementById('modal-qr');
         if (modalQr) modalQr.classList.add('oculto');
-        setTimeout(() => { printWindow.print(); }, 800);
+        setTimeout(() => { printWindow.print(); }, 900);
     },
-
-        imprimirLoteQRs: (tamano = '50x23') => { 
-        if(App.seleccionados.size === 0) return; 
-        const itemsToPrint = Array.from(App.seleccionados).map(id => App.datos.find(t => t.id === id)).filter(t => t); 
-        if(tamano === 'a4') App.imprimirEtiquetasA4(itemsToPrint);
-        else App.imprimirEtiquetasGodex(itemsToPrint, tamano); 
-        App.limpiarSeleccion(); 
-    },
-    generarQR: (id_db) => { 
-        const t = App.datos.find(x => x.id === id_db); if(!t) return;
-        document.getElementById('modal-qr').classList.remove('oculto'); 
-        document.getElementById('qr-texto-id').innerText = "TROQUEL " + t.id_troquel; 
-        document.getElementById('qr-texto-ubi').innerText = "UBI: " + (t.ubicacion || '-'); 
-        document.getElementById('qr-texto-desc').innerText = t.nombre; 
-        const elArts = document.getElementById('qr-texto-arts');
-        if(elArts) { if(t.codigos_articulo) { elArts.innerText = "Art: " + t.codigos_articulo; elArts.style.display = "block"; } else { elArts.style.display = "none"; } }
-        new QRious({ element: document.getElementById('qr-canvas'), value: t.id.toString(), size: 200, padding: 0, level: 'M' }); 
-        document.getElementById('btn-imprimir-qr-unico-50').onclick  = () => { App.imprimirEtiquetasGodex([t], '50x23'); };
-        document.getElementById('btn-imprimir-qr-unico-100').onclick = () => { App.imprimirEtiquetasGodex([t], '100x70'); };
-        const btnA4 = document.getElementById('btn-imprimir-qr-unico-a4');
-        if(btnA4) btnA4.onclick = () => { App.imprimirEtiquetasA4([t]); };
-    },
-
-
-    // ─── FLUJO DESCATALOGADOS ───────────────────────────────────
-    verDescatalogados: async () => {
-        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
-        document.getElementById('vista-descatalogados').classList.remove('oculto');
-        document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
-        
-        const tbody = document.getElementById('tabla-desc-body');
-        const counter = document.getElementById('desc-contador');
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando... ⏳</td></tr>';
-        
-        try {
-            const res = await fetch('/api/troqueles/descatalogados');
-            const data = await res.json();
-            if(counter) counter.innerText = data.length;
-            
-            if(data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">No hay troqueles descatalogados.</td></tr>';
-                return;
-            }
-            tbody.innerHTML = data.map(t => {
-                const fecha = t.fecha_descatalogado 
-                    ? new Date(t.fecha_descatalogado).toLocaleDateString('es-ES') 
-                    : '<span style="color:#94a3b8">Sin fecha</span>';
-                return `<tr>
-                    <td style="font-weight:900; color:#0f766e;">${t.id_troquel}</td>
-                    <td style="color:#64748b; font-weight:bold;">${t.ubicacion || '-'}</td>
-                    <td>${t.nombre}</td>
-                    <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
-                    <td style="color:#b91c1c; font-weight:bold;">${fecha}</td>
-                    <td style="white-space:nowrap;">
-                        <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id}, '${t.id_troquel}', '${(t.nombre||'').replace(/'/g,'')}')" title="Historial">🕒</button>
-                        <button class="btn-accion" style="background:#16a34a; padding:4px 10px; font-size:12px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>
-                    </td>
-                </tr>`;
-            }).join('');
-        } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar.</td></tr>';
-        }
-    },
-
-    reactivar: async (id) => {
-        const nuevaUbi = prompt(
-            '¿En qué ubicación de estantería se coloca este troquel?\n(Déjalo vacío para asignar después)',
-            ''
-        );
-        if(nuevaUbi === null) return; // cancelado
-        
-        try {
-            const res = await fetch(`/api/troqueles/${id}/reactivar`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ ubicacion: nuevaUbi.trim().toUpperCase() || null })
-            });
-            if(res.ok) {
-                App.mostrarToast('Troquel reactivado y de vuelta al inventario activo.');
-                await App.cargarTodo();
-                App.verDescatalogados();
-            } else {
-                App.mostrarToast('Error al reactivar el troquel.', 'error');
-            }
-        } catch(e) {
-            App.mostrarToast('Error de red.', 'error');
-        }
-    },
-    // ────────────────────────────────────────────────────────────
-    limpiarDuplicadosExactos: async () => {
-        if(confirm("⚠️ ¿Estás seguro? Esto escaneará toda tu base de datos y borrará los troqueles que sean COPIAS EXACTAS.")) {
-            const btn = document.getElementById('btn-limpiar-dup');
-            if(btn) btn.innerText = "⏳ Limpiando...";
-            try {
-                const res = await fetch('/api/mantenimiento/limpiar_duplicados', { method: 'DELETE' });
-                const data = await res.json();
-                App.mostrarToast(`Se han borrado ${data.borrados} duplicados.`);
-                await App.cargarTodo();
-            } catch(e) { App.mostrarToast("Error al limpiar duplicados.", "error"); }
-            if(btn) btn.innerText = "🧹 Borrar Duplicados Exactos de la BD";
-            document.getElementById('modal-aux').classList.add('oculto');
-        }
-    },
-
-    procesarImportacion: async (input) => { 
-        const file = input.files[0]; if(!file) return; 
-        const selectElement = document.getElementById('select-import-tipo');
-        const idTipoDefecto = (selectElement && selectElement.value) ? parseInt(selectElement.value) : null;
-        
-        App.mostrarToast("Procesando archivo, por favor espera...", "exito");
-        
-        const reader = new FileReader(); 
-        reader.onload = async(e) => { 
-            try {
-                const filas = e.target.result.split(/\r?\n/); 
-                if(filas.length < 2) { App.mostrarToast("Archivo vacío o sin datos.", "error"); return; }
-                const cabeceraStr = filas[0];
-                const separador = cabeceraStr.includes(';') ? ';' : ',';
-                const normalizar = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/['"]/g,'').trim();
-                const cabecera = cabeceraStr.split(separador).map(c => normalizar(c));
-                let colsMap = { mat: -1, ubi: -1, nom: -1, tipo: -1, ot: -1, arts: -1, madera: -1, corte: -1, obs: -1 };
-                cabecera.forEach((c, index) => {
-                    if (/MATR|ID|CODIGO|NUMERO|REF|TROQUEL/i.test(c) && colsMap.mat === -1) colsMap.mat = index;
-                    else if (/UBI|LOC|ESTAN|HUECO|SITIO|LUGAR/i.test(c) && colsMap.ubi === -1) colsMap.ubi = index;
-                    else if (/DESC|NOM|CLIENT|MOD|TITULO/i.test(c) && colsMap.nom === -1) colsMap.nom = index;
-                    else if (/TIPO|FAM|CAT|CLASE|GRUPO/i.test(c) && colsMap.tipo === -1) colsMap.tipo = index;
-                    else if (/OT|ORDEN|TRABAJO/i.test(c) && colsMap.ot === -1) colsMap.ot = index;
-                    else if (/ART|EAN|PROD/i.test(c) && colsMap.arts === -1) colsMap.arts = index;
-                    else if (/MADERA|BASE|TAM|DIMEN/i.test(c) && colsMap.madera === -1) colsMap.madera = index;
-                    else if (/CORTE|FINAL|DESARROLLO/i.test(c) && colsMap.corte === -1) colsMap.corte = index;
-                    else if (/OBS|NOTAS|COMENTARIO/i.test(c) && colsMap.obs === -1) colsMap.obs = index;
-                });
-                if (colsMap.mat === -1) colsMap.mat = 0; if (colsMap.ubi === -1) colsMap.ubi = 1; if (colsMap.nom === -1) colsMap.nom = 2;
-                const catNameToId = {}; Object.keys(App.mapaCat).forEach(id => { catNameToId[normalizar(App.mapaCat[id])] = parseInt(id); });
-                const troqueles = []; const hashesExistentes = new Set(); let duplicadosOmitidos = 0;
-                const generarHuella = (t) => { return [t.id_troquel, t.ubicacion, t.nombre, t.categoria_id, t.familia_id, t.codigos_articulo, t.referencias_ot, t.tamano_troquel, t.tamano_final, t.observaciones].map(x => (x || "").toString().trim().toUpperCase()).join('|'); };
-                App.datos.forEach(t => hashesExistentes.add(generarHuella(t)));
-                for(let i=1; i<filas.length; i++) {
-                    const f = filas[i]; if(!f.trim()) continue;
-                    const cols = f.split(separador);
-                    const mat = colsMap.mat !== -1 && cols[colsMap.mat] ? cols[colsMap.mat].replace(/['"]/g,'').trim() : null; if(!mat) continue; 
-                    const ubi = colsMap.ubi !== -1 && cols[colsMap.ubi] ? cols[colsMap.ubi].replace(/['"]/g,'').trim() : mat;
-                    const nom = colsMap.nom !== -1 && cols[colsMap.nom] ? cols[colsMap.nom].replace(/['"]/g,'').trim() : "Sin Descripción";
-                    const tipoStr = colsMap.tipo !== -1 && cols[colsMap.tipo] ? normalizar(cols[colsMap.tipo]) : null;
-                    const ot = colsMap.ot !== -1 && cols[colsMap.ot] ? cols[colsMap.ot].replace(/['"]/g,'').trim() : "";
-                    const arts = colsMap.arts !== -1 && cols[colsMap.arts] ? cols[colsMap.arts].replace(/['"]/g,'').trim() : "";
-                    const madera = colsMap.madera !== -1 && cols[colsMap.madera] ? cols[colsMap.madera].replace(/['"]/g,'').trim() : "";
-                    const corte = colsMap.corte !== -1 && cols[colsMap.corte] ? cols[colsMap.corte].replace(/['"]/g,'').trim() : "";
-                    const obs = colsMap.obs !== -1 && cols[colsMap.obs] ? cols[colsMap.obs].replace(/['"]/g,'').trim() : "";
-                    let catId = idTipoDefecto; if(tipoStr && catNameToId[tipoStr]) catId = catNameToId[tipoStr]; 
-                    const nuevoTroquel = { id_troquel: mat, ubicacion: ubi, nombre: nom, categoria_id: catId, referencias_ot: ot, codigos_articulo: arts, tamano_troquel: madera, tamano_final: corte, observaciones: obs };
-                    const huella = generarHuella(nuevoTroquel);
-                    if (!hashesExistentes.has(huella)) { troqueles.push(nuevoTroquel); hashesExistentes.add(huella); } else { duplicadosOmitidos++; }
-                }
-                
-                if(troqueles.length === 0) { App.mostrarToast(`Nada nuevo. Se ignoraron ${duplicadosOmitidos} duplicados.`); input.value = ""; return; }
-                const res = await fetch('/api/troqueles/importar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(troqueles) });
-                if(res.ok) { 
-                    App.cargarTodo(); 
-                    App.mostrarToast(`Importados ${troqueles.length}. Ignorados ${duplicadosOmitidos} duplicados.`);
-                    if(selectElement) selectElement.value = ""; 
-                } else { App.mostrarToast(`ERROR DE BASE DE DATOS.`, "error"); }
-            } catch (err) { App.mostrarToast("Error procesando el archivo.", "error"); }
-            input.value = ""; 
-        }; 
-        reader.readAsText(file, 'ISO-8859-1');
-    },
-    
-    exportarCopiaSeguridad: async () => {
-        App.mostrarToast("Generando copia de seguridad...");
-        try {
-            // Obtener TODOS los troqueles: activos, papelera y descatalogados
-            const [resActivos, resPapelera, resDesc] = await Promise.all([
-                fetch('/api/troqueles?ver_papelera=false'),
-                fetch('/api/troqueles?ver_papelera=true'),
-                fetch('/api/troqueles/descatalogados')
-            ]);
-            const activos      = await resActivos.json();
-            const papelera     = await resPapelera.json();
-            const descatalogados = await resDesc.json();
-
-            // Unificar sin duplicados (por id)
-            const mapaIds = {};
-            [...activos, ...papelera, ...descatalogados].forEach(t => mapaIds[t.id] = t);
-            const todos = Object.values(mapaIds);
-
-            const ahora = new Date();
-            const fecha = ahora.toISOString().split('T')[0];
-            const hora  = ahora.toTimeString().slice(0,5).replace(':','-');
-
-            const payload = {
-                version: 2,
-                fecha_backup: ahora.toISOString(),
-                total: todos.length,
-                resumen: {
-                    activos: activos.length,
-                    papelera: papelera.length,
-                    descatalogados: descatalogados.length
-                },
-                troqueles: todos
-            };
-
-            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-            const url  = URL.createObjectURL(blob);
-            const a    = document.createElement('a');
-            a.href     = url;
-            a.download = `BACKUP_TROQUELES_${fecha}_${hora}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            App.mostrarToast(`Copia descargada: ${todos.length} troqueles (${activos.length} activos, ${descatalogados.length} desc., ${papelera.length} papelera).`);
-        } catch(e) {
-            App.mostrarToast("Error al generar la copia de seguridad.", "error");
-            console.error(e);
-        }
-    },
-
-    restaurarCopiaSeguridad: async (input) => {
-        const file = input.files[0]; if(!file) return;
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const parsed = JSON.parse(e.target.result);
-
-                // Soportar formato v2 (objeto con .troqueles) y v1 (array directo)
-                const backupData = Array.isArray(parsed) ? parsed : (parsed.troqueles || []);
-                const esFecha    = parsed.fecha_backup ? new Date(parsed.fecha_backup).toLocaleString('es-ES') : 'desconocida';
-                const resumen    = parsed.resumen || {};
-
-                const msg = parsed.version === 2
-                    ? `Backup del ${esFecha}\n\nContenido:\n• ${resumen.activos || '?'} activos\n• ${resumen.descatalogados || '?'} descatalogados\n• ${resumen.papelera || '?'} en papelera\n• Total: ${backupData.length} troqueles\n\n⚠️ Esto REEMPLAZARÁ la base de datos actual.\n¿Continuar?`
-                    : `Backup con ${backupData.length} troqueles (formato antiguo).\n\n⚠️ Esto REEMPLAZARÁ la base de datos actual.\n¿Continuar?`;
-
-                if(!confirm(msg)) return;
-                App.mostrarToast("Restaurando copia de seguridad...");
-                const res = await fetch('/api/troqueles/backup/restaurar', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(backupData)
-                });
-                if(res.ok) {
-                    App.mostrarToast("Base de datos restaurada correctamente.");
-                    await App.cargarTodo();
-                } else {
-                    App.mostrarToast("Error en el servidor al restaurar.", "error");
-                }
-            } catch (err) {
-                App.mostrarToast("Formato JSON inválido.", "error");
-                console.error(err);
-            }
-        };
-        reader.readAsText(file);
-    }
-};
-
-window.onload = App.init;
