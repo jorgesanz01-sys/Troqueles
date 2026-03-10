@@ -865,10 +865,7 @@ const App = {
         }
         if(v==='vista-lista') {
             document.getElementById('sidebar').classList.remove('oculto');
-            // Asegurar que el inventario siempre muestra datos activos al navegar
-            if(App.datos.length === 0 || document.getElementById('titulo-lista').innerText.includes('PAPELERA')) {
-                App.cargarTodo();
-            }
+            if(App.datos.length === 0) App.cargarTodo();
         }
     },
     
