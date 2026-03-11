@@ -635,11 +635,17 @@ const App = {
                 const resDesc = await fetch('/api/troqueles/descatalogados');
                 App.datosDescatalogados = await resDesc.json();
             }
-            // App.datos = activos, App.datosDescatalogados = descatalogados — sin solapamiento
+
+            // App.datos puede contener troqueles con estado=DESCATALOGADO si el backend los devuelve
+            // Los eliminamos para evitar duplicados con App.datosDescatalogados
+            const activosLimpios = App.datos.filter(t => t.estado !== 'DESCATALOGADO');
+            const idsDesc = new Set(App.datosDescatalogados.map(t => t.id));
+
             const todos = [
-                ...App.datos.map(t => ({...t, _origen: 'activo'})),
+                ...activosLimpios.filter(t => !idsDesc.has(t.id)).map(t => ({...t, _origen: 'activo'})),
                 ...App.datosDescatalogados.map(t => ({...t, _origen: 'descatalogado'}))
             ];
+
             const res = todos.filter(t => [t.id_troquel, t.nombre, t.ubicacion, t.codigos_articulo, t.referencias_ot, t.observaciones].some(v => v && String(v).toLowerCase().includes(q)));
             if(res.length === 0) { tbody.innerHTML = '<tr><td colspan="9" class="text-center">Sin resultados en todo el inventario</td></tr>'; return; }
             tbody.innerHTML = res.map(t => {
@@ -651,9 +657,16 @@ const App = {
                 const archs = App.parseArchivos(t.archivos);
                 const bdg = archs.length > 0 ? `<span class="obs-pildora">📎 ${archs.length}</span>` : '-';
                 const fam = App.mapaFam[t.familia_id] || '-';
+                const nomEsc = (t.nombre||'').replace(/'/g, '');
+                // Descatalogados: reactivar + imprimir
+                // Activos: historial + imprimir + descatalogar + papelera (igual que la tabla normal)
                 const accion = esDesc
-                    ? `<button class="btn-accion" style="background:#16a34a; padding:3px 8px; font-size:11px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>`
-                    : `<button class="btn-icono" onclick="App.generarQR(${t.id})" title="Etiqueta">🖨️</button><button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red" title="Papelera">🗑️</button>`;
+                    ? `<button class="btn-accion" style="background:#16a34a; padding:3px 8px; font-size:11px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>
+                       <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir etiqueta">🖨️</button>`
+                    : `<button class="btn-icono" onclick="App.verHistorialTroquel(${t.id},'${t.id_troquel}','${nomEsc}')" title="Historial">🕒</button>
+                       <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir Etiqueta">🖨️</button>
+                       <button class="btn-icono" onclick="App.descatalogar(${t.id})" style="color:#f59e0b" title="Descatalogar">⛔</button>
+                       <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red" title="Papelera">🗑️</button>`;
                 return `<tr style="${bgRow}cursor:pointer;" onclick="App.verFicha(${t.id})">
                     <td class="text-center">-</td><td class="text-center">${bdg}</td><td class="text-center">${badge}</td>
                     <td style="font-weight:900;">${t.id_troquel}</td><td>${t.ubicacion || '-'}</td>
