@@ -155,6 +155,7 @@ const App = {
             const res = await fetch('/api/troqueles?ver_papelera=false');
             if (res.ok) {
                 App.datos = await res.json() || [];
+                App.datosDescatalogados = []; // invalidar cache para evitar duplicados en búsqueda global
                 App.limpiarSeleccion(); 
                 App.renderTabla();
             }
@@ -1067,19 +1068,22 @@ const App = {
     limpiarBuscador: () => { document.getElementById('buscador').value=''; App.filtrar(); },
 
     buscarGlobal: async (txt) => {
-        // Busca en activos + descatalogados simultáneamente
         const q = txt.toLowerCase();
         const tbody = document.getElementById('tabla-body');
         if(!tbody) return;
 
         try {
-            // Activos ya están en App.datos; descatalogados los pedimos si no los tenemos
-            const resDesc = await fetch('/api/troqueles/descatalogados');
-            const descatalogados = await resDesc.json();
+            // Si no tenemos descatalogados en cache, los cargamos una vez
+            if(App.datosDescatalogados.length === 0) {
+                const resDesc = await fetch('/api/troqueles/descatalogados');
+                App.datosDescatalogados = await resDesc.json();
+            }
 
+            // App.datos solo contiene activos (estado_activo=Activo, estado≠DESCATALOGADO)
+            // App.datosDescatalogados solo contiene descatalogados — no hay solapamiento
             const todos = [
                 ...App.datos.map(t => ({...t, _origen: 'activo'})),
-                ...descatalogados.map(t => ({...t, _origen: 'descatalogado'}))
+                ...App.datosDescatalogados.map(t => ({...t, _origen: 'descatalogado'}))
             ];
 
             const res = todos.filter(t => [
