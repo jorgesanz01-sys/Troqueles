@@ -138,67 +138,89 @@ const App = {
     },
 
     renderBannerPendientes: () => {
-        const banner = document.getElementById('banner-pendientes');
-        if(!banner) return;
         const pendientes = App.datos.filter(t => t.referencias_ot === 'NUEVO - PENDIENTE');
-        if(pendientes.length === 0) {
-            banner.style.display = 'none';
-        } else {
-            banner.style.display = 'flex';
-            document.getElementById('banner-pendientes-count').innerText = pendientes.length;
+        const n = pendientes.length;
+
+        // Banner en inventario (siempre visible si hay pendientes)
+        const banner = document.getElementById('banner-pendientes');
+        if(banner) banner.style.display = n > 0 ? 'flex' : 'none';
+        const countBanner = document.getElementById('banner-pendientes-count');
+        if(countBanner) countBanner.innerText = n;
+
+        // Contador en el sidebar
+        const countSidebar = document.getElementById('sidebar-pendientes-count');
+        if(countSidebar) {
+            countSidebar.style.display = n > 0 ? 'inline-block' : 'none';
+            countSidebar.innerText = n;
         }
     },
 
-    verPendientes: () => {
-        // Filtra la tabla para mostrar solo NUEVO - PENDIENTE
-        const buscador = document.getElementById('buscador');
-        buscador.value = 'NUEVO - PENDIENTE';
-        document.getElementById('btn-limpiar').classList.remove('oculto');
-        // Forzar filtro por OT usando filtro especial
-        const tbody = document.getElementById('tabla-body'); if(!tbody) return;
+    verPendientes: async () => {
+        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
+        document.getElementById('vista-pendientes').classList.remove('oculto');
+        document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
+        App.seleccionados.clear();
+        App.renderPendientes();
+    },
+
+    renderPendientes: () => {
+        const tbody = document.getElementById('tabla-pendientes-body');
+        const counter = document.getElementById('pendientes-contador');
+        if(!tbody) return;
         const res = App.datos.filter(t => t.referencias_ot === 'NUEVO - PENDIENTE' && t.estado !== 'DESCATALOGADO');
-        if(res.length === 0) { tbody.innerHTML='<tr><td colspan="9" class="text-center">No hay troqueles pendientes.</td></tr>'; return; }
+        if(counter) counter.innerText = res.length;
+        if(res.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">No hay troqueles pendientes de validar. ✅</td></tr>';
+            return;
+        }
         tbody.innerHTML = res.map(t => {
-            const chk = App.seleccionados.has(t.id) ? 'checked' : '';
-            const archs = App.parseArchivos(t.archivos); const nDocs = archs.length;
+            const archs = App.parseArchivos(t.archivos);
+            const nDocs = archs.length;
             const bdg = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
-            const st = `<span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:10px; font-size:10px; font-weight:800;">⏳ PENDIENTE</span>`;
-            let fam = App.mapaFam[t.familia_id]; if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
             const nomEsc = (t.nombre||'').replace(/'/g,'');
-            const btns = `
-                <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id},'${t.id_troquel}','${nomEsc}')" title="Historial">🕒</button>
-                <button class="btn-accion" style="background:#16a34a; padding:3px 8px; font-size:11px;" onclick="App.confirmarPendiente(${t.id})" title="Confirmar y validar">✅</button>
-                <button class="btn-icono" onclick="App.editar(${t.id})" title="Editar">✏️</button>
-                <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red" title="Eliminar">🗑️</button>`;
-            return `<tr onclick="App.verFicha(${t.id})" style="cursor:pointer; background:#fffbeb;">
-                <td onclick="event.stopPropagation()" class="text-center"><input type="checkbox" value="${t.id}" ${chk} onchange="App.select(this, ${t.id})"></td>
-                <td class="text-center">${bdg}</td><td class="text-center">${st}</td>
-                <td style="font-weight:900; color:var(--text-main);">${t.id_troquel}</td>
-                <td>${t.ubicacion}</td>
-                <td style="color:var(--primary); font-weight:bold;">${t.codigos_articulo || '-'}</td>
-                <td>${t.nombre}</td>
-                <td><small>${fam||'-'}</small></td>
-                <td onclick="event.stopPropagation()" style="white-space:nowrap;">${btns}</td>
+            // Miniatura foto si tiene
+            const foto = archs.find(a => a.tipo !== 'pdf');
+            const imgThumb = foto ? `<img src="${foto.url}" style="height:36px; width:36px; object-fit:cover; border-radius:4px; border:1px solid #e2e8f0; margin-right:6px; vertical-align:middle;">` : '';
+            return `<tr style="background:#fffbeb; cursor:pointer;" onclick="App.verFicha(${t.id})">
+                <td style="font-weight:900; color:#92400e;">${t.id_troquel}</td>
+                <td>${t.ubicacion || '-'}</td>
+                <td>${imgThumb}<span style="font-weight:600;">${t.nombre}</span></td>
+                <td style="color:#0369a1;">${t.codigos_articulo || '<span style="color:#94a3b8">—</span>'}</td>
+                <td style="color:#64748b; font-size:12px;">${App.mapaCat[t.categoria_id]||'-'} / ${App.mapaFam[t.familia_id]||'-'}</td>
+                <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+                    <button class="btn-accion" style="background:#16a34a; padding:4px 10px; font-size:12px; margin-right:4px;" onclick="App.confirmarPendiente(${t.id})">✅ Confirmar</button>
+                    <button class="btn-accion" style="background:#3b82f6; padding:4px 10px; font-size:12px; margin-right:4px;" onclick="App.editarPendiente(${t.id})">✏️ Editar</button>
+                    <button class="btn-accion" style="background:#b91c1c; padding:4px 10px; font-size:12px;" onclick="App.borrar(${t.id}); setTimeout(()=>App.renderPendientes(),600)">🗑️</button>
+                </td>
             </tr>`;
         }).join('');
     },
 
+    editarPendiente: (id) => {
+        // Va al formulario completo con todos los campos
+        document.getElementById('vista-pendientes').classList.add('oculto');
+        App.editar(id);
+    },
+
     confirmarPendiente: async (id) => {
         const t = App.datos.find(x => x.id === id); if(!t) return;
-        if(!confirm(`¿Confirmar y validar el troquel "${t.id_troquel} - ${t.nombre}"?\nSe quitará la marca "NUEVO - PENDIENTE".`)) return;
+        if(!confirm(`¿Confirmar y validar el troquel ${t.id_troquel} — ${t.nombre}?\nSe incorporará al inventario activo.`)) return;
         const payload = {
             id_troquel: String(t.id_troquel), ubicacion: String(t.ubicacion), nombre: String(t.nombre),
             categoria_id: t.categoria_id || null, familia_id: t.familia_id || null,
             tamano_troquel: String(t.tamano_troquel||""), tamano_final: String(t.tamano_final||""),
             codigos_articulo: String(t.codigos_articulo||""),
-            referencias_ot: "", // limpia el marcador NUEVO - PENDIENTE
-            observaciones: String(t.observaciones||""),
+            referencias_ot: "",  // quita la marca NUEVO - PENDIENTE
+            observaciones: String(t.observaciones||"").replace("Alta exprés desde móvil. Pendiente de validación por responsable.", "").trim(),
             estado: String(t.estado||"EN ALMACEN"),
             archivos: App.parseArchivos(t.archivos)
         };
         const res = await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        if(res.ok) { App.mostrarToast(`✅ Troquel ${t.id_troquel} confirmado y validado.`); await App.cargarTodo(); App.verPendientes(); }
-        else { App.mostrarToast("Error al confirmar.", "error"); }
+        if(res.ok) {
+            App.mostrarToast(`✅ Troquel ${t.id_troquel} validado e incorporado al inventario.`);
+            await App.cargarTodo();
+            App.renderPendientes(); // refresca la vista pendientes sin salir
+        } else { App.mostrarToast("Error al confirmar.", "error"); }
     },
 
     renderTabla: () => {

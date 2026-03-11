@@ -65,6 +65,10 @@
             <button class="menu-item" onclick="App.nav('vista-historial', this); App.cargarHistorial()" title="Historial General">📝 <span class="menu-text">Historial General</span></button>
             <button class="menu-item" onclick="App.nav('vista-estadisticas', this); App.cargarEstadisticas(12)" title="Estadísticas">📈 <span class="menu-text">Estadísticas / Inactivos</span></button>
             <button class="menu-item" onclick="App.verDescatalogados()" style="color:#f59e0b;" title="Descatalogados">⛔ <span class="menu-text">Descatalogados</span></button>
+            <button class="menu-item" onclick="App.verPendientes()" style="color:#ea580c; position:relative;" title="Pendientes de validar">
+                🆕 <span class="menu-text">Pendientes de validar</span>
+                <span id="sidebar-pendientes-count" style="display:none; background:#ef4444; color:white; font-size:10px; font-weight:900; padding:1px 6px; border-radius:10px; margin-left:6px;">0</span>
+            </button>
             <button class="menu-item" onclick="App.verPapelera()" style="color:#ef4444;" title="Papelera">🗑️ <span class="menu-text">Papelera</span></button>
             <div class="menu-divisor"></div>
             <div class="sidebar-titulo menu-text">🛡️ COPIAS DE SEGURIDAD</div>
@@ -106,7 +110,6 @@
                     <span style="color:#78350f; font-size:13px; margin-left:8px;">Dados de alta desde móvil — requieren revisión del responsable</span>
                 </div>
                 <button class="btn-accion" style="background:#f59e0b; white-space:nowrap;" onclick="App.verPendientes()">🔍 Ver pendientes</button>
-                <button class="btn-secundario" style="white-space:nowrap;" onclick="App.renderTabla()">✕ Cerrar</button>
             </div>
             <div style="display:flex; gap:15px; margin-bottom:15px; align-items:center; flex-wrap:wrap;">
                 <select id="filtro-familia" onchange="App.filtrar()" style="width:200px; padding:8px;"><option value="TODAS">Todas las Familias</option></select>
@@ -392,6 +395,42 @@
                     </div>
                     <button type="submit" id="btn-am-guardar" class="btn-gigante" style="background:#10b981; width:100%; padding:15px;">💾 GUARDAR TROQUEL</button>
                 </form>
+            </div>
+        </section>
+
+        <!-- ── PENDIENTES DE VALIDAR ── -->
+        <section id="vista-pendientes" class="vista oculto">
+            <div class="header-modulo" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <h1 style="margin:0;">🆕 Pendientes de Validar</h1>
+                    <span id="pendientes-contador" style="background:#fed7aa; color:#c2410c; padding:4px 12px; border-radius:20px; font-weight:800; font-size:14px;">0</span>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-secundario" onclick="App.nav('vista-lista')">🔙 Volver al Inventario</button>
+                </div>
+            </div>
+            <div style="background:#fff7ed; border:1px solid #f59e0b; border-radius:8px; padding:12px 15px; margin-bottom:15px; font-size:13px; color:#78350f;">
+                <strong>ℹ️ Troqueles dados de alta desde el móvil</strong> por un operario y que requieren revisión. El responsable puede
+                <strong>✅ confirmarlos</strong> (pasan al inventario activo normal),
+                <strong>✏️ editarlos</strong> (completar datos que falten) o
+                <strong>🗑️ eliminarlos</strong> si son erróneos.
+            </div>
+            <div class="contenedor-tabla">
+                <table class="tabla-pro">
+                    <thead>
+                        <tr>
+                            <th>Matrícula</th>
+                            <th>Ubicación</th>
+                            <th>Descripción / Foto</th>
+                            <th>Artículos</th>
+                            <th>Tipo / Familia</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-pendientes-body">
+                        <tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">Cargando...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </section>
 
