@@ -137,6 +137,70 @@ const App = {
         } catch (e) { console.error(e); }
     },
 
+    renderBannerPendientes: () => {
+        const banner = document.getElementById('banner-pendientes');
+        if(!banner) return;
+        const pendientes = App.datos.filter(t => t.referencias_ot === 'NUEVO - PENDIENTE');
+        if(pendientes.length === 0) {
+            banner.style.display = 'none';
+        } else {
+            banner.style.display = 'flex';
+            document.getElementById('banner-pendientes-count').innerText = pendientes.length;
+        }
+    },
+
+    verPendientes: () => {
+        // Filtra la tabla para mostrar solo NUEVO - PENDIENTE
+        const buscador = document.getElementById('buscador');
+        buscador.value = 'NUEVO - PENDIENTE';
+        document.getElementById('btn-limpiar').classList.remove('oculto');
+        // Forzar filtro por OT usando filtro especial
+        const tbody = document.getElementById('tabla-body'); if(!tbody) return;
+        const res = App.datos.filter(t => t.referencias_ot === 'NUEVO - PENDIENTE' && t.estado !== 'DESCATALOGADO');
+        if(res.length === 0) { tbody.innerHTML='<tr><td colspan="9" class="text-center">No hay troqueles pendientes.</td></tr>'; return; }
+        tbody.innerHTML = res.map(t => {
+            const chk = App.seleccionados.has(t.id) ? 'checked' : '';
+            const archs = App.parseArchivos(t.archivos); const nDocs = archs.length;
+            const bdg = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
+            const st = `<span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:10px; font-size:10px; font-weight:800;">⏳ PENDIENTE</span>`;
+            let fam = App.mapaFam[t.familia_id]; if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
+            const nomEsc = (t.nombre||'').replace(/'/g,'');
+            const btns = `
+                <button class="btn-icono" onclick="App.verHistorialTroquel(${t.id},'${t.id_troquel}','${nomEsc}')" title="Historial">🕒</button>
+                <button class="btn-accion" style="background:#16a34a; padding:3px 8px; font-size:11px;" onclick="App.confirmarPendiente(${t.id})" title="Confirmar y validar">✅</button>
+                <button class="btn-icono" onclick="App.editar(${t.id})" title="Editar">✏️</button>
+                <button class="btn-icono" onclick="App.borrar(${t.id})" style="color:red" title="Eliminar">🗑️</button>`;
+            return `<tr onclick="App.verFicha(${t.id})" style="cursor:pointer; background:#fffbeb;">
+                <td onclick="event.stopPropagation()" class="text-center"><input type="checkbox" value="${t.id}" ${chk} onchange="App.select(this, ${t.id})"></td>
+                <td class="text-center">${bdg}</td><td class="text-center">${st}</td>
+                <td style="font-weight:900; color:var(--text-main);">${t.id_troquel}</td>
+                <td>${t.ubicacion}</td>
+                <td style="color:var(--primary); font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                <td>${t.nombre}</td>
+                <td><small>${fam||'-'}</small></td>
+                <td onclick="event.stopPropagation()" style="white-space:nowrap;">${btns}</td>
+            </tr>`;
+        }).join('');
+    },
+
+    confirmarPendiente: async (id) => {
+        const t = App.datos.find(x => x.id === id); if(!t) return;
+        if(!confirm(`¿Confirmar y validar el troquel "${t.id_troquel} - ${t.nombre}"?\nSe quitará la marca "NUEVO - PENDIENTE".`)) return;
+        const payload = {
+            id_troquel: String(t.id_troquel), ubicacion: String(t.ubicacion), nombre: String(t.nombre),
+            categoria_id: t.categoria_id || null, familia_id: t.familia_id || null,
+            tamano_troquel: String(t.tamano_troquel||""), tamano_final: String(t.tamano_final||""),
+            codigos_articulo: String(t.codigos_articulo||""),
+            referencias_ot: "", // limpia el marcador NUEVO - PENDIENTE
+            observaciones: String(t.observaciones||""),
+            estado: String(t.estado||"EN ALMACEN"),
+            archivos: App.parseArchivos(t.archivos)
+        };
+        const res = await fetch(`/api/troqueles/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        if(res.ok) { App.mostrarToast(`✅ Troquel ${t.id_troquel} confirmado y validado.`); await App.cargarTodo(); App.verPendientes(); }
+        else { App.mostrarToast("Error al confirmar.", "error"); }
+    },
+
     renderTabla: () => {
         const tbody = document.getElementById('tabla-body'); if (!tbody) return;
         const txt = document.getElementById('buscador').value.toLowerCase();
@@ -158,6 +222,7 @@ const App = {
             if(!isNaN(nA)&&!isNaN(nB)&&!vA.match(/[a-z]/i)) return App.ordenAsc ? nA-nB : nB-nA;
             return App.ordenAsc ? vA.localeCompare(vB) : vB.localeCompare(vA);
         });
+        App.renderBannerPendientes();
         if(res.length===0) { tbody.innerHTML='<tr><td colspan="9" class="text-center">Sin datos</td></tr>'; return; }
         tbody.innerHTML = res.map(t => {
             const chk = App.seleccionados.has(t.id) ? 'checked' : '';
@@ -351,6 +416,8 @@ const App = {
         document.getElementById('vista-movil').classList.add('oculto');
         document.getElementById('vista-movil-alta').classList.remove('oculto');
         document.getElementById('am-nombre').value = '';
+        document.getElementById('am-arts').value = '';
+        document.getElementById('am-ubicacion').value = '';
         document.getElementById('am-foto').value = '';
         document.getElementById('am-foto-txt').innerHTML = '📷 Tomar Foto del Troquel';
         const selCat = document.getElementById('am-cat'), selFam = document.getElementById('am-fam');
@@ -363,20 +430,36 @@ const App = {
     guardarAltaRapida: async (e) => {
         e.preventDefault();
         const cat = parseInt(document.getElementById('am-cat').value), fam = parseInt(document.getElementById('am-fam').value);
-        const nom = document.getElementById('am-nombre').value, inputFoto = document.getElementById('am-foto');
+        const nom = document.getElementById('am-nombre').value;
+        const arts = document.getElementById('am-arts').value.trim();
+        const ubiInput = document.getElementById('am-ubicacion').value.trim();
+        const inputFoto = document.getElementById('am-foto');
         if (!cat || !fam || !nom || !inputFoto.files.length) { App.mostrarToast("Rellena todos los campos y toma una foto.", "error"); return; }
         const btn = document.getElementById('btn-am-guardar'); btn.innerText = "⏳ GUARDANDO..."; btn.disabled = true;
         try {
             const rId = await fetch(`/api/siguiente_numero?categoria_id=${cat}`); const dId = await rId.json(); const matricula = dId.siguiente;
+            const ubicacion = ubiInput || String(matricula); // si no pone ubicación, usa matrícula
             const archivoOptimo = await App.comprimirImagen(inputFoto.files[0]);
             const fd = new FormData(); fd.append('file', archivoOptimo);
             const resFoto = await fetch('/api/subir_foto', { method:'POST', body:fd });
             let archivosArr = [];
             if(resFoto.ok) { const df = await resFoto.json(); archivosArr.push({ url: df.url, nombre: archivoOptimo.name, tipo: df.tipo }); }
             else { App.mostrarToast("Aviso: Error guardando foto", "error"); }
-            const payload = { id_troquel: String(matricula), ubicacion: String(matricula), nombre: String(nom), categoria_id: cat, familia_id: fam, tamano_troquel: "", tamano_final: "", codigos_articulo: "", referencias_ot: "ALTA MÓVIL", observaciones: "Dado de alta desde móvil. Faltan datos adicionales.", estado: "EN ALMACEN", archivos: archivosArr };
+            const payload = {
+                id_troquel: String(matricula),
+                ubicacion: ubicacion.toUpperCase(),
+                nombre: String(nom),
+                categoria_id: cat,
+                familia_id: fam,
+                tamano_troquel: "", tamano_final: "",
+                codigos_articulo: arts,
+                referencias_ot: "NUEVO - PENDIENTE",
+                observaciones: "Alta exprés desde móvil. Pendiente de validación por responsable.",
+                estado: "EN ALMACEN",
+                archivos: archivosArr
+            };
             const resGuardar = await fetch('/api/troqueles', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-            if(resGuardar.ok) { App.mostrarToast(`✅ Troquel creado con Matrícula: ${matricula}`); await App.cargarTodo(); App.volverMenuMovil(); }
+            if(resGuardar.ok) { App.mostrarToast("✅ Troquel creado — pendiente de validar"); await App.cargarTodo(); App.volverMenuMovil(); }
             else { const errG = await resGuardar.text(); App.mostrarToast(`Error BD: ${errG}`, "error"); }
         } catch(err) { App.mostrarToast("Error intermitente de red.", "error"); }
         finally { btn.innerText = "💾 GUARDAR TROQUEL"; btn.disabled = false; }
