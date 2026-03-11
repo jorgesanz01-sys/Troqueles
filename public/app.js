@@ -451,22 +451,26 @@ const App = {
 
     guardarAltaRapida: async (e) => {
         e.preventDefault();
-        const cat = parseInt(document.getElementById('am-cat').value), fam = parseInt(document.getElementById('am-fam').value);
+        const cat = parseInt(document.getElementById('am-cat').value);
+        const fam = parseInt(document.getElementById('am-fam').value) || null; // opcional
         const nom = document.getElementById('am-nombre').value;
         const arts = document.getElementById('am-arts').value.trim();
         const ubiInput = document.getElementById('am-ubicacion').value.trim();
         const inputFoto = document.getElementById('am-foto');
-        if (!cat || !fam || !nom || !inputFoto.files.length) { App.mostrarToast("Rellena todos los campos y toma una foto.", "error"); return; }
+        if (!cat || !nom) { App.mostrarToast("El tipo y la descripción son obligatorios.", "error"); return; }
         const btn = document.getElementById('btn-am-guardar'); btn.innerText = "⏳ GUARDANDO..."; btn.disabled = true;
         try {
             const rId = await fetch(`/api/siguiente_numero?categoria_id=${cat}`); const dId = await rId.json(); const matricula = dId.siguiente;
-            const ubicacion = ubiInput || String(matricula); // si no pone ubicación, usa matrícula
-            const archivoOptimo = await App.comprimirImagen(inputFoto.files[0]);
-            const fd = new FormData(); fd.append('file', archivoOptimo);
-            const resFoto = await fetch('/api/subir_foto', { method:'POST', body:fd });
+            const ubicacion = ubiInput || String(matricula);
             let archivosArr = [];
-            if(resFoto.ok) { const df = await resFoto.json(); archivosArr.push({ url: df.url, nombre: archivoOptimo.name, tipo: df.tipo }); }
-            else { App.mostrarToast("Aviso: Error guardando foto", "error"); }
+            // Foto: solo si se adjuntó
+            if(inputFoto.files.length) {
+                const archivoOptimo = await App.comprimirImagen(inputFoto.files[0]);
+                const fd = new FormData(); fd.append('file', archivoOptimo);
+                const resFoto = await fetch('/api/subir_foto', { method:'POST', body:fd });
+                if(resFoto.ok) { const df = await resFoto.json(); archivosArr.push({ url: df.url, nombre: archivoOptimo.name, tipo: df.tipo }); }
+                else { App.mostrarToast("Aviso: Error guardando foto", "error"); }
+            }
             const payload = {
                 id_troquel: String(matricula),
                 ubicacion: ubicacion.toUpperCase(),
