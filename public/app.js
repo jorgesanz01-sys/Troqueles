@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V46 (COMPLETO Y REPARADO MODO GRID)
+// ERP PACKAGING - LÓGICA V47 (HISTORIAL CON ACCIONES Y COLORES)
 // =============================================================
 
 const App = {
@@ -103,7 +103,7 @@ const App = {
             const res = await fetch('/api/troqueles?ver_papelera=false');
             if (res.ok) {
                 App.datos = await res.json() || [];
-                App.datosDescatalogados = []; // invalidar cache búsqueda global
+                App.datosDescatalogados = []; 
                 App.limpiarSeleccion();
                 App.renderTabla();
             }
@@ -364,23 +364,41 @@ const App = {
         } catch(e) { console.error(e); tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar los datos de uso.</td></tr>'; }
     },
 
+    // 🚀 AQUI SE AÑADE LA COLUMNA ACCIÓN Y LOS COLORES EN EL HISTORIAL GENERAL 🚀
     cargarHistorial: async () => {
         const r = await fetch('/api/historial'); const d = await r.json();
         document.getElementById('tabla-historial').innerHTML = d.map(h => {
             const t = h.troqueles || {};
-            return `<tr><td><small style="color:#64748b;">${new Date(h.fecha_hora).toLocaleString()}</small></td><td style="font-weight:bold; color:#0f766e;">${t.id_troquel || '?'}</td><td>${t.nombre || 'Desconocido'}</td><td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td><td><span style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">${h.ubicacion_anterior || '-'}</span> ➔ <span style="background:#dcfce7; padding:2px 6px; border-radius:4px;">${h.ubicacion_nueva || '-'}</span></td></tr>`;
+            
+            let c = '#475569', b = 'transparent';
+            if(h.accion === 'SALIDA') { c = '#991b1b'; b = '#fee2e2'; }
+            else if(h.accion === 'RETORNO' || h.accion === 'REACTIVADO' || h.accion === 'ALTA') { c = '#166534'; b = '#dcfce7'; }
+            else if(h.accion === 'A REPARAR') { c = '#ea580c'; b = '#ffedd5'; }
+            else if(h.accion === 'A EXTERNO') { c = '#7c3aed'; b = '#f3e8ff'; }
+            else if(h.accion === 'DESCATALOGADO') { c = '#92400e'; b = '#fef3c7'; }
+            const badge = `<span style="background:${b}; color:${c}; padding:3px 8px; border-radius:6px; font-size:12px; font-weight:bold;">${h.accion || '-'}</span>`;
+
+            return `<tr>
+                <td><small style="color:#64748b;">${new Date(h.fecha_hora).toLocaleString()}</small></td>
+                <td style="font-weight:bold; color:#0f766e;">${t.id_troquel || '?'}</td>
+                <td>${t.nombre || 'Desconocido'}</td>
+                <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                <td class="text-center">${badge}</td>
+                <td><span style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">${h.ubicacion_anterior || '-'}</span> ➔ <span style="background:#dcfce7; padding:2px 6px; border-radius:4px;">${h.ubicacion_nueva || '-'}</span></td>
+            </tr>`;
         }).join('');
         const thead = document.querySelector('#vista-historial thead tr');
-        if(thead) thead.innerHTML = `<th>Fecha/Hora</th><th>Matrícula</th><th>Descripción</th><th>Código</th><th>Origen ➔ Destino</th>`;
+        if(thead) thead.innerHTML = `<th>Fecha/Hora</th><th>Matrícula</th><th>Descripción</th><th>Código</th><th class="text-center">Acción</th><th>Origen ➔ Destino</th>`;
     },
 
+    // 🚀 AQUI SE AÑADEN LOS COLORES EN EL HISTORIAL INDIVIDUAL 🚀
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico'), tbody = document.getElementById('tabla-historial-unico');
         document.getElementById('hist-titulo-mat').innerText = mat;
         document.getElementById('hist-titulo-nom').innerText = nom;
         const theadUnico = document.querySelector('#modal-historial-unico thead tr');
         if(theadUnico) {
-            theadUnico.innerHTML = `<th style="padding:15px;">Fecha/Hora</th><th style="padding:15px;">Matrícula</th><th style="padding:15px;">Código</th><th style="padding:15px;">Origen ➔ Destino</th><th style="padding:15px;">Acción</th>`;
+            theadUnico.innerHTML = `<th style="padding:15px;">Fecha/Hora</th><th style="padding:15px;">Matrícula</th><th style="padding:15px;">Código</th><th style="padding:15px; text-align:center;">Acción</th><th style="padding:15px;">Origen ➔ Destino</th>`;
         }
         tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding:40px; font-size:18px;">Cargando movimientos... ⏳</td></tr>';
         modal.classList.remove('oculto');
@@ -392,12 +410,21 @@ const App = {
                 else { 
                     tbody.innerHTML = data.map(h => { 
                         const t = h.troqueles || {}; 
+                        
+                        let c = '#475569', b = 'transparent';
+                        if(h.accion === 'SALIDA') { c = '#991b1b'; b = '#fee2e2'; }
+                        else if(h.accion === 'RETORNO' || h.accion === 'REACTIVADO' || h.accion === 'ALTA') { c = '#166534'; b = '#dcfce7'; }
+                        else if(h.accion === 'A REPARAR') { c = '#ea580c'; b = '#ffedd5'; }
+                        else if(h.accion === 'A EXTERNO') { c = '#7c3aed'; b = '#f3e8ff'; }
+                        else if(h.accion === 'DESCATALOGADO') { c = '#92400e'; b = '#fef3c7'; }
+                        const badge = `<span style="background:${b}; color:${c}; padding:3px 8px; border-radius:6px; font-size:12px; font-weight:bold;">${h.accion || '-'}</span>`;
+
                         return `<tr>
                             <td><small style="color:#64748b;">${new Date(h.fecha_hora).toLocaleString()}</small></td>
                             <td style="font-weight:bold; color:#0f766e;">${t.id_troquel || mat}</td>
                             <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                            <td class="text-center">${badge}</td>
                             <td><span style="background:#f1f5f9; padding:4px 8px; border-radius:4px;">${h.ubicacion_anterior || '-'}</span> ➔ <span style="background:#dcfce7; padding:4px 8px; border-radius:4px; font-weight:bold;">${h.ubicacion_nueva || '-'}</span></td>
-                            <td><strong style="color:#475569;">${h.accion}</strong></td>
                         </tr>`; 
                     }).join(''); 
                 }
@@ -491,7 +518,7 @@ const App = {
     guardarAltaRapida: async (e) => {
         e.preventDefault();
         const cat = parseInt(document.getElementById('am-cat').value);
-        const fam = parseInt(document.getElementById('am-fam').value) || null;
+        const fam = parseInt(document.getElementById('am-fam').value) || null; // opcional
         const nom = document.getElementById('am-nombre').value;
         const arts = document.getElementById('am-arts').value.trim();
         const ubiInput = document.getElementById('am-ubicacion').value.trim();
@@ -502,6 +529,7 @@ const App = {
             const rId = await fetch(`/api/siguiente_numero?categoria_id=${cat}`); const dId = await rId.json(); const matricula = dId.siguiente;
             const ubicacion = ubiInput || String(matricula);
             let archivosArr = [];
+            // Foto: solo si se adjuntó
             if(inputFoto.files.length) {
                 const archivoOptimo = await App.comprimirImagen(inputFoto.files[0]);
                 const fd = new FormData(); fd.append('file', archivoOptimo);
@@ -569,54 +597,34 @@ const App = {
         input.value = "";
     },
 
-    // 🚀 FUNCIÓN ESCÁNER TOTALMENTE REPARADA
     toggleScanner: (show=true, modo='LOTE') => {
-        const el = document.getElementById('modal-scanner'); 
-        App.modoScanner = modo;
-        const pLote = document.getElementById('panel-lote');
-        const bLote = document.getElementById('btns-lote');
-        const tit = document.getElementById('titulo-scanner');
+        const el = document.getElementById('modal-scanner'); App.modoScanner = modo;
+        const pLote = document.getElementById('panel-lote'), bLote = document.getElementById('btns-lote'), tit = document.getElementById('titulo-scanner');
         
         if (modo === 'UNICO') { 
-            if(pLote) pLote.style.display = 'none'; 
-            if(bLote) bLote.style.display = 'none'; 
-            if(tit) tit.innerText = "🔎 Escanear Un Troquel"; 
+            if(pLote) pLote.style.display='none'; 
+            if(bLote) bLote.style.display='none'; 
+            if(tit) tit.innerText="🔎 Escanear Un Troquel"; 
         } else { 
-            if(pLote) pLote.style.display = 'block'; 
-            if(bLote) bLote.style.display = 'grid'; 
-            if(tit) tit.innerText = "📦 Escanear Lote"; 
+            if(pLote) pLote.style.display='block'; 
+            if(bLote) bLote.style.display='grid'; 
+            if(tit) tit.innerText="📦 Escanear Lote"; 
         }
         
         if(show) {
-            el.classList.remove('oculto'); 
-            App.escaneadosLote.clear(); 
-            App.renderListaEscaneados();
+            el.classList.remove('oculto'); App.escaneadosLote.clear(); App.renderListaEscaneados();
             App.scanner = new Html5Qrcode("reader");
             let last = null, t0 = 0;
             App.scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, (txt) => {
                 if(txt === last && (Date.now() - t0 < 3000)) return;
                 const t = App.datos.find(x => x.id.toString() === txt);
                 if(t) {
-                    if (App.modoScanner === 'UNICO') { 
-                        App.reproducirBeep(true); 
-                        App.toggleScanner(false); 
-                        if(navigator.vibrate) navigator.vibrate(200); 
-                        App.abrirDetalleMovil(t.id); 
-                    } else { 
-                        if(!App.escaneadosLote.has(t.id)) { 
-                            App.reproducirBeep(true); 
-                            App.escaneadosLote.set(t.id, t); 
-                            App.renderListaEscaneados(); 
-                            if(navigator.vibrate) navigator.vibrate(100); 
-                        } 
-                    }
+                    if (App.modoScanner === 'UNICO') { App.reproducirBeep(true); App.toggleScanner(false); if(navigator.vibrate) navigator.vibrate(200); App.abrirDetalleMovil(t.id); }
+                    else { if(!App.escaneadosLote.has(t.id)) { App.reproducirBeep(true); App.escaneadosLote.set(t.id, t); App.renderListaEscaneados(); if(navigator.vibrate) navigator.vibrate(100); } }
                     last = txt; t0 = Date.now();
                 } else { App.reproducirBeep(false); }
             });
-        } else { 
-            el.classList.add('oculto'); 
-            if(App.scanner) App.scanner.stop(); 
-        }
+        } else { el.classList.add('oculto'); if(App.scanner) App.scanner.stop(); }
     },
 
     renderListaEscaneados: () => { const div = document.getElementById('lista-escaneados'); div.innerHTML=""; document.getElementById('count-scans').innerText=App.escaneadosLote.size; App.escaneadosLote.forEach((t,id)=>{ div.innerHTML+=`<div class="chip activo" style="background:white; color:black;"><b>${t.id_troquel}</b><span onclick="App.borrarDeLote(${id})" style="color:red; cursor:pointer; margin-left:5px">✕</span></div>`; }); },
