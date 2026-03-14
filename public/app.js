@@ -574,8 +574,8 @@ const App = {
         const el = document.getElementById('modal-scanner'); App.modoScanner = modo;
         const pLote = document.getElementById('panel-lote'), bLote = document.getElementById('btns-lote'), tit = document.getElementById('titulo-scanner');
         if (modo === 'UNICO') { if(pLote) pLote.style.display='none'; if(bLote) bLote.style.display='none'; if(tit) tit.innerText="🔎 Escanear Un Troquel"; }
-        else { if(pLote) pLote.style.display='block'; if(bLote) bLote.style.display='flex'; if(tit) tit.innerText="📦 Escanear Lote"; }
-        if(show) {
+        
+        if(show) {else { if(pLote) pLote.style.display='block'; if(bLote) bLote.style.display='grid'; if(tit) tit.innerText="📦 Escanear Lote"; }
             el.classList.remove('oculto'); App.escaneadosLote.clear(); App.renderListaEscaneados();
             App.scanner = new Html5Qrcode("reader");
             let last = null, t0 = 0;

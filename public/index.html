@@ -132,14 +132,11 @@
                     <button class="btn-secundario" style="background:white; border:2px solid #14b8a6; color:#0f766e; font-weight:bold; padding:6px 10px;" onclick="App.imprimirLoteQRs('50x23')">🖨️ 50x23</button>
                     <button class="btn-secundario" style="background:white; border:2px solid #0284c7; color:#0284c7; font-weight:bold; padding:6px 10px;" onclick="App.imprimirLoteQRs('100x70')">🖨️ 100x70</button>
                     <button class="btn-secundario" style="background:white; border:2px solid #7c3aed; color:#7c3aed; font-weight:bold; padding:6px 10px;" onclick="App.imprimirLoteQRs('a4')">🖨️ A4 (8/folio)</button>
-                    
                     <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
-                    
                     <button class="btn-accion" style="background:#e11d48;" onclick="App.moverLote('SALIDA')">🏭 A Prod.</button>
                     <button class="btn-accion" style="background:#16a34a;" onclick="App.moverLote('RETORNO')">✅ Devolver</button>
                     <button class="btn-accion" style="background:#f97316;" onclick="App.moverLote('REPARAR')">🔧 Reparar</button>
                     <button class="btn-accion" style="background:#8b5cf6;" onclick="App.moverLote('EXTERNO')">🚚 Externo</button>
-                    
                     <div style="width:1px; height:20px; background:#93c5fd; margin:0 5px;"></div>
                     <select id="bulk-familia" class="select-bulk"><option value="">Familia...</option></select>
                     <button class="btn-secundario" onclick="App.asignarMasivo('familia')">OK</button>
@@ -516,25 +513,27 @@
         </div>
 
         <div id="modal-scanner" class="modal oculto" style="background:black;">
-            <div class="modal-contenido" style="background:#1e293b; color:white; width:100%; height:100dvh; max-width:none; border:none; display:flex; flex-direction:column; overflow-y:auto;">
+            <div class="modal-contenido" style="background:#1e293b; color:white; width:100%; height:100dvh; max-width:none; border:none; display:flex; flex-direction:column;">
+                
                 <div style="padding:10px; display:flex; justify-content:space-between; flex-shrink:0;">
                     <h3 id="titulo-scanner" style="margin:0;">📸 Escáner</h3>
                     <button class="btn-secundario" onclick="App.toggleScanner(false)" style="background:transparent; color:white; border:1px solid white;">✕ Cerrar</button>
                 </div>
                 
-                <div id="reader" style="flex:1; min-height:250px; background:black; flex-shrink:0;"></div>
+                <div id="reader" style="width:100%; height:40vh; max-height:350px; background:black; flex-shrink:0; display:flex; justify-content:center; overflow:hidden;"></div>
                 
-                <div id="panel-lote" style="height:150px; flex-shrink:0; background:#0f172a; padding:10px; overflow-y:auto;">
+                <div id="panel-lote" style="flex:1; background:#0f172a; padding:10px; overflow-y:auto;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>Leídos: <strong id="count-scans">0</strong></span></div>
                     <div id="lista-escaneados" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
                 </div>
                 
-                <div id="btns-lote" style="padding:15px; display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#0f172a; flex-shrink:0; padding-bottom:30px;">
-                    <button class="btn-accion" style="background:#e11d48; padding:15px 5px; font-size:14px; text-align:center; white-space:normal; line-height:1.2;" onclick="App.procesarEscaneo('SALIDA')">🏭 A PRODUCCIÓN</button>
-                    <button class="btn-accion" style="background:#16a34a; padding:15px 5px; font-size:14px; text-align:center; white-space:normal; line-height:1.2;" onclick="App.procesarEscaneo('RETORNO')">✅ A ALMACÉN</button>
-                    <button class="btn-accion" style="background:#f97316; padding:15px 5px; font-size:14px; text-align:center; white-space:normal; line-height:1.2;" onclick="App.procesarEscaneo('REPARAR')">🔧 A REPARAR</button>
-                    <button class="btn-accion" style="background:#8b5cf6; padding:15px 5px; font-size:14px; text-align:center; white-space:normal; line-height:1.2;" onclick="App.procesarEscaneo('EXTERNO')">🚚 A EXTERNO</button>
+                <div id="btns-lote" style="padding:15px; display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#0f172a; flex-shrink:0;">
+                    <button class="btn-accion" style="background:#e11d48; padding:12px 5px; font-size:13px; text-align:center; white-space:normal; line-height:1.2;" onclick="App.procesarEscaneo('SALIDA')">🏭 A PRODUCCIÓN</button>
+                    <button class="btn-accion" style="background:#16a34a; padding:12px 5px; font-size:13px; text-align:center; white-space:normal; line-height:1.2;" onclick="App.procesarEscaneo('RETORNO')">✅ A ALMACÉN</button>
+                    <button class="btn-accion" style="background:#f97316; padding:12px 5px; font-size:13px; text-align:center; white-space:normal; line-height:1.2;" onclick="App.procesarEscaneo('REPARAR')">🔧 A REPARAR</button>
+                    <button class="btn-accion" style="background:#8b5cf6; padding:12px 5px; font-size:13px; text-align:center; white-space:normal; line-height:1.2;" onclick="App.procesarEscaneo('EXTERNO')">🚚 A EXTERNO</button>
                 </div>
+
             </div>
         </div>
 
@@ -583,6 +582,6 @@
 </div>
 
 <div id="toast-container"></div>
-<script src="app.js?v=44"></script>
+<script src="app.js?v=45"></script>
 </body>
 </html>
