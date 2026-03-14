@@ -1,12 +1,12 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V36 (AUTO-DETECTAR MÓVIL Y TOASTS)
+// ERP PACKAGING - LÓGICA V44 (NUEVOS ESTADOS: REPARAR Y EXTERNO)
 // =============================================================
 
 const App = {
     datos: [], seleccionados: new Set(), filtroTipo: 'TODOS',
     mapaCat: {}, mapaFam: {}, columnaOrden: 'id_troquel', ordenAsc: true,
     scanner: null, modoMovil: false, modoScanner: 'LOTE', 
-    archivosActuales: [], escaneadosLote: new Map(),
+    archivosActuales: [], escaneadosLote: new Map(), enPapelera: false,
     intervaloRefresco: null,
     datosDescatalogados: [],
     datosPapelera: [],
@@ -228,6 +228,7 @@ const App = {
         const txt = document.getElementById('buscador').value.toLowerCase();
         const fam = document.getElementById('filtro-familia').value;
         const est = document.getElementById('filtro-estado').value;
+        
         let res = App.datos.filter(t => {
             if(t.estado === 'DESCATALOGADO') return false;
             const nCat = App.mapaCat[t.categoria_id] || '';
@@ -237,6 +238,7 @@ const App = {
             const okTxt = (t.nombre+t.id_troquel+(t.ubicacion||"")+(t.codigos_articulo||"")).toLowerCase().includes(txt);
             return okTip && okFam && okEst && okTxt;
         });
+        
         res.sort((a,b) => {
             let vA = (a[App.columnaOrden]||"").toString(), vB = (b[App.columnaOrden]||"").toString();
             if(App.columnaOrden==='familia') { vA=App.mapaFam[a.familia_id]||""; vB=App.mapaFam[b.familia_id]||""; }
@@ -244,15 +246,23 @@ const App = {
             if(!isNaN(nA)&&!isNaN(nB)&&!vA.match(/[a-z]/i)) return App.ordenAsc ? nA-nB : nB-nA;
             return App.ordenAsc ? vA.localeCompare(vB) : vB.localeCompare(vA);
         });
+        
         App.renderBannerPendientes();
         if(res.length===0) { tbody.innerHTML='<tr><td colspan="9" class="text-center">Sin datos</td></tr>'; return; }
+        
         tbody.innerHTML = res.map(t => {
             const chk = App.seleccionados.has(t.id) ? 'checked' : '';
             const archs = App.parseArchivos(t.archivos); const nDocs = archs.length;
             const bdg = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
-            let col = 'var(--success)', bg = '#dcfce7', textoEstado = 'ALMACÉN';
-            if(t.estado === 'EN PRODUCCION') { col = 'var(--danger)'; bg = '#fee2e2'; textoEstado = 'PRODUCCIÓN'; }
+            
+            // LÓGICA DE COLORES DE ESTADO ACTUALIZADA
+            let col = '#166534', bg = '#dcfce7', textoEstado = 'ALMACÉN';
+            if(t.estado === 'EN PRODUCCION') { col = '#991b1b'; bg = '#fee2e2'; textoEstado = 'PRODUCCIÓN'; }
+            else if(t.estado === 'REPARAR') { col = '#ea580c'; bg = '#ffedd5'; textoEstado = 'REPARACIÓN'; }
+            else if(t.estado === 'EXTERNO') { col = '#7c3aed'; bg = '#f3e8ff'; textoEstado = 'EXTERNO'; }
+
             const st = `<span style="background:${bg}; color:${col}; padding:3px 8px; border-radius:10px; font-size:10px; font-weight:800; letter-spacing:0.5px;">${textoEstado}</span>`;
+            
             let fam = App.mapaFam[t.familia_id];
             if(!fam && t.familia_id) fam = `<span style="color:red">ID:${t.familia_id}</span>`;
             const btns = `
@@ -275,14 +285,22 @@ const App = {
 
     generarDashboardEstadisticas: () => {
         const container = document.getElementById('dashboard-resumen'); if(!container) return;
-        let total = App.datos.length, estAlmacen = 0, estProduccion = 0, conteoFamilias = {}, conteoTipos = {};
+        let total = App.datos.length, estAlmacen = 0, estProduccion = 0, estReparar = 0, estExterno = 0, estObsoleto = 0, conteoFamilias = {}, conteoTipos = {};
+        
         App.datos.forEach(t => {
-            if(t.estado === 'EN PRODUCCION') estProduccion++; else estAlmacen++;
+            if(t.estado === 'EN PRODUCCION') estProduccion++; 
+            else if(t.estado === 'REPARAR') estReparar++;
+            else if(t.estado === 'EXTERNO') estExterno++;
+            else if(t.estado === 'DESCATALOGADO') estObsoleto++;
+            else estAlmacen++;
+            
             let fam = App.mapaFam[t.familia_id] || 'Sin Familia'; conteoFamilias[fam] = (conteoFamilias[fam] || 0) + 1;
             let cat = App.mapaCat[t.categoria_id] || 'Sin Tipo'; conteoTipos[cat] = (conteoTipos[cat] || 0) + 1;
         });
+        
         const renderLista = (obj) => Object.entries(obj).sort((a,b) => b[1]-a[1]).slice(0,5)
             .map(x => `<div style="display:flex; justify-content:space-between; border-bottom:1px dashed #e2e8f0; padding:5px 0; font-size:12px;"><span>${x[0]}</span> <strong style="color:#0f766e; background:#f0fdf4; padding:1px 6px; border-radius:10px;">${x[1]}</strong></div>`).join('');
+        
         container.innerHTML = `
             <div style="background:white; padding:12px 16px; border-radius:8px; border:3px solid #0f766e; box-shadow:0 4px 6px rgba(0,0,0,0.1); display:flex; flex-direction:column; justify-content:center; align-items:center;">
                 <h3 style="margin:0 0 6px 0; color:#64748b; font-size:12px; font-weight:bold; letter-spacing:1px;">TOTAL INVENTARIO</h3>
@@ -292,6 +310,8 @@ const App = {
                 <h3 style="margin:0 0 10px 0; color:#64748b; font-size:12px; font-weight:bold; letter-spacing:1px;">RESUMEN DE ESTADO</h3>
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;"><span style="color:#166534; font-weight:bold;">✅ En Almacén</span> <strong>${estAlmacen}</strong></div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;"><span style="color:#991b1b; font-weight:bold;">🏭 En Producción</span> <strong>${estProduccion}</strong></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;"><span style="color:#ea580c; font-weight:bold;">🔧 Reparación</span> <strong>${estReparar}</strong></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;"><span style="color:#7c3aed; font-weight:bold;">🚚 Externo</span> <strong>${estExterno}</strong></div>
                 <div style="display:flex; justify-content:space-between; font-size:14px;"><span style="color:#6b7280; font-weight:bold; cursor:pointer;" onclick="App.verDescatalogados()">⛔ Ver Descatalogados →</span></div>
             </div>
             <div style="background:white; padding:12px 16px; border-radius:8px; border:1px solid #cbd5e1; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -358,17 +378,30 @@ const App = {
         document.getElementById('hist-titulo-mat').innerText = mat;
         document.getElementById('hist-titulo-nom').innerText = nom;
         const theadUnico = document.querySelector('#modal-historial-unico thead tr');
-        if(theadUnico) theadUnico.innerHTML = `<th style="padding:15px;">Fecha/Hora</th><th style="padding:15px;">Matrícula</th><th style="padding:15px;">Código</th><th style="padding:15px;">Origen ➔ Destino</th>`;
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding:40px; font-size:18px;">Cargando movimientos... ⏳</td></tr>';
+        if(theadUnico) {
+            theadUnico.innerHTML = `<th style="padding:15px;">Fecha/Hora</th><th style="padding:15px;">Matrícula</th><th style="padding:15px;">Código</th><th style="padding:15px;">Origen ➔ Destino</th><th style="padding:15px;">Acción</th>`;
+        }
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding:40px; font-size:18px;">Cargando movimientos... ⏳</td></tr>';
         modal.classList.remove('oculto');
         try {
             const res = await fetch(`/api/historial?troquel_id=${id}`);
             if (res.ok) {
                 const data = await res.json();
-                if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding:40px; font-size:18px;">No hay movimientos registrados.</td></tr>'; }
-                else { tbody.innerHTML = data.map(h => { const t = h.troqueles || {}; return `<tr><td><small style="color:#64748b;">${new Date(h.fecha_hora).toLocaleString()}</small></td><td style="font-weight:bold; color:#0f766e;">${t.id_troquel || mat}</td><td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td><td><span style="background:#f1f5f9; padding:4px 8px; border-radius:4px;">${h.ubicacion_anterior || '-'}</span> ➔ <span style="background:#dcfce7; padding:4px 8px; border-radius:4px; font-weight:bold;">${h.ubicacion_nueva || '-'}</span></td></tr>`; }).join(''); }
+                if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding:40px; font-size:18px;">No hay movimientos registrados.</td></tr>'; }
+                else { 
+                    tbody.innerHTML = data.map(h => { 
+                        const t = h.troqueles || {}; 
+                        return `<tr>
+                            <td><small style="color:#64748b;">${new Date(h.fecha_hora).toLocaleString()}</small></td>
+                            <td style="font-weight:bold; color:#0f766e;">${t.id_troquel || mat}</td>
+                            <td style="color:#0369a1; font-weight:bold;">${t.codigos_articulo || '-'}</td>
+                            <td><span style="background:#f1f5f9; padding:4px 8px; border-radius:4px;">${h.ubicacion_anterior || '-'}</span> ➔ <span style="background:#dcfce7; padding:4px 8px; border-radius:4px; font-weight:bold;">${h.ubicacion_nueva || '-'}</span></td>
+                            <td><strong style="color:#475569;">${h.accion}</strong></td>
+                        </tr>`; 
+                    }).join(''); 
+                }
             }
-        } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-red">Error al cargar la información.</td></tr>'; }
+        } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red">Error al cargar la información.</td></tr>'; }
     },
 
     verFicha: (id) => {
@@ -421,8 +454,14 @@ const App = {
         const archs = App.parseArchivos(t.archivos);
         if (archs.length > 0) { archs.forEach(arch => { const icon = arch.tipo === 'pdf' ? '📄' : `<img src="${arch.url}" style="height:40px; border-radius:4px; border:1px solid #cbd5e1;">`; galMovil.innerHTML += `<a href="${arch.url}" target="_blank" style="margin-right:5px; text-decoration:none; display:inline-block; text-align:center; color:#334155;">${icon}</a>`; }); }
         else { galMovil.innerHTML = "<span style='color:#94a3b8; font-size:12px;'>No hay archivos adjuntos</span>"; }
+        
+        // Píldora de estado en vista móvil
         let stHtml = `<span style="background:#dcfce7; color:#166534; padding:5px 10px; border-radius:15px; font-weight:bold;">ALMACÉN</span>`;
         if(t.estado === 'EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px; font-weight:bold;">PRODUCCIÓN</span>`;
+        else if(t.estado === 'REPARAR') stHtml = `<span style="background:#ffedd5; color:#ea580c; padding:5px 10px; border-radius:15px; font-weight:bold;">EN REPARACIÓN</span>`;
+        else if(t.estado === 'EXTERNO') stHtml = `<span style="background:#f3e8ff; color:#7c3aed; padding:5px 10px; border-radius:15px; font-weight:bold;">EXTERNO</span>`;
+        else if(t.estado === 'DESCATALOGADO') stHtml = `<span style="background:#f3f4f6; color:#6b7280; padding:5px 10px; border-radius:15px; font-weight:bold;">OBSOLETO</span>`;
+        
         document.getElementById('movil-estado').innerHTML = stHtml;
     },
 
@@ -739,14 +778,11 @@ const App = {
         const q = txt.toLowerCase();
         const tbody = document.getElementById('tabla-body'); if(!tbody) return;
         try {
-            // Usar cache — solo fetch si está vacío
             if(App.datosDescatalogados.length === 0) {
                 const resDesc = await fetch('/api/troqueles/descatalogados');
                 App.datosDescatalogados = await resDesc.json();
             }
 
-            // App.datos puede contener troqueles con estado=DESCATALOGADO si el backend los devuelve
-            // Los eliminamos para evitar duplicados con App.datosDescatalogados
             const activosLimpios = App.datos.filter(t => t.estado !== 'DESCATALOGADO');
             const idsDesc = new Set(App.datosDescatalogados.map(t => t.id));
 
@@ -760,15 +796,23 @@ const App = {
             tbody.innerHTML = res.map(t => {
                 const esDesc = t._origen === 'descatalogado';
                 const bgRow = esDesc ? 'background:#fffbeb;' : '';
-                const badge = esDesc
-                    ? `<span style="background:#fef3c7; color:#92400e; padding:2px 7px; border-radius:8px; font-size:10px; font-weight:800;">DESC.</span>`
-                    : `<span style="background:${t.estado==='EN PRODUCCION'?'#fee2e2':'#dcfce7'}; color:${t.estado==='EN PRODUCCION'?'#991b1b':'#166534'}; padding:2px 7px; border-radius:8px; font-size:10px; font-weight:800;">${t.estado==='EN PRODUCCION'?'PROD.':'ALMACÉN'}</span>`;
+                
+                let badge = '';
+                if(esDesc) {
+                    badge = `<span style="background:#fef3c7; color:#92400e; padding:2px 7px; border-radius:8px; font-size:10px; font-weight:800;">DESC.</span>`;
+                } else {
+                    let c = '#166534', b = '#dcfce7', tx = 'ALMACÉN';
+                    if(t.estado === 'EN PRODUCCION') { c = '#991b1b'; b = '#fee2e2'; tx = 'PROD.'; }
+                    else if(t.estado === 'REPARAR') { c = '#ea580c'; b = '#ffedd5'; tx = 'REPAR.'; }
+                    else if(t.estado === 'EXTERNO') { c = '#7c3aed'; b = '#f3e8ff'; tx = 'EXTERNO'; }
+                    badge = `<span style="background:${b}; color:${c}; padding:2px 7px; border-radius:8px; font-size:10px; font-weight:800;">${tx}</span>`;
+                }
+                
                 const archs = App.parseArchivos(t.archivos);
                 const bdg = archs.length > 0 ? `<span class="obs-pildora">📎 ${archs.length}</span>` : '-';
                 const fam = App.mapaFam[t.familia_id] || '-';
                 const nomEsc = (t.nombre||'').replace(/'/g, '');
-                // Descatalogados: reactivar + imprimir
-                // Activos: historial + imprimir + descatalogar + papelera (igual que la tabla normal)
+                
                 const accion = esDesc
                     ? `<button class="btn-accion" style="background:#16a34a; padding:3px 8px; font-size:11px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>
                        <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir etiqueta">🖨️</button>`

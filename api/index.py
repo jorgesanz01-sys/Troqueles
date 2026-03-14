@@ -276,12 +276,18 @@ def mover_lote(d: MovimientoLote):
         prev = supabase.table("troqueles").select("ubicacion, estado").eq("id", id_db).execute().data
         ubi_actual = prev[0]["ubicacion"] if prev else ""
 
+        # LÓGICA DE ESTADOS ACTUALIZADA
         if d.accion == "SALIDA":
-            # Solo cambia estado, la ubicacion se conserva
             supabase.table("troqueles").update({"estado": "EN PRODUCCION"}).eq("id", id_db).execute()
             registrar_log(id_db, "SALIDA", ubi_actual, ubi_actual)
+        elif d.accion == "REPARAR":
+            supabase.table("troqueles").update({"estado": "REPARAR"}).eq("id", id_db).execute()
+            registrar_log(id_db, "A REPARAR", ubi_actual, ubi_actual)
+        elif d.accion == "EXTERNO":
+            supabase.table("troqueles").update({"estado": "EXTERNO"}).eq("id", id_db).execute()
+            registrar_log(id_db, "A EXTERNO", ubi_actual, ubi_actual)
         else:
-            # Retorno: cambia estado, usa ubicacion_destino si se especifica, si no la conserva
+            # Retorno: cambia estado a EN ALMACEN
             ubi_retorno = d.ubicacion_destino.strip().upper() if d.ubicacion_destino and d.ubicacion_destino.strip() else ubi_actual
             supabase.table("troqueles").update({"estado": "EN ALMACEN", "ubicacion": ubi_retorno}).eq("id", id_db).execute()
             registrar_log(id_db, "RETORNO", ubi_actual, ubi_retorno)
@@ -305,6 +311,12 @@ def bulk_restaurar(d: BulkIds):
 
 @app.post("/api/troqueles/bulk/destruir")
 def bulk_destruir(d: BulkIds):
+    # 1. SOLUCIÓN PAPELERA INMORTAL: Borramos su historial primero
+    try:
+        supabase.table("historial").delete().in_("troquel_id", d.ids).execute()
+    except:
+        pass
+    # 2. Ahora sí, pulverizamos el troquel
     return supabase.table("troqueles").delete().in_("id", d.ids).execute()
 
 class BulkDescatalogarData(BaseModel):
@@ -346,7 +358,12 @@ def limpiar_duplicados():
         if huella in vistos: ids_a_borrar.append(t["id"])
         else: vistos.add(huella)
             
-    if ids_a_borrar: supabase.table("troqueles").delete().in_("id", ids_a_borrar).execute()
+    if ids_a_borrar:
+        # Borramos historial de los duplicados también para evitar fallo de Foreign Key
+        try: supabase.table("historial").delete().in_("troquel_id", ids_a_borrar).execute()
+        except: pass
+        
+        supabase.table("troqueles").delete().in_("id", ids_a_borrar).execute()
     return {"borrados": len(ids_a_borrar)}
 
 @app.post("/api/troqueles/backup/restaurar")
