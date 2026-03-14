@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V44 (NUEVOS ESTADOS: REPARAR Y EXTERNO)
+// ERP PACKAGING - LÓGICA V46 (COMPLETO Y REPARADO MODO GRID)
 // =============================================================
 
 const App = {
@@ -23,7 +23,8 @@ const App = {
         container.appendChild(toast);
         setTimeout(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(0)'; }, 10);
         setTimeout(() => {
-            toast.style.opacity = '0'; toast.style.transform = 'translateX(50px)';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(50px)';
             setTimeout(() => toast.remove(), 300);
         }, 3500);
     },
@@ -455,7 +456,6 @@ const App = {
         if (archs.length > 0) { archs.forEach(arch => { const icon = arch.tipo === 'pdf' ? '📄' : `<img src="${arch.url}" style="height:40px; border-radius:4px; border:1px solid #cbd5e1;">`; galMovil.innerHTML += `<a href="${arch.url}" target="_blank" style="margin-right:5px; text-decoration:none; display:inline-block; text-align:center; color:#334155;">${icon}</a>`; }); }
         else { galMovil.innerHTML = "<span style='color:#94a3b8; font-size:12px;'>No hay archivos adjuntos</span>"; }
         
-        // Píldora de estado en vista móvil
         let stHtml = `<span style="background:#dcfce7; color:#166534; padding:5px 10px; border-radius:15px; font-weight:bold;">ALMACÉN</span>`;
         if(t.estado === 'EN PRODUCCION') stHtml = `<span style="background:#fee2e2; color:#991b1b; padding:5px 10px; border-radius:15px; font-weight:bold;">PRODUCCIÓN</span>`;
         else if(t.estado === 'REPARAR') stHtml = `<span style="background:#ffedd5; color:#ea580c; padding:5px 10px; border-radius:15px; font-weight:bold;">EN REPARACIÓN</span>`;
@@ -491,7 +491,7 @@ const App = {
     guardarAltaRapida: async (e) => {
         e.preventDefault();
         const cat = parseInt(document.getElementById('am-cat').value);
-        const fam = parseInt(document.getElementById('am-fam').value) || null; // opcional
+        const fam = parseInt(document.getElementById('am-fam').value) || null;
         const nom = document.getElementById('am-nombre').value;
         const arts = document.getElementById('am-arts').value.trim();
         const ubiInput = document.getElementById('am-ubicacion').value.trim();
@@ -502,7 +502,6 @@ const App = {
             const rId = await fetch(`/api/siguiente_numero?categoria_id=${cat}`); const dId = await rId.json(); const matricula = dId.siguiente;
             const ubicacion = ubiInput || String(matricula);
             let archivosArr = [];
-            // Foto: solo si se adjuntó
             if(inputFoto.files.length) {
                 const archivoOptimo = await App.comprimirImagen(inputFoto.files[0]);
                 const fd = new FormData(); fd.append('file', archivoOptimo);
@@ -570,26 +569,56 @@ const App = {
         input.value = "";
     },
 
+    // 🚀 FUNCIÓN ESCÁNER TOTALMENTE REPARADA
     toggleScanner: (show=true, modo='LOTE') => {
-        const el = document.getElementById('modal-scanner'); App.modoScanner = modo;
-        const pLote = document.getElementById('panel-lote'), bLote = document.getElementById('btns-lote'), tit = document.getElementById('titulo-scanner');
-        if (modo === 'UNICO') { if(pLote) pLote.style.display='none'; if(bLote) bLote.style.display='none'; if(tit) tit.innerText="🔎 Escanear Un Troquel"; }
+        const el = document.getElementById('modal-scanner'); 
+        App.modoScanner = modo;
+        const pLote = document.getElementById('panel-lote');
+        const bLote = document.getElementById('btns-lote');
+        const tit = document.getElementById('titulo-scanner');
         
-        if(show) {else { if(pLote) pLote.style.display='block'; if(bLote) bLote.style.display='grid'; if(tit) tit.innerText="📦 Escanear Lote"; }
-            el.classList.remove('oculto'); App.escaneadosLote.clear(); App.renderListaEscaneados();
+        if (modo === 'UNICO') { 
+            if(pLote) pLote.style.display = 'none'; 
+            if(bLote) bLote.style.display = 'none'; 
+            if(tit) tit.innerText = "🔎 Escanear Un Troquel"; 
+        } else { 
+            if(pLote) pLote.style.display = 'block'; 
+            if(bLote) bLote.style.display = 'grid'; 
+            if(tit) tit.innerText = "📦 Escanear Lote"; 
+        }
+        
+        if(show) {
+            el.classList.remove('oculto'); 
+            App.escaneadosLote.clear(); 
+            App.renderListaEscaneados();
             App.scanner = new Html5Qrcode("reader");
             let last = null, t0 = 0;
             App.scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, (txt) => {
                 if(txt === last && (Date.now() - t0 < 3000)) return;
                 const t = App.datos.find(x => x.id.toString() === txt);
                 if(t) {
-                    if (App.modoScanner === 'UNICO') { App.reproducirBeep(true); App.toggleScanner(false); if(navigator.vibrate) navigator.vibrate(200); App.abrirDetalleMovil(t.id); }
-                    else { if(!App.escaneadosLote.has(t.id)) { App.reproducirBeep(true); App.escaneadosLote.set(t.id, t); App.renderListaEscaneados(); if(navigator.vibrate) navigator.vibrate(100); } }
+                    if (App.modoScanner === 'UNICO') { 
+                        App.reproducirBeep(true); 
+                        App.toggleScanner(false); 
+                        if(navigator.vibrate) navigator.vibrate(200); 
+                        App.abrirDetalleMovil(t.id); 
+                    } else { 
+                        if(!App.escaneadosLote.has(t.id)) { 
+                            App.reproducirBeep(true); 
+                            App.escaneadosLote.set(t.id, t); 
+                            App.renderListaEscaneados(); 
+                            if(navigator.vibrate) navigator.vibrate(100); 
+                        } 
+                    }
                     last = txt; t0 = Date.now();
                 } else { App.reproducirBeep(false); }
             });
-        } else { el.classList.add('oculto'); if(App.scanner) App.scanner.stop(); }
+        } else { 
+            el.classList.add('oculto'); 
+            if(App.scanner) App.scanner.stop(); 
+        }
     },
+
     renderListaEscaneados: () => { const div = document.getElementById('lista-escaneados'); div.innerHTML=""; document.getElementById('count-scans').innerText=App.escaneadosLote.size; App.escaneadosLote.forEach((t,id)=>{ div.innerHTML+=`<div class="chip activo" style="background:white; color:black;"><b>${t.id_troquel}</b><span onclick="App.borrarDeLote(${id})" style="color:red; cursor:pointer; margin-left:5px">✕</span></div>`; }); },
     borrarDeLote: (id) => { App.escaneadosLote.delete(id); App.renderListaEscaneados(); },
     procesarEscaneo: async (acc) => { if(App.escaneadosLote.size===0) return; App.seleccionados = new Set(App.escaneadosLote.keys()); await App.moverLote(acc); App.toggleScanner(false); },
@@ -833,7 +862,6 @@ const App = {
 
     ordenar: (c) => { if(App.columnaOrden===c) App.ordenAsc=!App.ordenAsc; else { App.columnaOrden=c; App.ordenAsc=true; } App.renderTabla(); },
 
-    // ─── DESCATALOGAR CON MODAL ────────────────────────────────
     descatalogar: async (id) => {
         const t = App.datos.find(x => x.id === id); if(!t) return;
         App.descatalogarTargetId = id; App.descatalogarModo = 'SINGLE';
@@ -868,7 +896,6 @@ const App = {
     asignarMasivo: async (c) => { let id=c==='familia'?'bulk-familia':'bulk-tipo'; let v=document.getElementById(id).value; if(v && confirm("¿Aplicar?")) { await fetch(`/api/troqueles/bulk/${c}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids: Array.from(App.seleccionados), valor_id: parseInt(v) }) }); App.mostrarToast("Asignación masiva completada."); App.limpiarSeleccion(); App.cargarTodo(); } },
     abrirGestionAux: () => document.getElementById('modal-aux').classList.remove('oculto'),
 
-    // ─── IMPRESIÓN GODEX (iframe, sin popup) ─────────────────
     imprimirEtiquetasGodex: (items, tamano = '50x23') => {
         const PX_MM = 203 / 25.4;
         const W_MM = tamano === '100x70' ? 100 : 50, H_MM = tamano === '100x70' ? 70 : 23;
@@ -904,7 +931,6 @@ const App = {
         setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 800);
     },
 
-    // ─── IMPRESIÓN A4 APLI 1291 (iframe) ─────────────────────
     imprimirEtiquetasA4: (items) => {
         const etiquetasHtml = items.map(t => {
             const qrCanvas = document.createElement('canvas');
@@ -945,46 +971,6 @@ const App = {
         const btnA4 = document.getElementById('btn-imprimir-qr-unico-a4'); if(btnA4) btnA4.onclick = () => App.imprimirEtiquetasA4([t]);
     },
 
-    // ─── DESCATALOGADOS ────────────────────────────────────────
-    verDescatalogados: async () => {
-        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
-        document.getElementById('vista-descatalogados').classList.remove('oculto');
-        document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
-        const tbody = document.getElementById('tabla-desc-body');
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando... ⏳</td></tr>';
-        try {
-            const res = await fetch('/api/troqueles/descatalogados');
-            App.datosDescatalogados = await res.json();
-            App.renderDescatalogados();
-        } catch(e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar.</td></tr>'; }
-    },
-
-    renderDescatalogados: (filtro = '') => {
-        const tbody = document.getElementById('tabla-desc-body'), counter = document.getElementById('desc-contador');
-        const q = filtro.toLowerCase();
-        const data = q ? App.datosDescatalogados.filter(t => [t.id_troquel, t.nombre, t.ubicacion, t.codigos_articulo].some(v => v && String(v).toLowerCase().includes(q))) : App.datosDescatalogados;
-        if(counter) counter.innerText = data.length;
-        if(data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">${q ? 'Sin resultados para "'+filtro+'"' : 'No hay troqueles descatalogados.'}</td></tr>`; return; }
-        tbody.innerHTML = data.map(t => {
-            const fecha = t.fecha_descatalogado ? new Date(t.fecha_descatalogado).toLocaleDateString('es-ES') : '-';
-            return `<tr><td style="font-weight:900; color:#92400e;">${t.id_troquel}</td><td>${t.ubicacion || '-'}</td><td>${t.nombre}</td><td style="color:#0369a1;">${t.codigos_articulo || '-'}</td><td style="color:#64748b;">${fecha}</td>
-            <td style="white-space:nowrap;">
-                <button class="btn-accion" style="background:#16a34a; padding:4px 12px; font-size:12px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>
-                <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir etiqueta">🖨️</button>
-            </td></tr>`;
-        }).join('');
-    },
-
-    reactivar: async (id) => {
-        const ubi = prompt("¿A qué estantería vuelve el troquel?");
-        if(ubi === null) return;
-        if(!ubi.trim()) { App.mostrarToast("Debes indicar la ubicación.", "error"); return; }
-        const res = await fetch(`/api/troqueles/${id}/reactivar`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ubicacion: ubi.trim() }) });
-        if(res.ok) { App.mostrarToast("Troquel reactivado al inventario."); App.datosDescatalogados = []; App.verDescatalogados(); }
-        else { App.mostrarToast("Error al reactivar.", "error"); }
-    },
-
-    // ─── BACKUP ────────────────────────────────────────────────
     exportarCopiaSeguridad: async () => {
         App.mostrarToast("Generando copia de seguridad...");
         try {
