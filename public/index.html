@@ -345,16 +345,13 @@
                 <div style="margin-bottom:10px;"><b>Observaciones:</b><div id="movil-obs" style="background:#fef3c7; border-left:3px solid #f59e0b; padding:6px; margin-top:4px; border-radius:0 4px 4px 0;"></div></div>
                 <div style="border-top:1px solid #e2e8f0; padding-top:10px;"><b style="color:#64748b;">📎 Documentos / Fotos:</b><div id="movil-galeria" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div></div>
             </div>
-            
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                 <button class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:12px; font-size:14px;" onclick="App.movilCambiarUbi()">📍 Cambiar Ubi</button>
                 <label class="btn-gigante" style="background:white; color:#334155; border:2px solid #cbd5e1; padding:12px; display:flex; align-items:center; justify-content:center; font-size:14px;">
                     📷 Subir Foto <input type="file" accept="image/*" capture="environment" onchange="App.movilSubirFoto(this)" style="display:none;">
                 </label>
-                
                 <button class="btn-gigante" style="background:var(--danger); color:white; padding:15px; font-size:15px;" onclick="App.movilCambiarEstado('SALIDA')">🏭 A Producción</button>
                 <button class="btn-gigante" style="background:var(--success); color:white; padding:15px; font-size:15px;" onclick="App.movilCambiarEstado('RETORNO')">✅ A Almacén</button>
-                
                 <button class="btn-gigante" style="background:#f97316; color:white; padding:15px; font-size:15px;" onclick="App.movilCambiarEstado('REPARAR')">🔧 A Reparar</button>
                 <button class="btn-gigante" style="background:#8b5cf6; color:white; padding:15px; font-size:15px;" onclick="App.movilCambiarEstado('EXTERNO')">🚚 A Externo</button>
             </div>
@@ -529,9 +526,12 @@
                     <div style="display:flex; justify-content:space-between;"><span>Leídos: <strong id="count-scans">0</strong></span></div>
                     <div id="lista-escaneados" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
                 </div>
-                <div id="btns-lote" style="padding:15px; display:flex; gap:10px; justify-content:center; background:#0f172a;">
-                    <button class="btn-accion" style="background:#e11d48; width:50%; padding:15px;" onclick="App.procesarEscaneo('SALIDA')">A PRODUCCIÓN</button>
-                    <button class="btn-accion" style="background:#16a34a; width:50%; padding:15px;" onclick="App.procesarEscaneo('RETORNO')">DEVOLVER</button>
+                
+                <div id="btns-lote" style="padding:15px; display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#0f172a;">
+                    <button class="btn-accion" style="background:#e11d48; padding:15px; font-size:14px;" onclick="App.procesarEscaneo('SALIDA')">🏭 A PRODUCCIÓN</button>
+                    <button class="btn-accion" style="background:#16a34a; padding:15px; font-size:14px;" onclick="App.procesarEscaneo('RETORNO')">✅ A ALMACÉN</button>
+                    <button class="btn-accion" style="background:#f97316; padding:15px; font-size:14px;" onclick="App.procesarEscaneo('REPARAR')">🔧 A REPARAR</button>
+                    <button class="btn-accion" style="background:#8b5cf6; padding:15px; font-size:14px;" onclick="App.procesarEscaneo('EXTERNO')">🚚 A EXTERNO</button>
                 </div>
             </div>
         </div>
@@ -581,6 +581,6 @@
 </div>
 
 <div id="toast-container"></div>
-<script src="app.js?v=43"></script>
+<script src="app.js?v=44"></script>
 </body>
 </html>
