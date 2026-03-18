@@ -1,5 +1,5 @@
 // =============================================================
-// ERP PACKAGING - LÓGICA V47 (HISTORIAL CON ACCIONES Y COLORES)
+// ERP PACKAGING - LÓGICA V48 (HISTORIAL + DESCATALOGADOS RECUPERADOS)
 // =============================================================
 
 const App = {
@@ -141,14 +141,10 @@ const App = {
     renderBannerPendientes: () => {
         const pendientes = App.datos.filter(t => t.referencias_ot === 'NUEVO - PENDIENTE');
         const n = pendientes.length;
-
-        // Banner en inventario (siempre visible si hay pendientes)
         const banner = document.getElementById('banner-pendientes');
         if(banner) banner.style.display = n > 0 ? 'flex' : 'none';
         const countBanner = document.getElementById('banner-pendientes-count');
         if(countBanner) countBanner.innerText = n;
-
-        // Contador en el sidebar
         const countSidebar = document.getElementById('sidebar-pendientes-count');
         if(countSidebar) {
             countSidebar.style.display = n > 0 ? 'inline-block' : 'none';
@@ -176,10 +172,6 @@ const App = {
         }
         tbody.innerHTML = res.map(t => {
             const archs = App.parseArchivos(t.archivos);
-            const nDocs = archs.length;
-            const bdg = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
-            const nomEsc = (t.nombre||'').replace(/'/g,'');
-            // Miniatura foto si tiene
             const foto = archs.find(a => a.tipo !== 'pdf');
             const imgThumb = foto ? `<img src="${foto.url}" style="height:36px; width:36px; object-fit:cover; border-radius:4px; border:1px solid #e2e8f0; margin-right:6px; vertical-align:middle;">` : '';
             return `<tr style="background:#fffbeb; cursor:pointer;" onclick="App.verFicha(${t.id})">
@@ -198,7 +190,6 @@ const App = {
     },
 
     editarPendiente: (id) => {
-        // Va al formulario completo con todos los campos
         document.getElementById('vista-pendientes').classList.add('oculto');
         App.editar(id);
     },
@@ -211,7 +202,7 @@ const App = {
             categoria_id: t.categoria_id || null, familia_id: t.familia_id || null,
             tamano_troquel: String(t.tamano_troquel||""), tamano_final: String(t.tamano_final||""),
             codigos_articulo: String(t.codigos_articulo||""),
-            referencias_ot: "",  // quita la marca NUEVO - PENDIENTE
+            referencias_ot: "", 
             observaciones: String(t.observaciones||"").replace("Alta exprés desde móvil. Pendiente de validación por responsable.", "").trim(),
             estado: String(t.estado||"EN ALMACEN"),
             archivos: App.parseArchivos(t.archivos)
@@ -220,7 +211,7 @@ const App = {
         if(res.ok) {
             App.mostrarToast(`✅ Troquel ${t.id_troquel} validado e incorporado al inventario.`);
             await App.cargarTodo();
-            App.renderPendientes(); // refresca la vista pendientes sin salir
+            App.renderPendientes(); 
         } else { App.mostrarToast("Error al confirmar.", "error"); }
     },
 
@@ -256,7 +247,6 @@ const App = {
             const archs = App.parseArchivos(t.archivos); const nDocs = archs.length;
             const bdg = nDocs > 0 ? `<span class="obs-pildora">📎 ${nDocs}</span>` : '-';
             
-            // LÓGICA DE COLORES DE ESTADO ACTUALIZADA
             let col = '#166534', bg = '#dcfce7', textoEstado = 'ALMACÉN';
             if(t.estado === 'EN PRODUCCION') { col = '#991b1b'; bg = '#fee2e2'; textoEstado = 'PRODUCCIÓN'; }
             else if(t.estado === 'REPARAR') { col = '#ea580c'; bg = '#ffedd5'; textoEstado = 'REPARACIÓN'; }
@@ -364,7 +354,6 @@ const App = {
         } catch(e) { console.error(e); tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar los datos de uso.</td></tr>'; }
     },
 
-    // 🚀 AQUI SE AÑADE LA COLUMNA ACCIÓN Y LOS COLORES EN EL HISTORIAL GENERAL 🚀
     cargarHistorial: async () => {
         const r = await fetch('/api/historial'); const d = await r.json();
         document.getElementById('tabla-historial').innerHTML = d.map(h => {
@@ -391,7 +380,6 @@ const App = {
         if(thead) thead.innerHTML = `<th>Fecha/Hora</th><th>Matrícula</th><th>Descripción</th><th>Código</th><th class="text-center">Acción</th><th>Origen ➔ Destino</th>`;
     },
 
-    // 🚀 AQUI SE AÑADEN LOS COLORES EN EL HISTORIAL INDIVIDUAL 🚀
     verHistorialTroquel: async (id, mat, nom) => {
         const modal = document.getElementById('modal-historial-unico'), tbody = document.getElementById('tabla-historial-unico');
         document.getElementById('hist-titulo-mat').innerText = mat;
@@ -518,7 +506,7 @@ const App = {
     guardarAltaRapida: async (e) => {
         e.preventDefault();
         const cat = parseInt(document.getElementById('am-cat').value);
-        const fam = parseInt(document.getElementById('am-fam').value) || null; // opcional
+        const fam = parseInt(document.getElementById('am-fam').value) || null;
         const nom = document.getElementById('am-nombre').value;
         const arts = document.getElementById('am-arts').value.trim();
         const ubiInput = document.getElementById('am-ubicacion').value.trim();
@@ -529,7 +517,6 @@ const App = {
             const rId = await fetch(`/api/siguiente_numero?categoria_id=${cat}`); const dId = await rId.json(); const matricula = dId.siguiente;
             const ubicacion = ubiInput || String(matricula);
             let archivosArr = [];
-            // Foto: solo si se adjuntó
             if(inputFoto.files.length) {
                 const archivoOptimo = await App.comprimirImagen(inputFoto.files[0]);
                 const fd = new FormData(); fd.append('file', archivoOptimo);
@@ -598,33 +585,52 @@ const App = {
     },
 
     toggleScanner: (show=true, modo='LOTE') => {
-        const el = document.getElementById('modal-scanner'); App.modoScanner = modo;
-        const pLote = document.getElementById('panel-lote'), bLote = document.getElementById('btns-lote'), tit = document.getElementById('titulo-scanner');
+        const el = document.getElementById('modal-scanner'); 
+        App.modoScanner = modo;
+        const pLote = document.getElementById('panel-lote');
+        const bLote = document.getElementById('btns-lote');
+        const tit = document.getElementById('titulo-scanner');
         
         if (modo === 'UNICO') { 
-            if(pLote) pLote.style.display='none'; 
-            if(bLote) bLote.style.display='none'; 
-            if(tit) tit.innerText="🔎 Escanear Un Troquel"; 
+            if(pLote) pLote.style.display = 'none'; 
+            if(bLote) bLote.style.display = 'none'; 
+            if(tit) tit.innerText = "🔎 Escanear Un Troquel"; 
         } else { 
-            if(pLote) pLote.style.display='block'; 
-            if(bLote) bLote.style.display='grid'; 
-            if(tit) tit.innerText="📦 Escanear Lote"; 
+            if(pLote) pLote.style.display = 'block'; 
+            if(bLote) bLote.style.display = 'grid'; 
+            if(tit) tit.innerText = "📦 Escanear Lote"; 
         }
         
         if(show) {
-            el.classList.remove('oculto'); App.escaneadosLote.clear(); App.renderListaEscaneados();
+            el.classList.remove('oculto'); 
+            App.escaneadosLote.clear(); 
+            App.renderListaEscaneados();
             App.scanner = new Html5Qrcode("reader");
             let last = null, t0 = 0;
             App.scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, (txt) => {
                 if(txt === last && (Date.now() - t0 < 3000)) return;
                 const t = App.datos.find(x => x.id.toString() === txt);
                 if(t) {
-                    if (App.modoScanner === 'UNICO') { App.reproducirBeep(true); App.toggleScanner(false); if(navigator.vibrate) navigator.vibrate(200); App.abrirDetalleMovil(t.id); }
-                    else { if(!App.escaneadosLote.has(t.id)) { App.reproducirBeep(true); App.escaneadosLote.set(t.id, t); App.renderListaEscaneados(); if(navigator.vibrate) navigator.vibrate(100); } }
+                    if (App.modoScanner === 'UNICO') { 
+                        App.reproducirBeep(true); 
+                        App.toggleScanner(false); 
+                        if(navigator.vibrate) navigator.vibrate(200); 
+                        App.abrirDetalleMovil(t.id); 
+                    } else { 
+                        if(!App.escaneadosLote.has(t.id)) { 
+                            App.reproducirBeep(true); 
+                            App.escaneadosLote.set(t.id, t); 
+                            App.renderListaEscaneados(); 
+                            if(navigator.vibrate) navigator.vibrate(100); 
+                        } 
+                    }
                     last = txt; t0 = Date.now();
                 } else { App.reproducirBeep(false); }
             });
-        } else { el.classList.add('oculto'); if(App.scanner) App.scanner.stop(); }
+        } else { 
+            el.classList.add('oculto'); 
+            if(App.scanner) App.scanner.stop(); 
+        }
     },
 
     renderListaEscaneados: () => { const div = document.getElementById('lista-escaneados'); div.innerHTML=""; document.getElementById('count-scans').innerText=App.escaneadosLote.size; App.escaneadosLote.forEach((t,id)=>{ div.innerHTML+=`<div class="chip activo" style="background:white; color:black;"><b>${t.id_troquel}</b><span onclick="App.borrarDeLote(${id})" style="color:red; cursor:pointer; margin-left:5px">✕</span></div>`; }); },
@@ -705,6 +711,47 @@ const App = {
         await fetch('/api/troqueles/bulk/restaurar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids }) });
         App.mostrarToast(`${ids.length} troqueles restaurados al inventario.`); App.datosPapelera = []; await App.cargarPapelera();
     },
+
+    // ─── DESCATALOGADOS (¡AQUI ESTA EL BLOQUE RECUPERADO!) ──────────────
+    verDescatalogados: async () => {
+        document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
+        document.getElementById('vista-descatalogados').classList.remove('oculto');
+        document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('activo'));
+        const tbody = document.getElementById('tabla-desc-body');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando... ⏳</td></tr>';
+        try {
+            const res = await fetch('/api/troqueles/descatalogados');
+            App.datosDescatalogados = await res.json();
+            App.renderDescatalogados();
+        } catch(e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red">Error al cargar.</td></tr>'; }
+    },
+
+    renderDescatalogados: (filtro = '') => {
+        const tbody = document.getElementById('tabla-desc-body'), counter = document.getElementById('desc-contador');
+        const q = filtro.toLowerCase();
+        const data = q ? App.datosDescatalogados.filter(t => [t.id_troquel, t.nombre, t.ubicacion, t.codigos_articulo].some(v => v && String(v).toLowerCase().includes(q))) : App.datosDescatalogados;
+        if(counter) counter.innerText = data.length;
+        if(data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:40px; color:#64748b;">${q ? 'Sin resultados para "'+filtro+'"' : 'No hay troqueles descatalogados.'}</td></tr>`; return; }
+        tbody.innerHTML = data.map(t => {
+            const fecha = t.fecha_descatalogado ? new Date(t.fecha_descatalogado).toLocaleDateString('es-ES') : '-';
+            return `<tr><td style="font-weight:900; color:#92400e;">${t.id_troquel}</td><td>${t.ubicacion || '-'}</td><td>${t.nombre}</td><td style="color:#0369a1;">${t.codigos_articulo || '-'}</td><td style="color:#64748b;">${fecha}</td>
+            <td style="white-space:nowrap;">
+                <button class="btn-accion" style="background:#16a34a; padding:4px 12px; font-size:12px;" onclick="App.reactivar(${t.id})">♻️ Reactivar</button>
+                <button class="btn-icono" onclick="App.generarQR(${t.id})" title="Imprimir etiqueta">🖨️</button>
+            </td></tr>`;
+        }).join('');
+    },
+
+    reactivar: async (id) => {
+        const ubi = prompt("¿A qué estantería vuelve el troquel?");
+        if(ubi === null) return;
+        if(!ubi.trim()) { App.mostrarToast("Debes indicar la ubicación.", "error"); return; }
+        const res = await fetch(`/api/troqueles/${id}/reactivar`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ubicacion: ubi.trim() }) });
+        if(res.ok) { App.mostrarToast("Troquel reactivado al inventario."); App.datosDescatalogados = []; App.verDescatalogados(); }
+        else { App.mostrarToast("Error al reactivar.", "error"); }
+    },
+    // ─────────────────────────────────────────────────────────────
+
     descatalogarDesdePapelera: async (id) => {
         const palet = prompt("Ubicación del palet donde se guarda el troquel:");
         if(palet === null) return;
